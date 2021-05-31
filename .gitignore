@@ -55,7 +55,6 @@ build/
 .build/
 zdocs/build
 dist/
-lib/
 gobin/
 lib64/
 parts/
