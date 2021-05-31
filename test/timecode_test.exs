@@ -293,6 +293,7 @@ defmodule TimecodeParseTest do
     assert testCase.seconds == parsed.seconds
     assert testCase.frames == Vtc.Timecode.frames(parsed)
     assert testCase.timecode == Vtc.Timecode.timecode(parsed)
+    assert testCase.runtime == Vtc.Timecode.runtime(parsed, 9)
     assert testCase.rate == parsed.rate
   end
 
