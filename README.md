@@ -10,7 +10,7 @@
 </p>
 <p align="center">
     <a href="https://hex.pm/packages/vtc"><img src="https://img.shields.io/hexpm/v/vtc.svg" alt="PyPI version" height="18"></a>
-    <a href="https://hexdocs.pm/vtc/api-reference.html"><img src="https://img.shields.io/badge/docs-hexdocs.pm-blue" alt="Documentation"></a>
+    <a href="https://hexdocs.pm/vtc/readme.html"><img src="https://img.shields.io/badge/docs-hexdocs.pm-blue" alt="Documentation"></a>
 </p>
 
 Demo
@@ -46,16 +46,23 @@ Let's take a quick look at how we can use this library!
     # Parsing is flexible
 
     # Partial timecode:
-    iex(2)> Vtc.Timecode.with_frames!("3:12", Vtc.Rate.f23_98)
+    iex> Vtc.Timecode.with_frames!("3:12", Vtc.Rate.f23_98)
     <03:00:00:12 @ <23.98 NTSC NDF>>
 
     # Frame count:
-    iex(3)> Vtc.Timecode.with_frames!(24, Vtc.Rate.f23_98)    
+    iex> Vtc.Timecode.with_frames!(24, Vtc.Rate.f23_98)    
     <00:00:01:00 @ <23.98 NTSC NDF>>
 
     # Seconds:
-    iex(1)> Vtc.Timecode.with_seconds!(1.5, Vtc.Rate.f23_98)
+    iex> Vtc.Timecode.with_seconds!(1.5, Vtc.Rate.f23_98)
     <00:00:01:12 @ <23.98 NTSC NDF>>
+
+    # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
+    # framerates.
+    iex> drop_frame = Vtc.Timecode.with_frames!(15000, Vtc.Rate.f29_97_Df)
+    <00:08:20;18 @ <29.97 NTSC DF>>
+
+    
 
 Features
 --------
