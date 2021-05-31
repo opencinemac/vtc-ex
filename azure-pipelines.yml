@@ -36,3 +36,4 @@ extends:
     publishDocs: false
     language: ELIXIR
     buildType: LIBRARY
+    timeoutInMinutes: 10
