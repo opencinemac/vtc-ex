@@ -9,6 +9,12 @@ defmodule Vtc.MixProject do
       source_url: "https://github.com/opencinemac/vtc-ex",
       elixir: "~> 1.12",
       test_coverage: [tool: :covertool],
+      docs: [
+        # The main page in the docs
+        main: "readme",
+        logo: "zdocs/source/logo1.svg",
+        extras: ["README.md", "zdocs/history.md"]
+      ],
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       package: package(),
@@ -26,7 +32,7 @@ defmodule Vtc.MixProject do
     [
       {:ratio, "~> 2.0"},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
-      {:covertool, "~> 2.0"},
+      {:covertool, "~> 2.0", only: [:test]},
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]

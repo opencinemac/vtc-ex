@@ -1,4 +1,6 @@
 defmodule Private do
+  @moduledoc false
+
   use Ratio, comparison: true
 
   @spec round_ratio?(Ratio.t()) :: integer
@@ -123,7 +125,7 @@ defmodule Private do
     {value, sections} = List.pop_at(sections, -1)
 
     value_int =
-      if value == nil do
+      if value == nil or value == "" do
         0
       else
         String.to_integer(value)
