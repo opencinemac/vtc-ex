@@ -68,7 +68,7 @@ defmodule Vtc.Framerate do
     if framerate.ntsc == :None do
       framerate.playback
     else
-      Private.round_ratio?(framerate.playback)
+      Private.Rat.round_ratio?(framerate.playback)
     end
   end
 
@@ -222,7 +222,7 @@ defmodule Vtc.Framerate do
   @spec coerce_ntsc_rate(Ratio.t(), Vtc.Ntsc.t()) :: Ratio.t()
   defp coerce_ntsc_rate(rate, ntsc) do
     if ntsc != :None and Ratio.denominator(rate) != 1001 do
-      rate = Private.round_ratio?(rate)
+      rate = Private.Rat.round_ratio?(rate)
       rate * 1000 / 1001
     else
       rate

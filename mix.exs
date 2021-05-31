@@ -8,7 +8,7 @@ defmodule Vtc.MixProject do
       description: "A SMPTE timecode library for Elixir",
       source_url: "https://github.com/opencinemac/vtc-ex",
       elixir: "~> 1.12",
-      test_coverage: [tool: :covertool],
+      # test_coverage: [tool: :covertool],
       docs: [
         # The main page in the docs
         main: "readme",

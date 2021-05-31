@@ -81,7 +81,7 @@ defmodule Vtc.Timecode do
   """
   @spec frames(Vtc.Timecode.t()) :: integer
   def frames(tc = %Vtc.Timecode{}) do
-    Private.round_ratio?(tc.seconds * tc.rate.playback)
+    Private.Rat.round_ratio?(tc.seconds * tc.rate.playback)
   end
 
   @doc """
@@ -90,16 +90,24 @@ defmodule Vtc.Timecode do
   @spec sections(Vtc.Timecode.t()) :: Sections.t()
   def sections(tc = %Vtc.Timecode{}) do
     timebase = Vtc.Framerate.timebase(tc.rate)
-    framesPerMinute = timebase * Private.secondsPerMinute()
-    framesPerHour = timebase * Private.secondsPerHour()
+    framesPerMinute = timebase * Private.Const.secondsPerMinute()
+    framesPerHour = timebase * Private.Const.secondsPerHour()
 
     is_negative = tc.seconds < 0
     frames = abs(frames(tc))
 
-    {hours, frames} = Private.divmod(frames, framesPerHour)
-    {minutes, frames} = Private.divmod(frames, framesPerMinute)
-    {seconds, frames} = Private.divmod(frames, timebase)
-    frames = Private.round_ratio?(frames)
+    # adjust our frame number if this is a drop-frame framerate.
+    frames =
+      if tc.rate.ntsc == :Drop do
+        Private.Drop.frame_num_adjustment(frames, tc.rate)
+      else
+        frames
+      end
+
+    {hours, frames} = Private.Rat.divmod(frames, framesPerHour)
+    {minutes, frames} = Private.Rat.divmod(frames, framesPerMinute)
+    {seconds, frames} = Private.Rat.divmod(frames, timebase)
+    frames = Private.Rat.round_ratio?(frames)
 
     %Sections{
       negative: is_negative,
@@ -173,7 +181,7 @@ defmodule Vtc.Timecode do
       - `:unrecognized_format`: Returned when a string value is not a recognized
         timecode, runtime, etc. format.
     """
-    @type t :: %ParseError{reason: :unrecognized_format}
+    @type t :: %ParseError{reason: :unrecognized_format | :bad_drop_frames}
 
     @doc """
     Returns a message for the error reason.
@@ -181,7 +189,11 @@ defmodule Vtc.Timecode do
     @spec message(Vtc.Framerate.ParseError.t()) :: String.t()
     def message(error) do
       case error.reason do
-        :unrecognized_format -> "string format not recognized"
+        :unrecognized_format ->
+          "string format not recognized"
+
+        :bad_drop_frames ->
+          "frames value not allowed for drop-frame timecode. frame should have been dropped"
       end
     end
   end
@@ -203,9 +215,9 @@ defmodule Vtc.Timecode do
   - `seconds` - A value which can be represented as a number of seconds.
   - `rate` - The Framerate at which the frames are being played back.
   """
-  @spec with_seconds(Vtc.Sources.Seconds.t(), Vtc.Framerate.t()) :: parse_result
+  @spec with_seconds(Vtc.Source.Seconds.t(), Vtc.Framerate.t()) :: parse_result
   def with_seconds(seconds, %Vtc.Framerate{} = rate) do
-    case Vtc.Sources.Seconds.seconds(seconds, rate) do
+    case Vtc.Source.Seconds.seconds(seconds, rate) do
       {:ok, seconds} -> {:ok, %Vtc.Timecode{seconds: seconds, rate: rate}}
       {:error, err} -> {:error, err}
     end
@@ -214,7 +226,7 @@ defmodule Vtc.Timecode do
   @doc """
   As `Vtc.Timecode.with_seconds/2`, but raises on error.
   """
-  @spec with_seconds!(Vtc.Sources.Seconds.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
+  @spec with_seconds!(Vtc.Source.Seconds.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
   def with_seconds!(seconds, %Vtc.Framerate{} = rate) do
     {:ok, tc} = with_seconds(seconds, rate)
     tc
@@ -232,9 +244,9 @@ defmodule Vtc.Timecode do
   - `frames` - A value which can be represented as a frame number / frame count.
   - `rate` - The Framerate at which the frames are being played back.
   """
-  @spec with_frames(Vtc.Sources.Frames.t(), Vtc.Framerate.t()) :: parse_result
+  @spec with_frames(Vtc.Source.Frames.t(), Vtc.Framerate.t()) :: parse_result
   def with_frames(frames, %Vtc.Framerate{} = rate) do
-    case Vtc.Sources.Frames.frames(frames, rate) do
+    case Vtc.Source.Frames.frames(frames, rate) do
       {:ok, frames} ->
         seconds = frames / rate.playback
         with_seconds(seconds, rate)
@@ -247,7 +259,7 @@ defmodule Vtc.Timecode do
   @doc """
   As `Vtc.Timecode.with_frames/2`, but raises on error.
   """
-  @spec with_frames!(Vtc.Sources.Frames.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
+  @spec with_frames!(Vtc.Source.Frames.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
   def with_frames!(frames, %Vtc.Framerate{} = rate) do
     {:ok, tc} = with_frames(frames, rate)
     tc
