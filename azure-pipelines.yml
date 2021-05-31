@@ -33,6 +33,8 @@ extends:
   template: main.yml@templates
   # Template parameters
   parameters:
-    publishDocs: false
     language: ELIXIR
     buildType: LIBRARY
+    publishDocs: false
+    publishToHexPM: true
+    timeoutInMinutes: 10
