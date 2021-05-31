@@ -31,6 +31,7 @@ defmodule Vtc.MixProject do
   defp deps do
     [
       {:ratio, "~> 2.0"},
+      {:decimal, "~> 2.0"},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:covertool, "~> 2.0", only: [:test]},
       {:junit_formatter, "~> 3.1", only: [:test]},

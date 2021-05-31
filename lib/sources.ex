@@ -52,6 +52,11 @@ defmodule Vtc.Source do
     def seconds(value, rate), do: Seconds.seconds(Ratio.new(value, 1), rate)
   end
 
+  defimpl Seconds, for: [String, BitString] do
+    @spec seconds(String.t() | bitstring, Vtc.Framerate.t()) :: Vtc.Source.seconds_result()
+    def seconds(value, rate), do: Private.Parse.parse_runtime_string(value, rate)
+  end
+
   @typedoc """
   Result type of `Vtc.Source.Frames.frames/2`.
   """
@@ -122,7 +127,10 @@ defmodule Private.Parse do
 
   @spec parse_tc_string(String.t(), Vtc.Framerate.t()) :: Vtc.Source.frames_result()
   def parse_tc_string(value, rate) do
-    with {:ok, matched} <- tc_apply_regex(value),
+    tc_regex =
+      ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?((?P<section3>[0-9]+)[:|;])?(?P<frames>[0-9]+)$/
+
+    with {:ok, matched} <- apply_regex(tc_regex, value),
          sections <- tc_matched_to_sections(matched),
          frames <- tc_sections_to_frames(sections, rate) do
       {:ok, frames}
@@ -131,12 +139,9 @@ defmodule Private.Parse do
     end
   end
 
-  @spec tc_apply_regex(String.t()) :: :no_match | {:ok, map}
-  defp tc_apply_regex(value) do
-    tc_regex =
-      ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?((?P<section3>[0-9]+)[:|;])?(?P<frames>[0-9]+)$/
-
-    matched = Regex.named_captures(tc_regex, value)
+  @spec apply_regex(Regex.t(), String.t()) :: :no_match | {:ok, map}
+  defp apply_regex(regex, value) do
+    matched = Regex.named_captures(regex, value)
 
     if matched == nil do
       :no_match
@@ -148,11 +153,33 @@ defmodule Private.Parse do
   @spec tc_matched_to_sections(map) :: Vtc.Timecode.Sections.t()
   defp tc_matched_to_sections(matched) do
     # It's faster to append to the front of a list, so we will work backwards
-    sectionKeys = ["section3", "section2", "section1"]
+    section_keys = ["section3", "section2", "section1"]
+    sections = build_groups(matched, section_keys)
 
+    {seconds, sections} = tc_get_next_section(sections)
+    {minutes, sections} = tc_get_next_section(sections)
+    {hours, _} = tc_get_next_section(sections)
+
+    # If the regex matched, then the frames place has to have matched.
+    frames = String.to_integer(matched["frames"])
+
+    is_negative = Map.fetch(matched, "sign") != :error
+
+    %Vtc.Timecode.Sections{
+      negative: is_negative,
+      hours: hours,
+      minutes: minutes,
+      seconds: seconds,
+      frames: frames
+    }
+  end
+
+  # Extracts groups that may or may not be in the match into a list of values.
+  @spec build_groups(map, list(String.t())) :: list(String.t())
+  defp build_groups(matched, section_keys) do
     # Reduce to our present section values.
     {_, sections} =
-      Enum.map_reduce(sectionKeys, [], fn section_key, sections ->
+      Enum.map_reduce(section_keys, [], fn section_key, sections ->
         this_section = Map.fetch(matched, section_key)
 
         sections =
@@ -164,23 +191,7 @@ defmodule Private.Parse do
         {this_section, sections}
       end)
 
-    {seconds, sections} = tc_get_next_section(sections)
-    {minutes, sections} = tc_get_next_section(sections)
-    {hours, _} = tc_get_next_section(sections)
-
-    # If the regex matched, then the frames place has to have matched.
-    {:ok, frames_str} = Map.fetch(matched, "frames")
-    frames = String.to_integer(frames_str)
-
-    is_negative = Map.fetch(matched, "sign") != :error
-
-    %Vtc.Timecode.Sections{
-      negative: is_negative,
-      hours: hours,
-      minutes: minutes,
-      seconds: seconds,
-      frames: frames
-    }
+    sections
   end
 
   @spec tc_get_next_section(list(String.t())) :: {integer, list(String.t())}
@@ -211,6 +222,45 @@ defmodule Private.Parse do
       Private.Rat.round_ratio?(frames)
     else
       {:error, err} -> {:error, err}
+    end
+  end
+
+  @spec parse_runtime_string(String.t(), Vtc.Framerate.t()) :: Vtc.Source.seconds_result()
+  def parse_runtime_string(value, rate) do
+    runtime_regex =
+      ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?(?P<seconds>[0-9]+(\.[0-9]+)?)$/
+
+    with {:ok, matched} <- apply_regex(runtime_regex, value),
+         seconds <- runtime_matched_to_second(matched),
+         {:ok, seconds} = Vtc.Source.Seconds.seconds(seconds, rate) do
+      {:ok, seconds}
+    else
+      :no_match -> %Vtc.Timecode.ParseError{reason: :unrecognized_format}
+      {:error, err} -> {:error, err}
+    end
+  end
+
+  @spec runtime_matched_to_second(map) :: Ratio.t() | integer
+  defp runtime_matched_to_second(matched) do
+    section_keys = ["section2", "section1"]
+    sections = build_groups(matched, section_keys)
+
+    {minutes, sections} = tc_get_next_section(sections)
+    {hours, _} = tc_get_next_section(sections)
+
+    # We will always have a 'seconds' group.
+    seconds = Ratio.new(Decimal.new(matched["seconds"]), 1)
+
+    is_negative = Map.fetch(matched, "sign") != :error
+
+    seconds =
+      hours * Private.Const.secondsPerHour() + minutes * Private.Const.secondsPerMinute() +
+        seconds
+
+    if is_negative do
+      -seconds
+    else
+      seconds
     end
   end
 end
