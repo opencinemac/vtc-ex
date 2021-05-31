@@ -14,9 +14,9 @@ defmodule Vtc.MixProject do
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test,
-        "coveralls.xml": :test,
+        "coveralls.xml": :test
       ],
-      build_embedded: Mix.env == :prod,
+      build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       package: package(),
       deps: deps()
@@ -35,7 +35,7 @@ defmodule Vtc.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
       {:junit_formatter, "~> 3.1", only: [:test]},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
 
