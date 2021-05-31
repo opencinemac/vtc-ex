@@ -2,6 +2,7 @@
 /_build/
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
+coverage.xml
 # The directory Mix downloads your dependencies sources to.
 /deps/
 # Where third-party dependencies like ExDoc output generated docs.
