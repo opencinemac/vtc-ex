@@ -1,6 +1,30 @@
 defmodule Vtc.Ntsc do
+  @moduledoc """
+  Enum-like atom value for the various NTSC standards.
+
+  These values are used when constructing and inspecting `Vtc.Framerate` values.
+  """
+
+  @typedoc """
+  Restricts the possible values of `Vtc.Ntsc`.
+
+  # Values
+
+  - `:None`: Not an NTSC value
+  - `:NonDrop` A non-drop NTSC value.
+  - `:Drop` A drop-frame ntsc value.
+
+  For more information on NTSC standards and framerate conventions, see
+  [Frame.io's](frame.io)
+  [blogpost](https://blog.frame.io/2017/07/17/timecode-and-frame-rates) on the subject.
+  """
   @type t :: :None | :NonDrop | :Drop
 
+  @doc """
+  Returns true if the value represents and NTSC framerate.
+
+  So will return true on `:NonDrop` and `:Drop`.
+  """
   @spec is_ntsc?(Vtc.Ntsc.t()) :: boolean
   def is_ntsc?(:None) do
     false
@@ -12,19 +36,33 @@ defmodule Vtc.Ntsc do
 end
 
 defmodule Vtc.Framerate do
+  @moduledoc """
+  The rate at which a video file frames are played back.
+
+  Framerate is measured in frames-per-second (24/1 = 24 frames-per-second).
+  """
+
   use Ratio, comparison: true
 
   @enforce_keys [:playback, :ntsc]
   defstruct [:playback, :ntsc]
 
   @typedoc """
-      Type that represents Examples struct with :playback as rational
-      number which represents the playback speed of a timecode, and :ntsc, which
-      is an atom representing which, if any, NTSC convention this framerate
-      adheres to.
+  Type of `Vtc.Framerate`
+
+  # Fields
+
+  - `:playback`: The rational representation of the real-world playback speed as a
+    fraction in frames-per-second.
+
+  - `:ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   @type t :: %Vtc.Framerate{playback: Ratio.t(), ntsc: Vtc.Ntsc.t()}
 
+  @doc """
+  The rational representation of the timecode timebase speed as a fraction in
+  frames-per-second.
+  """
   @spec timebase(Vtc.Framerate.t()) :: Ratio.t()
   def timebase(framerate) do
     if framerate.ntsc == :None do
@@ -35,10 +73,33 @@ defmodule Vtc.Framerate do
   end
 
   defmodule ParseError do
+    @moduledoc """
+    Exception returned when a framerate cannot be parsed.
+    """
     defexception [:reason]
 
+    @typedoc """
+    Type of `Vtc.Framerate.ParseError`
+
+    # Fields
+
+    - `:reason`: The reason the error occurred must be one of the following:
+
+      - `:bad_drop_rate`: Returned when the playback speed of a framerate with an ntsc
+        value of :Drop is not divisible by 3000/1001 (29.97), for more on why drop-frame
+        framerates must be a multiple of 29.97, see:
+        https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
+
+      - `:invalid_ntsc`: Returned when the ntsc value is not one of the allowed atom
+        values.
+
+      - `:unrecognized_format`: Returned when a string value is not a recognized format.
+    """
     @type t :: %ParseError{reason: :bad_drop_rate | :invalid_ntsc | :unrecognized_format}
 
+    @doc """
+    Returns a message for the error reason.
+    """
     @spec message(Vtc.Framerate.ParseError.t()) :: String.t()
     def message(error) do
       case error.reason do
@@ -49,16 +110,23 @@ defmodule Vtc.Framerate do
     end
   end
 
-  @spec new!(Ratio.t() | integer | float | String.t(), Vtc.Ntsc.t()) :: Vtc.Framerate.t()
-  def new!(rate, ntsc) do
-    case new?(rate, ntsc) do
-      {:ok, framerate} -> framerate
-      {:error, err} -> raise err
-    end
-  end
+  @typedoc """
+  Type returned by `Vtc.Framerate.new?/2`
 
+  `Vtc.Framerate.new!/2` raises the error value instead.
+  """
   @type parse_result :: {:ok, Vtc.Framerate.t()} | {:error, Vtc.Framerate.ParseError.t()}
 
+  @doc """
+  Creates a new Framerate with a playback speed or timebase.
+
+  # Arguments
+
+  - **rate**: Either the playback rate or timebase. For NTSC framerates, the value will
+    be rounded to the nearest correct value.
+
+  - **ntsc**: Atom representing the which (or whether an) NTSC standard is being used.
+  """
   @spec new?(Ratio.t(), Vtc.Ntsc.t()) :: parse_result
   def new?(
         %Ratio{numerator: numerator, denominator: denominator} = rate,
@@ -112,6 +180,18 @@ defmodule Vtc.Framerate do
     result
   end
 
+  @doc """
+  As `Vtc.Framerate.new?/2` but raises an error instead.
+  """
+  @spec new!(Ratio.t() | integer | float | String.t(), Vtc.Ntsc.t()) :: Vtc.Framerate.t()
+  def new!(rate, ntsc) do
+    case new?(rate, ntsc) do
+      {:ok, framerate} -> framerate
+      {:error, err} -> raise err
+    end
+  end
+
+  # validates that a rate is a proper drop-frame framerate.
   @spec validate_drop(Ratio.t(), Vtc.Ntsc.t()) :: :ok | {:error, Vtc.Framerate.ParseError.t()}
   defp validate_drop(rate, ntsc) do
     # if this value does not go cleanly into 29.97, then it cannot be a drop-frame
@@ -128,6 +208,7 @@ defmodule Vtc.Framerate do
     end
   end
 
+  # validates that the ntsc atom is one of our allowed values.
   @spec validate_ntsc(Vtc.Ntsc.t()) :: :ok | {:error, Vtc.Framerate.ParseError.t()}
   defp validate_ntsc(ntsc) do
     if ntsc not in [:Drop, :NonDrop, :None] do
@@ -137,6 +218,7 @@ defmodule Vtc.Framerate do
     end
   end
 
+  # coerces a rate to the closest proper NTSC playback rate.
   @spec coerce_ntsc_rate(Ratio.t(), Vtc.Ntsc.t()) :: Ratio.t()
   defp coerce_ntsc_rate(rate, ntsc) do
     if ntsc != :None and Ratio.denominator(rate) != 1001 do
@@ -147,6 +229,7 @@ defmodule Vtc.Framerate do
     end
   end
 
+  # The core parser used to parse a rational or integer rate value.
   @spec new_core(Ratio.t() | integer, Vtc.Ntsc.t()) :: parse_result
   defp new_core(rate, ntsc) do
     # validate that our ntsc atom is one of the acceptable values.
@@ -159,6 +242,7 @@ defmodule Vtc.Framerate do
     end
   end
 
+  # parses a rational string value like '24/1'.
   @spec parse_rational_string(String.t(), Vtc.Ntsc.t()) :: parse_result
   defp parse_rational_string(str, ntsc) do
     split = String.split(str, "/")
@@ -180,5 +264,30 @@ defmodule Vtc.Framerate do
 
       new?(Ratio.new(numerator, denominator), ntsc)
     end
+  end
+end
+
+defimpl Inspect, for: Vtc.Framerate do
+  def inspect(rate, _opts) do
+    float_str =
+      Ratio.to_float(rate.playback)
+      |> Float.round(2)
+      |> Float.to_string()
+
+    ntsc_string =
+      if Vtc.Ntsc.is_ntsc?(rate.ntsc) do
+        " NTSC"
+      else
+        ""
+      end
+
+    drop_string =
+      case rate.ntsc do
+        :NonDrop -> " NDF"
+        :Drop -> " DF"
+        :None -> ""
+      end
+
+    "<#{float_str}#{ntsc_string}#{drop_string}>"
   end
 end
