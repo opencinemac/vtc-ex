@@ -15,4 +15,9 @@ defmodule Private.Const do
   def ppro_tick_per_second() do
     254_016_000_000
   end
+
+  @spec frames_per_foot() :: integer
+  def frames_per_foot() do
+    16
+  end
 end

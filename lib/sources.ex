@@ -23,8 +23,8 @@ defmodule Vtc.Source do
     - `Integer`
     - `Float`
     - `String` & 'BitString'
-      - runtime ('01:00:00.0')
-      - decimal ('3600.0')
+      - runtime ("01:00:00.0")
+      - decimal ("3600.0")
     """
 
     @doc """
@@ -76,8 +76,9 @@ defmodule Vtc.Source do
 
     - `Integer`
     - `String` & 'BitString'
-      - timecode ('01:00:00:00')
-      - integer ('86400')
+      - timecode ("01:00:00:00")
+      - integer ("86400")
+      - Feet+Frames ("5400+00")
     """
 
     @doc """
@@ -104,7 +105,7 @@ defmodule Vtc.Source do
 
   defimpl Frames, for: [String, BitString] do
     @spec frames(String.t() | Bitstring, Vtc.Framerate.t()) :: Vtc.Source.frames_result()
-    def frames(value, rate), do: Private.Parse.parse_tc_string(value, rate)
+    def frames(value, rate), do: Private.Parse.parse_frames_string(value, rate)
   end
 
   @typedoc """
@@ -169,6 +170,14 @@ defmodule Private.Parse do
     {:ok, seconds}
   end
 
+  @spec parse_frames_string(String.t(), Vtc.Framerate.t()) :: Vtc.Source.frames_result()
+  def parse_frames_string(value, rate) do
+    case parse_tc_string(value, rate) do
+      {:ok, tc} -> {:ok, tc}
+      {:error, _} -> parse_feet_and_frames(value, rate)
+    end
+  end
+
   @spec parse_tc_string(String.t(), Vtc.Framerate.t()) :: Vtc.Source.frames_result()
   def parse_tc_string(value, rate) do
     tc_regex =
@@ -179,7 +188,7 @@ defmodule Private.Parse do
          frames <- tc_sections_to_frames(sections, rate) do
       {:ok, frames}
     else
-      :no_match -> %Vtc.Timecode.ParseError{reason: :unrecognized_format}
+      :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
     end
   end
 
@@ -266,6 +275,20 @@ defmodule Private.Parse do
       Private.Rat.round_ratio?(frames)
     else
       {:error, err} -> {:error, err}
+    end
+  end
+
+  @spec parse_feet_and_frames(String.t(), Vtc.Framerate.t()) :: Vtc.Source.frames_result()
+  def parse_feet_and_frames(value, rate) do
+    ff_regex = ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
+
+    with {:ok, matched} <- apply_regex(ff_regex, value) do
+      feet = matched["feet"] |> String.to_integer()
+      frames = matched["frames"] |> String.to_integer()
+      frames = feet * Private.Const.frames_per_foot() + frames
+      Vtc.Source.Frames.frames(frames, rate)
+    else
+      :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
     end
   end
 

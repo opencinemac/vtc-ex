@@ -69,7 +69,6 @@ Let's take a quick look at how we can use this library!
     iex> drop_frame = Vtc.Timecode.with_frames!(15000, Vtc.Rate.f29_97_Df)
     <00:08:20;18 @ <29.97 NTSC DF>>
 
-    
 
 Features
 --------
@@ -81,15 +80,15 @@ Features
 - Timecode Representations:
     - [X] Timecode    | '01:00:00:00'
     - [X] Frames      | 86400
-    - [ ] Seconds     | 3600.0
-    - [ ] Runtime     | '01:00:00.0'
+    - [X] Seconds     | 3600.0
+    - [X] Runtime     | '01:00:00.0'
     - [X] Rational    | 18018/5
-    - [ ] Feet+Frames | '5400+00'
+    - [X] Feet+Frames | '5400+00'
         - [ ] 35mm, 4-perf
         - [ ] 35mm, 3-perf
         - [ ] 35mm, 2-perf
         - [ ] 16mm
-    - [ ] Premiere Ticks | 15240960000000
+    - [X] Premiere Ticks | 15240960000000
 - Operations:
     - [ ] Comparisons (==, <, <=, >, >=)
     - [ ] Add
@@ -102,7 +101,7 @@ Features
     - [ ] Rebase (recalculate frame count at new framerate)
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
-    - [ ] Partial runtimes       | '1.5'
+    - [X] Partial runtimes       | '1.5'
     - [X] Negative string values | '-1:12', '-3+00'
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
