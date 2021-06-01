@@ -39,7 +39,7 @@ Let's take a quick look at how we can use this library!
     iex> Vtc.Timecode.premiere_ticks(tc)
     15915544300656000
 
-    iex(3)> Vtc.Timecode.feet_and_frames(tc)
+    iex> Vtc.Timecode.feet_and_frames(tc)
     "93889+10"
 
     # We can inspect the framerate.
@@ -68,7 +68,7 @@ Let's take a quick look at how we can use this library!
 
     # Runtime:
     iex> Vtc.Timecode.with_seconds!("00:05:23.5", Vtc.Rate.f23_98)
-    <00:00:01:12 @ <23.98 NTSC NDF>>
+    <00:05:23:04 @ <23.98 NTSC NDF>>
 
     # Premiere Ticks:
     iex> Vtc.Timecode.with_premiere_ticks!(254016000000, Vtc.Rate.f23_98)
@@ -107,7 +107,7 @@ Features
     - [X] Runtime     | '01:00:00.0'
     - [X] Rational    | 18018/5
     - [X] Feet+Frames | '5400+00'
-        - [ ] 35mm, 4-perf
+        - [X] 35mm, 4-perf
         - [ ] 35mm, 3-perf
         - [ ] 35mm, 2-perf
         - [ ] 16mm
