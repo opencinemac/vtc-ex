@@ -165,6 +165,96 @@ defmodule Vtc.Timecode do
     "#{sign}#{hours}:#{minutes}:#{seconds}#{frame_sep}#{frames}"
   end
 
+  @doc """
+  Runtime Returns the true, real-world runtime of the timecode in HH:MM:SS.FFFFFFFFF
+  format.
+
+  Arguments
+
+  - `precision`: The number of places to round to. Extra trailing 0's will still be
+    trimmed.
+
+  What it is
+
+  The formatted version of seconds. It looks like timecode, but with a decimal seconds
+  value instead of a frame number place.
+
+  Where you see it
+
+  • Anywhere real-world time is used.
+
+  • FFMPEG commands:
+
+    ```shell
+    ffmpeg -ss 00:00:30.5 -i input.mov -t 00:00:10.25 output.mp4
+    ```
+
+  Note
+
+  The true runtime will often diverge from the hours, minutes, and seconds
+  value of the timecode representation when dealing with non-whole-frame
+  framerates. Even drop-frame timecode does not continuously adhere 1:1 to the
+  actual runtime. For instance, <01:00:00;00 @ <29.97 NTSC DF>> has a true runtime of
+  '00:59:59.9964', and <01:00:00:00 @ <23.98 NTSC NDF>> has a true runtime of
+  '01:00:03.6'
+  """
+  @spec runtime(Vtc.Timecode.t(), integer) :: String.t()
+  def runtime(tc, precision) do
+    {seconds, is_negative} =
+      if tc.seconds < 0 do
+        {-tc.seconds, true}
+      else
+        {tc.seconds, false}
+      end
+
+    seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
+
+    {hours, seconds} = Decimal.div_rem(seconds, Private.Const.secondsPerHour())
+    {minutes, seconds} = Decimal.div_rem(seconds, Private.Const.secondsPerMinute())
+
+    Decimal.Context
+    seconds = Decimal.round(seconds, precision)
+    seconds_floor = Decimal.round(seconds, 0, :down)
+    seconds_fractal = Decimal.sub(seconds, seconds_floor)
+
+    hours = hours |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
+    minutes = minutes |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
+
+    seconds_floor =
+      seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
+
+    seconds_fractal =
+      if Decimal.eq?(seconds_fractal, 0) do
+        ""
+      else
+        # We dont want the leadin zero and we want to trim all trailing zeroes. We are
+        # also going to trim the '.' if there is nothing less so that the string is blank
+        # for a later check.
+        Decimal.to_string(seconds_fractal)
+        |> String.trim_leading("0")
+        |> String.trim_trailing("0")
+        |> String.trim_trailing(".")
+      end
+
+    # If the fractal string is blank, use ".0"
+    seconds_fractal =
+      if seconds_fractal == "" do
+        ".0"
+      else
+        seconds_fractal
+      end
+
+    # We'll add a negative sign if the timecode is negative.
+    sign =
+      if is_negative do
+        "-"
+      else
+        ""
+      end
+
+    "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{seconds_fractal}"
+  end
+
   defmodule ParseError do
     @moduledoc """
     Exception returned when there is an error parsing a Timecode value.

@@ -38,7 +38,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(23.98, :NonDrop),
       seconds_inputs: [
         Ratio.new(18018, 5),
-        3603.6
+        3603.6,
+        "01:00:03.6"
       ],
       frames_inputs: [
         86400,
@@ -56,7 +57,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(23.98, :NonDrop),
       seconds_inputs: [
         Ratio.new(12012, 5),
-        2402.4
+        2402.4,
+        "00:40:02.4"
       ],
       frames_inputs: [
         57600,
@@ -77,7 +79,8 @@ defmodule TimecodeParseTest do
       seconds_inputs: [
         Ratio.new(0, 1),
         0.0,
-        0
+        0,
+        "00:00:00.0"
       ],
       frames_inputs: [
         0,
@@ -95,7 +98,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(31031, 15000),
-        2.068733333333333333333333333
+        2.068733333333333333333333333,
+        "00:00:02.068733333"
       ],
       frames_inputs: [
         62,
@@ -113,7 +117,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(3003, 50),
-        60.06
+        60.06,
+        "00:01:00.06"
       ],
       frames_inputs: [
         1800,
@@ -131,7 +136,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(1_800_799, 15000),
-        120.0532666666666666666666667
+        120.0532666666666666666666667,
+        "00:02:00.053266667"
       ],
       frames_inputs: [
         3598,
@@ -149,7 +155,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(2_999_997, 5000),
-        599.9994
+        599.9994,
+        "00:09:59.9994"
       ],
       frames_inputs: [
         17982,
@@ -167,7 +174,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(3_300_297, 5000),
-        660.0594
+        660.0594,
+        "00:11:00.0594"
       ],
       frames_inputs: [
         19782,
@@ -185,7 +193,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(29.97, :Drop),
       seconds_inputs: [
         Ratio.new(8_999_991, 2500),
-        3599.9964
+        3599.9964,
+        "00:59:59.9964"
       ],
       frames_inputs: [
         107_892,
@@ -205,7 +214,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(59.94, :Drop),
       seconds_inputs: [
         Ratio.new(0, 1),
-        0.0
+        0.0,
+        "00:00:00.0"
       ],
       frames_inputs: [
         0,
@@ -223,7 +233,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(59.94, :Drop),
       seconds_inputs: [
         Ratio.new(61061, 60000),
-        1.017683333333333333333333333
+        1.017683333333333333333333333,
+        "00:00:01.017683333"
       ],
       frames_inputs: [
         61,
@@ -241,7 +252,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(59.94, :Drop),
       seconds_inputs: [
         Ratio.new(21021, 20000),
-        1.05105
+        1.05105,
+        "00:00:01.05105"
       ],
       frames_inputs: [
         63,
@@ -259,7 +271,8 @@ defmodule TimecodeParseTest do
       rate: Vtc.Framerate.new!(59.94, :Drop),
       seconds_inputs: [
         Ratio.new(3003, 50),
-        60.06
+        60.06,
+        "00:01:00.06"
       ],
       frames_inputs: [
         3600,
@@ -280,6 +293,7 @@ defmodule TimecodeParseTest do
     assert testCase.seconds == parsed.seconds
     assert testCase.frames == Vtc.Timecode.frames(parsed)
     assert testCase.timecode == Vtc.Timecode.timecode(parsed)
+    assert testCase.runtime == Vtc.Timecode.runtime(parsed, 9)
     assert testCase.rate == parsed.rate
   end
 
