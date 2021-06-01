@@ -174,12 +174,12 @@ defmodule Vtc.Timecode do
   - `precision`: The number of places to round to. Extra trailing 0's will still be
     trimmed.
 
-  What it is
+  # What it is
 
   The formatted version of seconds. It looks like timecode, but with a decimal seconds
   value instead of a frame number place.
 
-  Where you see it
+  # Where you see it
 
   • Anywhere real-world time is used.
 
@@ -189,7 +189,7 @@ defmodule Vtc.Timecode do
     ffmpeg -ss 00:00:30.5 -i input.mov -t 00:00:10.25 output.mp4
     ```
 
-  Note
+  # Note
 
   The true runtime will often diverge from the hours, minutes, and seconds
   value of the timecode representation when dealing with non-whole-frame
@@ -255,6 +255,37 @@ defmodule Vtc.Timecode do
     "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{seconds_fractal}"
   end
 
+  @doc"""
+  Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
+
+  # What it is
+
+  Internally, Adobe Premiere Pro uses ticks to divide up a second, and keep track of how
+  far into that second we are. There are 254016000000 ticks in a second, regardless of
+  framerate in Premiere.
+
+  # Where you see it
+
+  - Premiere Pro Panel functions and scripts.
+
+  - FCP7XML cutlists generated from Premiere:
+
+    ```xml
+    <clipitem id="clipitem-1">
+    ...
+    <in>158</in>
+    <out>1102</out>
+    <pproTicksIn>1673944272000</pproTicksIn>
+    <pproTicksOut>11675231568000</pproTicksOut>
+    ...
+    </clipitem>
+    ```
+  """
+  @spec premiere_ticks(Vtc.Timecode.t()) :: integer
+  def premiere_ticks(%Vtc.Timecode{} = tc) do
+    Private.Rat.round_ratio?(tc.seconds * Private.Const.ppro_tick_per_second())
+  end
+
   defmodule ParseError do
     @moduledoc """
     Exception returned when there is an error parsing a Timecode value.
@@ -318,15 +349,17 @@ defmodule Vtc.Timecode do
   """
   @spec with_seconds!(Vtc.Source.Seconds.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
   def with_seconds!(seconds, %Vtc.Framerate{} = rate) do
-    {:ok, tc} = with_seconds(seconds, rate)
-    tc
+    case with_seconds(seconds, rate) do
+      {:ok, tc} -> tc
+      {:error, err} -> raise err
+    end
   end
 
   @doc """
   Returns a new `Vtc.Timecode` with a `Vtc.Timecode.frames/1` return value equal to the
   frames arg.
 
-  Timecode::with_frames takes many different formats (more than just numeric types) that
+  with_frames takes many different formats (more than just numeric types) that
   represent the frame count of the timecode.
 
   # Arguments
@@ -351,8 +384,45 @@ defmodule Vtc.Timecode do
   """
   @spec with_frames!(Vtc.Source.Frames.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
   def with_frames!(frames, %Vtc.Framerate{} = rate) do
-    {:ok, tc} = with_frames(frames, rate)
-    tc
+    case with_frames(frames, rate) do
+      {:ok, tc} -> tc
+      {:error, err} -> raise err
+    end
+  end
+
+  @doc """
+  Returns a new `Vtc.Timecode` with a `Vtc.Timecode.premiere_ticks/1` return value equal
+  to the ticks arg.
+
+  with_premiere_ticks takes many different formats (more than just numeric types) that
+  can represent the tick count of the timecode.
+
+  # Arguments
+
+  - `frames` - A value which can be represented as a frame number / frame count.
+  - `rate` - The Framerate at which the frames are being played back.
+  """
+  @spec with_premiere_ticks(Vtc.Source.PremiereTicks.t(), Vtc.Framerate.t()) :: parse_result
+  def with_premiere_ticks(ticks, %Vtc.Framerate{} = rate) do
+    case Vtc.Source.PremiereTicks.ticks(ticks, rate) do
+      {:ok, ticks} ->
+        seconds = ticks / Private.Const.ppro_tick_per_second()
+        with_seconds(seconds, rate)
+
+      {:error, err} ->
+        {:error, err}
+    end
+  end
+
+  @doc """
+  As `Vtc.Timecode.with_premiere_ticks/2`, but raises on error.
+  """
+  @spec with_premiere_ticks!(Vtc.Source.Frames.t(), Vtc.Framerate.t()) :: Vtc.Timecode.t()
+  def with_premiere_ticks!(ticks, %Vtc.Framerate{} = rate) do
+    case with_premiere_ticks(ticks, rate) do
+      {:ok, tc} -> tc
+      {:error, err} -> raise err
+    end
   end
 end
 

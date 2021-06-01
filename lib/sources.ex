@@ -22,6 +22,9 @@ defmodule Vtc.Source do
     - `Ratio`
     - `Integer`
     - `Float`
+    - `String` & 'BitString'
+      - runtime ('01:00:00.0')
+      - decimal ('3600.0')
     """
 
     @doc """
@@ -72,8 +75,9 @@ defmodule Vtc.Source do
     Out of the box, this protocol is implemented for the following types:
 
     - `Integer`
-    - `String`
-    - `Bitstring`
+    - `String` & 'BitString'
+      - timecode ('01:00:00:00')
+      - integer ('86400')
     """
 
     @doc """
@@ -101,6 +105,46 @@ defmodule Vtc.Source do
   defimpl Frames, for: [String, BitString] do
     @spec frames(String.t() | Bitstring, Vtc.Framerate.t()) :: Vtc.Source.frames_result()
     def frames(value, rate), do: Private.Parse.parse_tc_string(value, rate)
+  end
+
+  @typedoc """
+  Result type of `Vtc.Source.PremiereTicks.ticks/2`.
+  """
+  @type ticks_result :: {:ok, integer} | {:error, Vtc.Timecode.ParseError.t()}
+
+  defprotocol PremiereTicks do
+    @moduledoc """
+    Protocol which types can implement to be passed as the main value of
+    `Vtc.Timecode.with_premiere_ticks/2`.
+
+    # Implementations
+
+    Out of the box, this protocol is implemented for the following types:
+
+    - `Integer`
+    """
+
+    @doc """
+    Returns the number of Adobe Premiere Pro ticks as an integer.
+
+    # Arguments
+
+    - **value**: The source value.
+
+    - **rate**: The framerate of the timecode being parsed.
+
+    # Returns
+
+    A result tuple with a rational representation of the seconds value using `Ratio` on
+    success.
+    """
+    @spec ticks(t, Vtc.Framerate.t()) :: Vtc.Source.ticks_result()
+    def ticks(value, rate)
+  end
+
+  defimpl PremiereTicks, for: Integer do
+    @spec ticks(integer, Vtc.Framerate.t()) :: Vtc.Source.ticks_result()
+    def ticks(value, _rate), do: {:ok, value}
   end
 end
 
