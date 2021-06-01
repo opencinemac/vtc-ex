@@ -94,8 +94,14 @@ defmodule Vtc.Framerate do
         values.
 
       - `:unrecognized_format`: Returned when a string value is not a recognized format.
+
+      - `:imprecise` - Returned when a float was passed with an NTSC value of :None.
+        Without the ability to round to the nearest valid NTSC value, floats are not
+        precise enough to build an arbitrary framerate.
     """
-    @type t :: %ParseError{reason: :bad_drop_rate | :invalid_ntsc | :unrecognized_format}
+    @type t :: %ParseError{
+            reason: :bad_drop_rate | :invalid_ntsc | :unrecognized_format | :imprecise
+          }
 
     @doc """
     Returns a message for the error reason.
@@ -106,12 +112,13 @@ defmodule Vtc.Framerate do
         :bad_drop_rate -> "drop-frame rates must be divisible by 30000/1001"
         :invalid_ntsc -> "ntsc is not a valid atom. must be :NonDrop, :Drop, or None"
         :unrecognized_format -> "framerate string format not recognized"
+        :imprecise -> "floats are not precise enough to create a non-NTSC Framerate"
       end
     end
   end
 
   @typedoc """
-  Type returned by `Vtc.Framerate.new?/2`
+  Type returned by `Vtc.Framerate.new/2`
 
   `Vtc.Framerate.new!/2` raises the error value instead.
   """
@@ -127,8 +134,8 @@ defmodule Vtc.Framerate do
 
   - **ntsc**: Atom representing the which (or whether an) NTSC standard is being used.
   """
-  @spec new?(Ratio.t(), Vtc.Ntsc.t()) :: parse_result
-  def new?(
+  @spec new(Ratio.t(), Vtc.Ntsc.t()) :: parse_result
+  def new(
         %Ratio{numerator: numerator, denominator: denominator} = rate,
         ntsc
       )
@@ -136,21 +143,25 @@ defmodule Vtc.Framerate do
     new_core(rate, ntsc)
   end
 
-  @spec new?(integer, Vtc.Ntsc.t()) :: parse_result
-  def new?(rate, ntsc) when is_integer(rate) do
+  @spec new(integer, Vtc.Ntsc.t()) :: parse_result
+  def new(rate, ntsc) when is_integer(rate) do
     new_core(rate, ntsc)
   end
 
-  @spec new?(float, Vtc.Ntsc.t()) :: parse_result
-  def new?(rate, ntsc) when is_float(rate) do
-    new?(Ratio.new(rate, 1.0), ntsc)
+  @spec new(float, Vtc.Ntsc.t()) :: parse_result
+  def new(rate, ntsc) when is_float(rate) do
+    if ntsc == :None do
+      {:error, %ParseError{reason: :imprecise}}
+    else
+      new(Ratio.new(rate, 1.0), ntsc)
+    end
   end
 
-  @spec new?(String.t(), Vtc.Ntsc.t()) :: parse_result
-  def new?(rate, ntsc) when is_bitstring(rate) do
+  @spec new(String.t(), Vtc.Ntsc.t()) :: parse_result
+  def new(rate, ntsc) when is_bitstring(rate) do
     result =
       try do
-        new?(String.to_integer(rate), ntsc)
+        new(String.to_integer(rate), ntsc)
       rescue
         ArgumentError -> nil
       end
@@ -158,7 +169,7 @@ defmodule Vtc.Framerate do
     result =
       if result == nil do
         try do
-          new?(String.to_float(rate), ntsc)
+          new(String.to_float(rate), ntsc)
         rescue
           ArgumentError -> nil
         end
@@ -181,11 +192,11 @@ defmodule Vtc.Framerate do
   end
 
   @doc """
-  As `Vtc.Framerate.new?/2` but raises an error instead.
+  As `Vtc.Framerate.new/2` but raises an error instead.
   """
   @spec new!(Ratio.t() | integer | float | String.t(), Vtc.Ntsc.t()) :: Vtc.Framerate.t()
   def new!(rate, ntsc) do
-    case new?(rate, ntsc) do
+    case new(rate, ntsc) do
       {:ok, framerate} -> framerate
       {:error, err} -> raise err
     end
@@ -262,13 +273,12 @@ defmodule Vtc.Framerate do
           [numerator, denominator]
         end
 
-      new?(Ratio.new(numerator, denominator), ntsc)
+      new(Ratio.new(numerator, denominator), ntsc)
     end
   end
-end
 
-defimpl Inspect, for: Vtc.Framerate do
-  def inspect(rate, _opts) do
+  @spec to_string(Vtc.Framerate.t()) :: String.t()
+  def to_string(rate) do
     float_str =
       Ratio.to_float(rate.playback)
       |> Float.round(2)
@@ -278,7 +288,7 @@ defimpl Inspect, for: Vtc.Framerate do
       if Vtc.Ntsc.is_ntsc?(rate.ntsc) do
         " NTSC"
       else
-        ""
+        " fps"
       end
 
     drop_string =
@@ -289,5 +299,18 @@ defimpl Inspect, for: Vtc.Framerate do
       end
 
     "<#{float_str}#{ntsc_string}#{drop_string}>"
+  end
+end
+
+defimpl Inspect, for: Vtc.Framerate do
+  def inspect(rate, _opts) do
+    Vtc.Framerate.to_string(rate)
+  end
+end
+
+defimpl String.Chars, for: Vtc.Framerate do
+  @spec to_string(Vtc.Framerate.t()) :: String.t()
+  def to_string(term) do
+    Vtc.Framerate.to_string(term)
   end
 end
