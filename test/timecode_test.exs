@@ -294,6 +294,7 @@ defmodule TimecodeParseTest do
     assert testCase.frames == Vtc.Timecode.frames(parsed)
     assert testCase.timecode == Vtc.Timecode.timecode(parsed)
     assert testCase.runtime == Vtc.Timecode.runtime(parsed, 9)
+    assert testCase.premiere_ticks == Vtc.Timecode.premiere_ticks(parsed)
     assert testCase.rate == parsed.rate
   end
 
@@ -315,6 +316,13 @@ defmodule TimecodeParseTest do
         parsed = Vtc.Timecode.with_frames(@input, @testCase.rate)
         check_parsed(@testCase, parsed)
       end
+    end
+
+    ticks = tc.premiere_ticks
+
+    test "#{caseName}: #{ticks} - with_premiere_ticks" do
+      parsed = Vtc.Timecode.with_premiere_ticks(@testCase.premiere_ticks, @testCase.rate)
+      check_parsed(@testCase, parsed)
     end
   end
 end

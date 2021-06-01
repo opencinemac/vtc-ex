@@ -31,17 +31,3 @@ defmodule Private.Rat do
     {dividend, remainder}
   end
 end
-
-defmodule Private.Const do
-  @moduledoc false
-
-  @spec secondsPerMinute() :: integer
-  def secondsPerMinute() do
-    60
-  end
-
-  @spec secondsPerHour() :: integer
-  def secondsPerHour() do
-    secondsPerMinute() * 60
-  end
-end
