@@ -255,7 +255,7 @@ defmodule Vtc.Timecode do
     "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{seconds_fractal}"
   end
 
-  @doc"""
+  @doc """
   Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
 
   # What it is
