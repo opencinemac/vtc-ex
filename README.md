@@ -36,6 +36,12 @@ Let's take a quick look at how we can use this library!
     iex> Vtc.Timecode.runtime(tc, 3)
     "17:24:15.676"
 
+    iex> Vtc.Timecode.premiere_ticks(tc)
+    15915544300656000
+
+    iex(3)> Vtc.Timecode.feet_and_frames(tc)
+    "93889+10"
+
     # We can inspect the framerate.
     iex> tc.rate.ntsc
     :NonDrop  
@@ -63,6 +69,10 @@ Let's take a quick look at how we can use this library!
     # Runtime:
     iex> Vtc.Timecode.with_seconds!("00:05:23.5", Vtc.Rate.f23_98)
     <00:00:01:12 @ <23.98 NTSC NDF>>
+
+    # Feet and Frames:
+    iex> Vtc.Timecode.with_frames!("1+08", Vtc.Rate.f23_98)
+    <00:00:01:00 @ <23.98 NTSC NDF>>
 
     # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
     # framerates.
