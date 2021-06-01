@@ -174,6 +174,7 @@ defmodule Private.Parse do
   def parse_frames_string(value, rate) do
     case parse_tc_string(value, rate) do
       {:ok, tc} -> {:ok, tc}
+      {:error, %Vtc.Timecode.ParseError{reason: :bad_drop_frames} = err} -> {:error, err}
       {:error, _} -> parse_feet_and_frames(value, rate)
     end
   end
@@ -185,10 +186,11 @@ defmodule Private.Parse do
 
     with {:ok, matched} <- apply_regex(tc_regex, value),
          sections <- tc_matched_to_sections(matched),
-         frames <- tc_sections_to_frames(sections, rate) do
+         {:ok, frames} <- tc_sections_to_frames(sections, rate) do
       {:ok, frames}
     else
       :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
+      {:error, err} -> {:error, err}
     end
   end
 
@@ -216,7 +218,7 @@ defmodule Private.Parse do
     # If the regex matched, then the frames place has to have matched.
     frames = String.to_integer(matched["frames"])
 
-    is_negative = Map.fetch(matched, "sign") != :error
+    is_negative = matched["negative"] != ""
 
     %Vtc.Timecode.Sections{
       negative: is_negative,
@@ -233,12 +235,13 @@ defmodule Private.Parse do
     # Reduce to our present section values.
     {_, sections} =
       Enum.map_reduce(section_keys, [], fn section_key, sections ->
-        this_section = Map.fetch(matched, section_key)
+        this_section = matched[section_key]
 
         sections =
-          case this_section do
-            {:ok, value} -> [value | sections]
-            :error -> sections
+          if this_section != "" do
+            [this_section | sections]
+          else
+            sections
           end
 
         {this_section, sections}
@@ -261,7 +264,8 @@ defmodule Private.Parse do
     {value_int, sections}
   end
 
-  @spec tc_sections_to_frames(Vtc.Timecode.Sections.t(), Vtc.Framerate.t()) :: integer
+  @spec tc_sections_to_frames(Vtc.Timecode.Sections.t(), Vtc.Framerate.t()) ::
+          Vtc.Source.frames_result()
   defp tc_sections_to_frames(%Vtc.Timecode.Sections{} = sections, %Vtc.Framerate{} = rate) do
     seconds =
       sections.minutes * Private.Const.secondsPerMinute() +
@@ -270,9 +274,18 @@ defmodule Private.Parse do
 
     frames = sections.frames + seconds * Vtc.Framerate.timebase(rate)
 
-    with {:ok, adjustment} <- Private.Drop.parse_adjustment(sections, rate),
-         frames = frames + adjustment do
-      Private.Rat.round_ratio?(frames)
+    with {:ok, adjustment} <- Private.Drop.parse_adjustment(sections, rate) do
+      frames = frames + adjustment
+      frames = Private.Rat.round_ratio?(frames)
+
+      frames =
+        if sections.negative do
+          -frames
+        else
+          frames
+        end
+
+      {:ok, frames}
     else
       {:error, err} -> {:error, err}
     end
@@ -286,6 +299,14 @@ defmodule Private.Parse do
       feet = matched["feet"] |> String.to_integer()
       frames = matched["frames"] |> String.to_integer()
       frames = feet * Private.Const.frames_per_foot() + frames
+
+      frames =
+        if matched["negative"] != "" do
+          -frames
+        else
+          frames
+        end
+
       Vtc.Source.Frames.frames(frames, rate)
     else
       :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
@@ -302,7 +323,7 @@ defmodule Private.Parse do
          {:ok, seconds} = Vtc.Source.Seconds.seconds(seconds, rate) do
       {:ok, seconds}
     else
-      :no_match -> %Vtc.Timecode.ParseError{reason: :unrecognized_format}
+      :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
       {:error, err} -> {:error, err}
     end
   end
@@ -318,7 +339,7 @@ defmodule Private.Parse do
     # We will always have a 'seconds' group.
     seconds = Ratio.new(Decimal.new(matched["seconds"]), 1)
 
-    is_negative = Map.fetch(matched, "sign") != :error
+    is_negative = matched["negative"] != ""
 
     seconds =
       hours * Private.Const.secondsPerHour() + minutes * Private.Const.secondsPerMinute() +

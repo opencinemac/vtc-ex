@@ -114,13 +114,23 @@ defmodule FramerateParseTest do
       err_msg: "framerate string format not recognized"
     },
     %ParseCase{
-      name: "error - uknown format",
+      name: "error - unknown format",
       inputs: [
         24
       ],
       ntsc: :NotAnNtsc,
       err: %Vtc.Framerate.ParseError{reason: :invalid_ntsc},
       err_msg: "ntsc is not a valid atom. must be :NonDrop, :Drop, or None"
+    },
+    %ParseCase{
+      name: "error - imprecise",
+      inputs: [
+        23.98,
+        "23.98"
+      ],
+      ntsc: :None,
+      err: %Vtc.Framerate.ParseError{reason: :imprecise},
+      err_msg: "floats are not precise enough to create a non-NTSC Framerate"
     }
   ]
 
@@ -136,8 +146,8 @@ defmodule FramerateParseTest do
     @testCase tc
     for {inputCase, i} <- Enum.with_index(tc.inputs) do
       @input inputCase
-      test "#{caseName} - #{i}: #{inputCase} - new?" do
-        case Vtc.Framerate.new?(@input, @testCase.ntsc) do
+      test "#{caseName} - #{i}: #{inputCase} - new" do
+        case Vtc.Framerate.new(@input, @testCase.ntsc) do
           {:ok, rate} ->
             check_parsed(@testCase, rate)
 
@@ -166,6 +176,98 @@ defmodule FramerateParseTest do
                          Vtc.Framerate.new!(@input, @testCase.ntsc)
                        end
         end
+      end
+    end
+  end
+end
+
+defmodule ConstCase do
+  defstruct [:const, :ntsc, :playback, :timebase]
+
+  @type t :: %ConstCase{
+          const: Vtc.Framerate.t(),
+          ntsc: Vtc.Ntsc.t(),
+          playback: Ratio.t(),
+          timebase: Ratio.t()
+        }
+end
+
+defmodule TestFramerateConsts do
+  defmodule RuntimePartialTest do
+    use ExUnit.Case
+    use Ratio
+
+    cases = [
+      %ConstCase{
+        const: Vtc.Rate.f23_98(),
+        ntsc: :NonDrop,
+        playback: Ratio.new(24000, 1001),
+        timebase: Ratio.new(24, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f24(),
+        ntsc: :None,
+        playback: Ratio.new(24, 1),
+        timebase: Ratio.new(24, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f29_97_Ndf(),
+        ntsc: :NonDrop,
+        playback: Ratio.new(30000, 1001),
+        timebase: Ratio.new(30, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f29_97_Df(),
+        ntsc: :Drop,
+        playback: Ratio.new(30000, 1001),
+        timebase: Ratio.new(30, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f30(),
+        ntsc: :None,
+        playback: Ratio.new(30, 1),
+        timebase: Ratio.new(30, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f47_95(),
+        ntsc: :NonDrop,
+        playback: Ratio.new(48000, 1001),
+        timebase: Ratio.new(48, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f48(),
+        ntsc: :None,
+        playback: Ratio.new(48, 1),
+        timebase: Ratio.new(48, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f59_94_Ndf(),
+        ntsc: :NonDrop,
+        playback: Ratio.new(60000, 1001),
+        timebase: Ratio.new(60, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f59_94_Df(),
+        ntsc: :Drop,
+        playback: Ratio.new(60000, 1001),
+        timebase: Ratio.new(60, 1)
+      },
+      %ConstCase{
+        const: Vtc.Rate.f60(),
+        ntsc: :None,
+        playback: Ratio.new(60, 1),
+        timebase: Ratio.new(60, 1)
+      }
+    ]
+
+    for tc <- cases do
+      const = tc.const
+      @testCase tc
+
+      test "#{const} const" do
+        assert @testCase.ntsc == @testCase.const.ntsc
+        assert @testCase.playback == @testCase.const.playback
+        assert @testCase.timebase == Vtc.Framerate.timebase(@testCase.const)
       end
     end
   end
