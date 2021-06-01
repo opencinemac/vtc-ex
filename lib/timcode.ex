@@ -286,6 +286,44 @@ defmodule Vtc.Timecode do
     Private.Rat.round_ratio?(tc.seconds * Private.Const.ppro_tick_per_second())
   end
 
+  @doc """
+  Returns the number of feet and frames this timecode represents if it were shot on 35mm
+  4-perf film (16 frames per foot). ex: '5400+13'.
+
+  # What it is
+
+  On physical film, each foot contains a certain number of frames. For 35mm, 4-perf film
+  (the most common type on Hollywood movies), this number is 16 frames per foot.
+  Feet-And-Frames was often used in place of Keycode to quickly reference a frame in the
+  edit.
+
+  # Where you see it
+
+  For the most part, feet + frames has died out as a reference, because digital media is
+  not measured in feet. The most common place it is still used is Studio Sound
+  Departments. Many Sound Mixers and Designers intuitively think in feet + frames, and it
+  is often burned into the reference picture for them.
+
+  - Telecine.
+
+  - Sound turnover reference picture.
+
+  - Sound turnover change lists.
+  """
+  @spec feet_and_frames(Vtc.Timecode.t()) :: String.t()
+  def feet_and_frames(%Vtc.Timecode{} = tc) do
+    frames = Vtc.Timecode.frames(tc)
+
+    # We need to call these functions from the kernel or we are going to get Ratio's
+    # since we are using Ratio to overload these functions.
+    feet = Kernel.div(frames, Private.Const.frames_per_foot())
+    frames = Kernel.rem(frames, Private.Const.frames_per_foot())
+
+    feet = Integer.to_string(feet)
+    frames = frames |> Integer.to_string() |> String.pad_leading(2, "0")
+    "#{feet}+#{frames}"
+  end
+
   defmodule ParseError do
     @moduledoc """
     Exception returned when there is an error parsing a Timecode value.

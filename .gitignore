@@ -17,6 +17,8 @@ erl_crash.dump
 vtc-*.tar
 # Temporary files, for example, from tests.
 /tmp/
+# Created by CI build pipeline
+*.deb
 
 # Eggs
 *.egg-info/

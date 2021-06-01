@@ -43,7 +43,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         86400,
-        "01:00:00:00"
+        "01:00:00:00",
+        "5400+00"
       ],
       seconds: Ratio.new(18018, 5),
       frames: 86400,
@@ -62,7 +63,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         57600,
-        "00:40:00:00"
+        "00:40:00:00",
+        "3600+00"
       ],
       seconds: Ratio.new(12012, 5),
       frames: 57600,
@@ -84,7 +86,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         0,
-        "00:00:00;00"
+        "00:00:00;00",
+        "0+00"
       ],
       seconds: Ratio.new(0, 1),
       frames: 0,
@@ -103,7 +106,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         62,
-        "00:00:02;02"
+        "00:00:02;02",
+        "3+14"
       ],
       seconds: Ratio.new(31031, 15000),
       frames: 62,
@@ -122,7 +126,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         1800,
-        "00:01:00;02"
+        "00:01:00;02",
+        "112+08"
       ],
       seconds: Ratio.new(3003, 50),
       frames: 1800,
@@ -141,7 +146,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         3598,
-        "00:02:00;02"
+        "00:02:00;02",
+        "224+14"
       ],
       seconds: Ratio.new(1_800_799, 15000),
       frames: 3598,
@@ -160,7 +166,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         17982,
-        "00:10:00;00"
+        "00:10:00;00",
+        "1123+14"
       ],
       seconds: Ratio.new(2_999_997, 5000),
       frames: 17982,
@@ -179,7 +186,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         19782,
-        "00:11:00;02"
+        "00:11:00;02",
+        "1236+06"
       ],
       seconds: Ratio.new(3_300_297, 5000),
       frames: 19782,
@@ -198,7 +206,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         107_892,
-        "01:00:00;00"
+        "01:00:00;00",
+        "6743+04"
       ],
       seconds: Ratio.new(8_999_991, 2500),
       frames: 107_892,
@@ -219,7 +228,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         0,
-        "00:00:00;00"
+        "00:00:00;00",
+        "0+00"
       ],
       seconds: Ratio.new(0, 1),
       frames: 0,
@@ -238,7 +248,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         61,
-        "00:00:01;01"
+        "00:00:01;01",
+        "3+13"
       ],
       seconds: Ratio.new(61061, 60000),
       frames: 61,
@@ -257,7 +268,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         63,
-        "00:00:01;03"
+        "00:00:01;03",
+        "3+15"
       ],
       seconds: Ratio.new(21021, 20000),
       frames: 63,
@@ -276,7 +288,8 @@ defmodule TimecodeParseTest do
       ],
       frames_inputs: [
         3600,
-        "00:01:00;04"
+        "00:01:00;04",
+        "225+00"
       ],
       seconds: Ratio.new(3003, 50),
       frames: 3600,
@@ -295,6 +308,7 @@ defmodule TimecodeParseTest do
     assert testCase.timecode == Vtc.Timecode.timecode(parsed)
     assert testCase.runtime == Vtc.Timecode.runtime(parsed, 9)
     assert testCase.premiere_ticks == Vtc.Timecode.premiere_ticks(parsed)
+    assert testCase.feet_and_frames == Vtc.Timecode.feet_and_frames(parsed)
     assert testCase.rate == parsed.rate
   end
 

@@ -36,6 +36,12 @@ Let's take a quick look at how we can use this library!
     iex> Vtc.Timecode.runtime(tc, 3)
     "17:24:15.676"
 
+    iex> Vtc.Timecode.premiere_ticks(tc)
+    15915544300656000
+
+    iex(3)> Vtc.Timecode.feet_and_frames(tc)
+    "93889+10"
+
     # We can inspect the framerate.
     iex> tc.rate.ntsc
     :NonDrop  
@@ -64,12 +70,15 @@ Let's take a quick look at how we can use this library!
     iex> Vtc.Timecode.with_seconds!("00:05:23.5", Vtc.Rate.f23_98)
     <00:00:01:12 @ <23.98 NTSC NDF>>
 
+    # Feet and Frames:
+    iex> Vtc.Timecode.with_frames!("1+08", Vtc.Rate.f23_98)
+    <00:00:01:00 @ <23.98 NTSC NDF>>
+
     # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
     # framerates.
     iex> drop_frame = Vtc.Timecode.with_frames!(15000, Vtc.Rate.f29_97_Df)
     <00:08:20;18 @ <29.97 NTSC DF>>
 
-    
 
 Features
 --------
@@ -81,15 +90,15 @@ Features
 - Timecode Representations:
     - [X] Timecode    | '01:00:00:00'
     - [X] Frames      | 86400
-    - [ ] Seconds     | 3600.0
-    - [ ] Runtime     | '01:00:00.0'
+    - [X] Seconds     | 3600.0
+    - [X] Runtime     | '01:00:00.0'
     - [X] Rational    | 18018/5
-    - [ ] Feet+Frames | '5400+00'
+    - [X] Feet+Frames | '5400+00'
         - [ ] 35mm, 4-perf
         - [ ] 35mm, 3-perf
         - [ ] 35mm, 2-perf
         - [ ] 16mm
-    - [ ] Premiere Ticks | 15240960000000
+    - [X] Premiere Ticks | 15240960000000
 - Operations:
     - [ ] Comparisons (==, <, <=, >, >=)
     - [ ] Add
@@ -102,7 +111,7 @@ Features
     - [ ] Rebase (recalculate frame count at new framerate)
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
-    - [ ] Partial runtimes       | '1.5'
+    - [X] Partial runtimes       | '1.5'
     - [X] Negative string values | '-1:12', '-3+00'
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
