@@ -312,7 +312,7 @@ defmodule Vtc.Timecode do
   """
   @spec feet_and_frames(Vtc.Timecode.t()) :: String.t()
   def feet_and_frames(%Vtc.Timecode{} = tc) do
-    frames = abs(Vtc.Timecode.frames(tc))
+    frames = Vtc.Timecode.frames(tc)
 
     # We need to call these functions from the kernel or we are going to get Ratio's
     # since we are using Ratio to overload these functions.
@@ -321,16 +321,7 @@ defmodule Vtc.Timecode do
 
     feet = Integer.to_string(feet)
     frames = frames |> Integer.to_string() |> String.pad_leading(2, "0")
-
-    # We'll add a negative sign if the timecode is negative.
-    sign =
-      if tc.seconds < 0 do
-        "-"
-      else
-        ""
-      end
-
-    "#{sign}#{feet}+#{frames}"
+    "#{feet}+#{frames}"
   end
 
   defmodule ParseError do
@@ -385,9 +376,7 @@ defmodule Vtc.Timecode do
   """
   @spec with_seconds(Vtc.Source.Seconds.t(), Vtc.Framerate.t()) :: parse_result
   def with_seconds(seconds, %Vtc.Framerate{} = rate) do
-    result = Vtc.Source.Seconds.seconds(seconds, rate)
-
-    case result do
+    case Vtc.Source.Seconds.seconds(seconds, rate) do
       {:ok, seconds} -> {:ok, %Vtc.Timecode{seconds: seconds, rate: rate}}
       {:error, err} -> {:error, err}
     end
@@ -473,25 +462,13 @@ defmodule Vtc.Timecode do
       {:error, err} -> raise err
     end
   end
-
-  @spec to_string(Vtc.Timecode.t()) :: String.t()
-  def to_string(tc) do
-    tc_str = Vtc.Timecode.timecode(tc)
-    rate_str = String.Chars.to_string(tc.rate)
-
-    "<#{tc_str} @ #{rate_str}>"
-  end
 end
 
 defimpl Inspect, for: Vtc.Timecode do
-  def inspect(tc, _opts) do
-    Vtc.Timecode.to_string(tc)
-  end
-end
+  def inspect(tc, opts) do
+    tc_str = Vtc.Timecode.timecode(tc)
+    rate_str = Inspect.inspect(tc.rate, opts)
 
-defimpl String.Chars, for: Vtc.Timecode do
-  @spec to_string(Vtc.Timecode.t()) :: String.t()
-  def to_string(term) do
-    Vtc.Timecode.to_string(term)
+    "<#{tc_str} @ #{rate_str}>"
   end
 end
