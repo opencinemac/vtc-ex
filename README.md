@@ -70,6 +70,10 @@ Let's take a quick look at how we can use this library!
     iex> Vtc.Timecode.with_seconds!("00:05:23.5", Vtc.Rate.f23_98)
     <00:00:01:12 @ <23.98 NTSC NDF>>
 
+    # Premiere Ticks:
+    iex> Vtc.Timecode.with_premiere_ticks!(254016000000, Vtc.Rate.f23_98)
+    <00:00:01:00 @ <23.98 NTSC NDF>>
+
     # Feet and Frames:
     iex> Vtc.Timecode.with_frames!("1+08", Vtc.Rate.f23_98)
     <00:00:01:00 @ <23.98 NTSC NDF>>
@@ -78,7 +82,16 @@ Let's take a quick look at how we can use this library!
     # framerates.
     iex> drop_frame = Vtc.Timecode.with_frames!(15000, Vtc.Rate.f29_97_Df)
     <00:08:20;18 @ <29.97 NTSC DF>>
+    
+    # We can make new timecodes with arbitrary framerates if we want:
+    iex> rate = Vtc.Framerate.new!(240, :None)
+    <240.0 fps>
+    iex> Vtc.Timecode.with_frames!("01:00:00:00", rate)
+    <01:00:00:00 @ <240.0 fps>>
 
+    # We do the same thing NTSC framerates / timebases.
+    iex> rate = Vtc.Framerate.new!(240, :NonDrop)
+    <239.76 NTSC NDF>
 
 Features
 --------
