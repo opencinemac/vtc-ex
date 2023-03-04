@@ -19,7 +19,7 @@ format:
 
 .PHONY: doc
 doc:
-	mix cmd mix docs
+	mix docs
 	sleep 1
 	open doc/index.html
 

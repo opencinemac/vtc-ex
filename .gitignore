@@ -20,6 +20,10 @@ vtc-*.tar
 # Created by CI build pipeline
 *.deb
 
+# IDE's
+.idea/
+*.iml
+
 # Eggs
 *.egg-info/
 *.egg
@@ -64,5 +68,4 @@ parts/
 sdist/
 var/
 .installed.cfg
-.idea/
 reports/
