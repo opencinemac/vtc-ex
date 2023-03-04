@@ -20,14 +20,14 @@ defmodule Vtc.Rate do
   @doc """
   29.97 NTSC Non-drop
   """
-  def f29_97_Ndf() do
+  def f29_97_ndf() do
     Vtc.Framerate.new!(30, :NonDrop)
   end
 
   @doc """
   29.97 NTSC Drop-frame
   """
-  def f29_97_Df() do
+  def f29_97_df() do
     Vtc.Framerate.new!(30, :Drop)
   end
 
@@ -55,14 +55,14 @@ defmodule Vtc.Rate do
   @doc """
   59.94 NTSC Non-drop
   """
-  def f59_94_Ndf() do
+  def f59_94_ndf() do
     Vtc.Framerate.new!(60, :NonDrop)
   end
 
   @doc """
   59.94 NTSC Drop-frame
   """
-  def f59_94_Df() do
+  def f59_94_df() do
     Vtc.Framerate.new!(60, :Drop)
   end
 

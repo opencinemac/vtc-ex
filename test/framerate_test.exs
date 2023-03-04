@@ -21,7 +21,7 @@ defmodule FramerateParseTest do
       name: "23.98 NTSC",
       inputs: [
         Ratio.new(24, 1),
-        Ratio.new(24000, 1001),
+        Ratio.new(24_000, 1001),
         24,
         24.0,
         23.98,
@@ -36,14 +36,14 @@ defmodule FramerateParseTest do
         "1001/24000"
       ],
       ntsc: :NonDrop,
-      playback: Ratio.new(24000, 1001),
+      playback: Ratio.new(24_000, 1001),
       timebase: Ratio.new(24, 1)
     },
     %ParseCase{
       name: "29.97 NTSC DF",
       inputs: [
         Ratio.new(30, 1),
-        Ratio.new(30000, 1001),
+        Ratio.new(30_000, 1001),
         30,
         30.0,
         29.97,
@@ -56,14 +56,14 @@ defmodule FramerateParseTest do
         "1001/30000"
       ],
       ntsc: :Drop,
-      playback: Ratio.new(30000, 1001),
+      playback: Ratio.new(30_000, 1001),
       timebase: Ratio.new(30, 1)
     },
     %ParseCase{
       name: "59.94 NTSC DF",
       inputs: [
         Ratio.new(60, 1),
-        Ratio.new(60000, 1001),
+        Ratio.new(60_000, 1001),
         60,
         60.0,
         59.94,
@@ -76,7 +76,7 @@ defmodule FramerateParseTest do
         "1001/60000"
       ],
       ntsc: :Drop,
-      playback: Ratio.new(60000, 1001),
+      playback: Ratio.new(60_000, 1001),
       timebase: Ratio.new(60, 1)
     },
     %ParseCase{
@@ -142,38 +142,38 @@ defmodule FramerateParseTest do
   end
 
   for tc <- cases do
-    caseName = tc.name
-    @testCase tc
-    for {inputCase, i} <- Enum.with_index(tc.inputs) do
-      @input inputCase
-      test "#{caseName} - #{i}: #{inputCase} - new" do
-        case Vtc.Framerate.new(@input, @testCase.ntsc) do
+    case_name = tc.name
+    @test_case tc
+    for {input_case, i} <- Enum.with_index(tc.inputs) do
+      @input input_case
+      test "#{case_name} - #{i}: #{input_case} - new" do
+        case Vtc.Framerate.new(@input, @test_case.ntsc) do
           {:ok, rate} ->
-            check_parsed(@testCase, rate)
+            check_parsed(@test_case, rate)
 
           {:error, err} ->
             # We have to do this here, or the compiler complains the expected error
             # could be nil
             expected =
-              if is_nil(@testCase.err) do
+              if is_nil(@test_case.err) do
                 raise "error not supplied for test case"
               else
-                @testCase.err
+                @test_case.err
               end
 
             assert expected.reason == err.reason
-            assert @testCase.err_msg == Vtc.Framerate.ParseError.message(err)
+            assert @test_case.err_msg == Vtc.Framerate.ParseError.message(err)
         end
       end
 
-      test "#{caseName} - #{i}: #{inputCase} - new!" do
-        if @testCase.err == nil do
-          rate = Vtc.Framerate.new!(@input, @testCase.ntsc)
-          check_parsed(@testCase, rate)
+      test "#{case_name} - #{i}: #{input_case} - new!" do
+        if @test_case.err == nil do
+          rate = Vtc.Framerate.new!(@input, @test_case.ntsc)
+          check_parsed(@test_case, rate)
         else
           assert_raise Vtc.Framerate.ParseError,
                        fn ->
-                         Vtc.Framerate.new!(@input, @testCase.ntsc)
+                         Vtc.Framerate.new!(@input, @test_case.ntsc)
                        end
         end
       end
@@ -201,7 +201,7 @@ defmodule TestFramerateConsts do
       %ConstCase{
         const: Vtc.Rate.f23_98(),
         ntsc: :NonDrop,
-        playback: Ratio.new(24000, 1001),
+        playback: Ratio.new(24_000, 1001),
         timebase: Ratio.new(24, 1)
       },
       %ConstCase{
@@ -211,15 +211,15 @@ defmodule TestFramerateConsts do
         timebase: Ratio.new(24, 1)
       },
       %ConstCase{
-        const: Vtc.Rate.f29_97_Ndf(),
+        const: Vtc.Rate.f29_97_ndf(),
         ntsc: :NonDrop,
-        playback: Ratio.new(30000, 1001),
+        playback: Ratio.new(30_000, 1001),
         timebase: Ratio.new(30, 1)
       },
       %ConstCase{
-        const: Vtc.Rate.f29_97_Df(),
+        const: Vtc.Rate.f29_97_df(),
         ntsc: :Drop,
-        playback: Ratio.new(30000, 1001),
+        playback: Ratio.new(30_000, 1001),
         timebase: Ratio.new(30, 1)
       },
       %ConstCase{
@@ -231,7 +231,7 @@ defmodule TestFramerateConsts do
       %ConstCase{
         const: Vtc.Rate.f47_95(),
         ntsc: :NonDrop,
-        playback: Ratio.new(48000, 1001),
+        playback: Ratio.new(48_000, 1001),
         timebase: Ratio.new(48, 1)
       },
       %ConstCase{
@@ -241,15 +241,15 @@ defmodule TestFramerateConsts do
         timebase: Ratio.new(48, 1)
       },
       %ConstCase{
-        const: Vtc.Rate.f59_94_Ndf(),
+        const: Vtc.Rate.f59_94_ndf(),
         ntsc: :NonDrop,
-        playback: Ratio.new(60000, 1001),
+        playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60, 1)
       },
       %ConstCase{
-        const: Vtc.Rate.f59_94_Df(),
+        const: Vtc.Rate.f59_94_df(),
         ntsc: :Drop,
-        playback: Ratio.new(60000, 1001),
+        playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60, 1)
       },
       %ConstCase{
@@ -262,12 +262,12 @@ defmodule TestFramerateConsts do
 
     for tc <- cases do
       const = tc.const
-      @testCase tc
+      @test_case tc
 
       test "#{const} const" do
-        assert @testCase.ntsc == @testCase.const.ntsc
-        assert @testCase.playback == @testCase.const.playback
-        assert @testCase.timebase == Vtc.Framerate.timebase(@testCase.const)
+        assert @test_case.ntsc == @test_case.const.ntsc
+        assert @test_case.playback == @test_case.const.playback
+        assert @test_case.timebase == Vtc.Framerate.timebase(@test_case.const)
       end
     end
   end

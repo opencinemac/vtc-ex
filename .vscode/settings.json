@@ -1,0 +1,18 @@
+{
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "*.ex",
+                "cmd": "mix format ${relativeFile}"
+            },
+            {
+                "match": "*.exs",
+                "cmd": "mix format ${relativeFile}"
+            }
+        ]
+    },
+    "elixir.credo.credoConfiguration": "config/.credo.exs",
+    "githubPullRequests.ignoredPullRequestBranches": [
+        "qa"
+    ]
+}

@@ -211,7 +211,7 @@ defmodule Vtc.Framerate do
       ntsc != :Drop ->
         :ok
 
-      not is_integer(rate / Ratio.new(30000, 1001)) ->
+      not is_integer(rate / Ratio.new(30_000, 1_001)) ->
         {:error, %ParseError{reason: :bad_drop_rate}}
 
       true ->
@@ -221,13 +221,8 @@ defmodule Vtc.Framerate do
 
   # validates that the ntsc atom is one of our allowed values.
   @spec validate_ntsc(Vtc.Ntsc.t()) :: :ok | {:error, Vtc.Framerate.ParseError.t()}
-  defp validate_ntsc(ntsc) do
-    if ntsc not in [:Drop, :NonDrop, :None] do
-      {:error, %ParseError{reason: :invalid_ntsc}}
-    else
-      :ok
-    end
-  end
+  defp validate_ntsc(ntsc) when ntsc in [:Drop, :NonDrop, :None], do: :ok
+  defp validate_ntsc(_), do: {:error, %ParseError{reason: :invalid_ntsc}}
 
   # coerces a rate to the closest proper NTSC playback rate.
   @spec coerce_ntsc_rate(Ratio.t(), Vtc.Ntsc.t()) :: Ratio.t()
