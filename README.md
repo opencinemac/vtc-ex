@@ -13,88 +13,92 @@
     <a href="https://hexdocs.pm/vtc/readme.html"><img src="https://img.shields.io/badge/docs-hexdocs.pm-blue" alt="Documentation"></a>
 </p>
 
-Demo
-----
+## Demo
 
 Let's take a quick look at how we can use this library!
   
-    # It's easy to make a new 23.98 NTSC timecode. We use the with_frames constructor here 
-    # since timecode is really a human-readable way to represent frame count.
-    iex> tc = Vtc.Timecode.with_frames!("17:23:13:02", Vtc.Rate.f23_98)
-    <17:23:00:02 @ <23.98 NTSC NDF>>
-    
-    # We can get all sorts of ways to represent the timecode.
-    iex> Vtc.Timecode.timecode(tc)
-    "17:23:00:02"
+```elixir
+alias Vtc.Framerate
+alias Vtc.Rates
+alias Vtc.Timecode
 
-    iex> Vtc.Timecode.frames(tc)
-    1501922
+# It's easy to make a new 23.98 NTSC timecode. We use the with_frames constructor here 
+# since timecode is really a human-readable way to represent frame count.
+iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98)
+<17:23:00:02 @ <23.98 NTSC NDF>>
 
-    iex> tc.seconds
-    751711961 <|> 12000
+# We can get all sorts of ways to represent the timecode.
+iex> Timecode.timecode(tc)
+"17:23:00:02"
 
-    iex> Vtc.Timecode.runtime(tc, 3)
-    "17:24:15.676"
+iex> Timecode.frames(tc)
+1501922
 
-    iex> Vtc.Timecode.premiere_ticks(tc)
-    15915544300656000
+iex> tc.seconds
+751711961 <|> 12000
 
-    iex> Vtc.Timecode.feet_and_frames(tc)
-    "93889+10"
+iex> Timecode.runtime(tc, 3)
+"17:24:15.676"
 
-    # We can inspect the framerate.
-    iex> tc.rate.ntsc
-    :NonDrop  
-  
-    iex> tc.rate.playback
-    24000 <|> 1001
+iex> Timecode.premiere_ticks(tc)
+15915544300656000
 
-    iex> Vtc.Framerate.timebase(tc.rate)
-    24
+iex> Timecode.feet_and_frames(tc)
+"93889+10"
 
-    # Parsing is flexible
+# We can inspect the framerate.
+iex> tc.rate.ntsc
+:NonDrop  
 
-    # Partial timecode:
-    iex> Vtc.Timecode.with_frames!("3:12", Vtc.Rate.f23_98)
-    <03:00:00:12 @ <23.98 NTSC NDF>>
+iex> tc.rate.playback
+24000 <|> 1001
 
-    # Frame count:
-    iex> Vtc.Timecode.with_frames!(24, Vtc.Rate.f23_98)    
-    <00:00:01:00 @ <23.98 NTSC NDF>>
+iex> Framerate.timebase(tc.rate)
+24
 
-    # Seconds:
-    iex> Vtc.Timecode.with_seconds!(1.5, Vtc.Rate.f23_98)
-    <00:05:23:04 @ <23.98 NTSC NDF>>
+# Parsing is flexible
 
-    # Runtime:
-    iex> Vtc.Timecode.with_seconds!("00:05:23.5", Vtc.Rate.f23_98)
-    <00:05:23:04 @ <23.98 NTSC NDF>>
+# Partial timecode:
+iex> Timecode.with_frames!("3:12", Rates.f23_98)
+<03:00:00:12 @ <23.98 NTSC NDF>>
 
-    # Premiere Ticks:
-    iex> Vtc.Timecode.with_premiere_ticks!(254016000000, Vtc.Rate.f23_98)
-    <00:00:01:00 @ <23.98 NTSC NDF>>
+# Frame count:
+iex> Timecode.with_frames!(24, Rates.f23_98)    
+<00:00:01:00 @ <23.98 NTSC NDF>>
 
-    # Feet and Frames:
-    iex> Vtc.Timecode.with_frames!("1+08", Vtc.Rate.f23_98)
-    <00:00:01:00 @ <23.98 NTSC NDF>>
+# Seconds:
+iex> Timecode.with_seconds!(1.5, Rates.f23_98)
+<00:05:23:04 @ <23.98 NTSC NDF>>
 
-    # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
-    # framerates.
-    iex> drop_frame = Vtc.Timecode.with_frames!(15000, Vtc.Rate.f29_97_Df)
-    <00:08:20;18 @ <29.97 NTSC DF>>
-    
-    # We can make new timecodes with arbitrary framerates if we want:
-    iex> rate = Vtc.Framerate.new!(240, :None)
-    <240.0 fps>
-    iex> Vtc.Timecode.with_frames!("01:00:00:00", rate)
-    <01:00:00:00 @ <240.0 fps>>
+# Runtime:
+iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98)
+<00:05:23:04 @ <23.98 NTSC NDF>>
 
-    # We do the same thing NTSC framerates / timebases.
-    iex> rate = Vtc.Framerate.new!(240, :NonDrop)
-    <239.76 NTSC NDF>
+# Premiere Ticks:
+iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98)
+<00:00:01:00 @ <23.98 NTSC NDF>>
 
-Features
---------
+# Feet and Frames:
+iex> Timecode.with_frames!("1+08", Rates.f23_98)
+<00:00:01:00 @ <23.98 NTSC NDF>>
+
+# We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
+# framerates.
+iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
+<00:08:20;18 @ <29.97 NTSC DF>>
+
+# We can make new timecodes with arbitrary framerates if we want:
+iex> rate = Framerate.new!(240, :None)
+<240.0 fps>
+iex> Timecode.with_frames!("01:00:00:00", rate)
+<01:00:00:00 @ <240.0 fps>>
+
+# We do the same thing NTSC framerates / timebases.
+iex> rate = Framerate.new!(240, :NonDrop)
+<239.76 NTSC NDF>
+```
+
+## Features
 
 - SMPTE Conventions:
     - [X] NTSC

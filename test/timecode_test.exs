@@ -1,4 +1,7 @@
-defmodule TcParseCase do
+defmodule Vtc.TimecodeTest.TcParseCase do
+  alias Vtc.Sources.Seconds
+  alias Vtc.Sources.Frames
+
   defstruct [
     :name,
     :rate,
@@ -12,59 +15,77 @@ defmodule TcParseCase do
     :feet_and_frames
   ]
 
-  @type t :: %TcParseCase{
-          name: bitstring,
-          rate: Vtc.Framerate.t(),
-          seconds_inputs: list(Vtc.Sources.Seconds.t()),
-          frames_inputs: list(Vtc.Sources.Frames.t()),
+  @type t :: %__MODULE__{
+          name: String.t(),
+          rate: Framerate.t(),
+          seconds_inputs: list(Seconds.t()),
+          frames_inputs: list(Frames.t()),
           seconds: Ratio.t(),
-          frames: integer,
+          frames: integer(),
           timecode: String.t(),
           runtime: String.t(),
-          premiere_ticks: integer,
+          premiere_ticks: integer(),
           feet_and_frames: String.t()
         }
 end
 
-defmodule ParseHelpers do
+defmodule Vtc.TimecodeTest.ParseHelpers do
   use Ratio
 
+  alias Vtc.Timecode
+  alias Vtc.TimecodeTest.TcParseCase
+
   @spec make_negative_case(TcParseCase.t()) :: TcParseCase.t()
-  def make_negative_case(%TcParseCase{} = tc) do
-    if tc.frames != 0 do
-      %{
-        tc
-        | seconds: -tc.seconds,
-          frames: -tc.frames,
-          timecode: "-" <> tc.timecode,
-          runtime: "-" <> tc.runtime,
-          premiere_ticks: -tc.premiere_ticks,
-          feet_and_frames: "-" <> tc.feet_and_frames
-      }
-    else
-      tc
-    end
+  def make_negative_case(%TcParseCase{frames: 0} = test_case), do: test_case
+
+  def make_negative_case(test_case) do
+    %{
+      test_case
+      | seconds: -test_case.seconds,
+        frames: -test_case.frames,
+        timecode: "-" <> test_case.timecode,
+        runtime: "-" <> test_case.runtime,
+        premiere_ticks: -test_case.premiere_ticks,
+        feet_and_frames: "-" <> test_case.feet_and_frames
+    }
   end
 
-  def make_negative_input(input, tc) do
-    cond do
-      tc.frames == 0 -> input
-      is_bitstring(input) -> "-" <> input
-      true -> -input
-    end
-  end
+  @spec make_negative_input(input) :: input when [input: String.t() | integer()]
+  def make_negative_input(input) when is_binary(input), do: "-" <> input
+  def make_negative_input(input), do: -input
 end
 
-defmodule TimecodeParseTest do
+defmodule Vtc.TimecodeTest.MalformedCase do
+  @moduledoc false
+
+  # Holds information for testing malformed timecode strings.
+
+  defstruct [
+    :val_in,
+    :expected
+  ]
+
+  @type t :: %__MODULE__{val_in: String.t(), expected: String.t()}
+end
+
+defmodule Vtc.TimecodeTest do
   use ExUnit.Case
   use Ratio
 
-  cases = [
+  alias Vtc.Rates
+  alias Vtc.Framerate
+  alias Vtc.Timecode
+
+  alias Vtc.TimecodeTest.ParseHelpers
+  alias Vtc.TimecodeTest.TcParseCase
+  alias Vtc.TimecodeTest.MalformedCase
+
+  @parse_cases [
     # 23.98 NTSC #########################
     ######################################
     %TcParseCase{
       name: "01:00:00:00 @ 23.98 NTSC",
-      rate: Vtc.Framerate.new!(23.98, :NonDrop),
+      rate: Framerate.new!(23.98, :non_drop),
       seconds_inputs: [
         Ratio.new(18_018, 5),
         3_603.6,
@@ -84,7 +105,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:40:00:00 @ 23.98 NTSC",
-      rate: Vtc.Framerate.new!(23.98, :NonDrop),
+      rate: Framerate.new!(23.98, :non_drop),
       seconds_inputs: [
         Ratio.new(12_012, 5),
         2_402.4,
@@ -106,11 +127,10 @@ defmodule TimecodeParseTest do
     ######################################
     %TcParseCase{
       name: "00:00:00;00 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
-        Ratio.new(0, 1),
-        0.0,
         0,
+        0.0,
         "00:00:00.0"
       ],
       frames_inputs: [
@@ -127,7 +147,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:00:02;02 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(31_031, 15_000),
         2.068733333333333333333333333,
@@ -147,7 +167,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:01:00;02 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
@@ -167,7 +187,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:2:00;02 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(1_800_799, 15_000),
         120.0532666666666666666666667,
@@ -187,7 +207,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:10:00;00 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(2_999_997, 5000),
         599.9994,
@@ -207,7 +227,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:11:00;02 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(3_300_297, 5000),
         660.0594,
@@ -227,7 +247,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "01:00:00;00 29.97 Drop-Frame",
-      rate: Vtc.Framerate.new!(29.97, :Drop),
+      rate: Framerate.new!(29.97, :drop),
       seconds_inputs: [
         Ratio.new(8_999_991, 2500),
         3599.9964,
@@ -249,7 +269,7 @@ defmodule TimecodeParseTest do
     ######################################
     %TcParseCase{
       name: "00:00:00;00 59.94 Drop-Frame",
-      rate: Vtc.Framerate.new!(59.94, :Drop),
+      rate: Framerate.new!(59.94, :drop),
       seconds_inputs: [
         Ratio.new(0, 1),
         0.0,
@@ -269,7 +289,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:00:01;01 59.94 Drop-Frame",
-      rate: Vtc.Framerate.new!(59.94, :Drop),
+      rate: Framerate.new!(59.94, :drop),
       seconds_inputs: [
         Ratio.new(61_061, 60_000),
         1.017683333333333333333333333,
@@ -289,7 +309,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:00:01;03 59.94 Drop-Frame",
-      rate: Vtc.Framerate.new!(59.94, :Drop),
+      rate: Framerate.new!(59.94, :drop),
       seconds_inputs: [
         Ratio.new(21_021, 20_000),
         1.05105,
@@ -309,7 +329,7 @@ defmodule TimecodeParseTest do
     },
     %TcParseCase{
       name: "00:01:00;04 59.94 Drop-Frame",
-      rate: Vtc.Framerate.new!(59.94, :Drop),
+      rate: Framerate.new!(59.94, :drop),
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
@@ -329,259 +349,431 @@ defmodule TimecodeParseTest do
     }
   ]
 
-  @spec check_parsed(TcParseCase.t(), Vtc.Timecode.parse_result()) :: nil
-  def check_parsed(test_case, {_, _} = result) do
-    assert {:ok, parsed} = result
-    check_parsed(test_case, parsed)
-  end
+  describe "#with_seconds/2" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
 
-  @spec check_parsed(TcParseCase.t(), Vtc.Timecode.t()) :: nil
-  def check_parsed(test_case, %Vtc.Timecode{} = parsed) do
-    assert test_case.seconds == parsed.seconds
-    assert test_case.frames == Vtc.Timecode.frames(parsed)
-    assert test_case.timecode == Vtc.Timecode.timecode(parsed)
-    assert test_case.runtime == Vtc.Timecode.runtime(parsed, 9)
-    assert test_case.premiere_ticks == Vtc.Timecode.premiere_ticks(parsed)
-    assert test_case.feet_and_frames == Vtc.Timecode.feet_and_frames(parsed)
-    assert test_case.rate == parsed.rate
-  end
+      for input_case <- @test_case.seconds_inputs do
+        @input_case input_case
+        @negative_input ParseHelpers.make_negative_input(@input_case)
 
-  for tc <- cases do
-    case_name = tc.name
-    @test_case tc
-    @test_case_negative ParseHelpers.make_negative_case(tc)
+        test "#{@test_case.name} | #{@input_case} | | #{@test_case.rate}" do
+          @input_case
+          |> Timecode.with_seconds(@test_case.rate)
+          |> check_parsed(@test_case)
+        end
 
-    for {input_case, i} <- Enum.with_index(tc.seconds_inputs) do
-      @input input_case
-      test "#{case_name} - #{i}: #{input_case} - with_seconds" do
-        parsed = Vtc.Timecode.with_seconds(@input, @test_case.rate)
-        check_parsed(@test_case, parsed)
-      end
-
-      @negative_input ParseHelpers.make_negative_input(input_case, tc)
-
-      test "#{case_name} - #{i}: #{input_case} - with_seconds - negative" do
-        parsed = Vtc.Timecode.with_seconds(@negative_input, @test_case_negative.rate)
-        check_parsed(@test_case_negative, parsed)
+        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate} | negative" do
+          @negative_input
+          |> Timecode.with_seconds(@test_case_negative.rate)
+          |> check_parsed(@test_case_negative)
+        end
       end
     end
+  end
 
-    for {input_case, i} <- Enum.with_index(tc.frames_inputs) do
-      @input input_case
-      test "#{case_name} - #{i}: #{input_case} - with_frames" do
-        parsed = Vtc.Timecode.with_frames(@input, @test_case.rate)
-        check_parsed(@test_case, parsed)
+  describe "#with_seconds!/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+
+      for input_case <- @test_case.seconds_inputs do
+        @input_case input_case
+        @negative_input ParseHelpers.make_negative_input(@input_case)
+
+        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+          @input_case
+          |> Timecode.with_seconds!(@test_case.rate)
+          |> check_parsed!(@test_case)
+        end
+
+        test "#{@test_case.name}! | #{@input_case} | #{@test_case.rate} | negative" do
+          @negative_input
+          |> Timecode.with_seconds!(@test_case_negative.rate)
+          |> check_parsed!(@test_case_negative)
+        end
+      end
+    end
+  end
+
+  describe "#with_frames/2" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+
+      for input_case <- @test_case.frames_inputs do
+        @input_case input_case
+        @negative_input ParseHelpers.make_negative_input(input_case)
+
+        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+          @input_case
+          |> Timecode.with_frames(@test_case.rate)
+          |> check_parsed(@test_case)
+        end
+
+        test "#{@test_case.name}! | #{@input_case} | #{@test_case.rate} | negative" do
+          @negative_input
+          |> Timecode.with_frames(@test_case_negative.rate)
+          |> check_parsed(@test_case_negative)
+        end
+      end
+    end
+  end
+
+  describe "#with_frames!/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+
+      for input_case <- @test_case.frames_inputs do
+        @input_case input_case
+        @negative_input ParseHelpers.make_negative_input(input_case)
+
+        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+          @input_case
+          |> Timecode.with_frames!(@test_case.rate)
+          |> check_parsed!(@test_case)
+        end
+
+        test "#{@test_case.name}! | #{@input_case} | #{@test_case.rate} | negative" do
+          @negative_input
+          |> Timecode.with_frames!(@test_case_negative.rate)
+          |> check_parsed!(@test_case_negative)
+        end
+      end
+    end
+  end
+
+  describe "#with_premiere_ticks/2" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+
+      test "#{@test_case.name} | #{@test_case.premiere_ticks} | #{@test_case.rate}" do
+        @test_case.premiere_ticks
+        |> Timecode.with_premiere_ticks(@test_case.rate)
+        |> check_parsed(@test_case)
       end
 
-      @negative_input ParseHelpers.make_negative_input(input_case, tc)
-      test "#{case_name} - #{i}: #{input_case} - with_frames - negative" do
-        parsed = Vtc.Timecode.with_frames(@negative_input, @test_case_negative.rate)
-        check_parsed(@test_case_negative, parsed)
+      test "#{@test_case.name}! | #{@test_case.premiere_ticks} | #{@test_case.rate} | negative" do
+        @test_case.premiere_ticks
+        |> ParseHelpers.make_negative_input()
+        |> Timecode.with_premiere_ticks(@test_case_negative.rate)
+        |> check_parsed(@test_case_negative)
+      end
+    end
+  end
+
+  describe "#with_premiere_ticks!/2" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+
+      test "#{@test_case.name} | #{@test_case.premiere_ticks} | #{@test_case.rate}" do
+        @test_case.premiere_ticks
+        |> Timecode.with_premiere_ticks!(@test_case.rate)
+        |> check_parsed!(@test_case)
+      end
+
+      test "#{@test_case.name}! | #{@test_case.premiere_ticks} | #{@test_case.rate} | negative" do
+        @test_case.premiere_ticks
+        |> ParseHelpers.make_negative_input()
+        |> Timecode.with_premiere_ticks!(@test_case_negative.rate)
+        |> check_parsed!(@test_case_negative)
+      end
+    end
+  end
+
+  # Checks the results of non-raising parse methods.
+  @spec check_parsed(Timecode.parse_result(), TcParseCase.t()) :: term()
+  defp check_parsed(result, test_case) do
+    assert {:ok, %Timecode{} = parsed} = result
+    check_parsed!(parsed, test_case)
+  end
+
+  # Checks the results of raising parse methods.
+  @spec check_parsed!(Timecode.t(), TcParseCase.t()) :: term()
+  defp check_parsed!(parsed, test_case) do
+    assert %Timecode{} = parsed
+    assert parsed.seconds == test_case.seconds
+    assert parsed.rate == test_case.rate
+  end
+
+  describe "#frames/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
+
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+      @input_struct_negative %Timecode{
+        seconds: @test_case_negative.seconds,
+        rate: @test_case_negative.rate
+      }
+
+      test "#{@test_case.name}" do
+        assert Timecode.frames(@input_struct) == @test_case.frames
+      end
+
+      test "#{@test_case.name} | negative" do
+        assert Timecode.frames(@input_struct_negative) == @test_case_negative.frames
+      end
+    end
+  end
+
+  describe "#timecode/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
+
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+      @input_struct_negative %Timecode{
+        seconds: @test_case_negative.seconds,
+        rate: @test_case_negative.rate
+      }
+
+      test "#{@test_case.name}" do
+        assert Timecode.timecode(@input_struct) == @test_case.timecode
+      end
+
+      test "#{@test_case.name} | negative" do
+        assert Timecode.timecode(@input_struct_negative) == @test_case_negative.timecode
+      end
+    end
+  end
+
+  describe "#runtime/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
+
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+      @input_struct_negative %Timecode{
+        seconds: @test_case_negative.seconds,
+        rate: @test_case_negative.rate
+      }
+
+      test "#{@test_case.name}" do
+        assert Timecode.runtime(@input_struct, 9) == @test_case.runtime
+      end
+
+      test "#{@test_case.name} | negative" do
+        assert Timecode.runtime(@input_struct_negative, 9) == @test_case_negative.runtime
+      end
+    end
+  end
+
+  describe "#premiere_ticks/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
+
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+      @input_struct_negative %Timecode{
+        seconds: @test_case_negative.seconds,
+        rate: @test_case_negative.rate
+      }
+
+      test "#{@test_case.name}" do
+        assert Timecode.premiere_ticks(@input_struct) == @test_case.premiere_ticks
+      end
+
+      test "#{@test_case.name} | negative" do
+        assert Timecode.premiere_ticks(@input_struct_negative) ==
+                 @test_case_negative.premiere_ticks
+      end
+    end
+  end
+
+  describe "#feet_and_frames/1" do
+    for test_case <- @parse_cases do
+      @test_case test_case
+      @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
+
+      @test_case_negative ParseHelpers.make_negative_case(test_case)
+      @input_struct_negative %Timecode{
+        seconds: @test_case_negative.seconds,
+        rate: @test_case_negative.rate
+      }
+
+      test "#{@test_case.name}" do
+        assert Timecode.feet_and_frames(@input_struct) == @test_case.feet_and_frames
+      end
+
+      test "#{@test_case.name} | negative" do
+        assert Timecode.feet_and_frames(@input_struct_negative) ==
+                 @test_case_negative.feet_and_frames
+      end
+    end
+  end
+
+  describe "#parse malformed" do
+    @malformed_cases [
+      %MalformedCase{
+        val_in: "00:59:59:24",
+        expected: "01:00:00:00"
+      },
+      %MalformedCase{
+        val_in: "00:59:59:28",
+        expected: "01:00:00:04"
+      },
+      %MalformedCase{
+        val_in: "00:00:62:04",
+        expected: "00:01:02:04"
+      },
+      %MalformedCase{
+        val_in: "00:62:01:04",
+        expected: "01:02:01:04"
+      },
+      %MalformedCase{
+        val_in: "00:62:62:04",
+        expected: "01:03:02:04"
+      },
+      %MalformedCase{
+        val_in: "123:00:00:00",
+        expected: "123:00:00:00"
+      },
+      %MalformedCase{
+        val_in: "01:00:00:48",
+        expected: "01:00:02:00"
+      },
+      %MalformedCase{
+        val_in: "01:00:120:00",
+        expected: "01:02:00:00"
+      },
+      %MalformedCase{
+        val_in: "01:120:00:00",
+        expected: "03:00:00:00"
+      }
+    ]
+
+    for test_case <- @malformed_cases do
+      @test_case test_case
+
+      test "#{@test_case.val_in} == #{@test_case.expected}" do
+        parsed = Timecode.with_frames!(@test_case.val_in, Rates.f23_98())
+        assert @test_case.expected == Timecode.timecode(parsed)
+      end
+    end
+  end
+
+  describe "#parse partial tc" do
+    @partial_tc_cases [
+      %MalformedCase{
+        val_in: "1:02:03:04",
+        expected: "01:02:03:04"
+      },
+      %MalformedCase{
+        val_in: "02:03:04",
+        expected: "00:02:03:04"
+      },
+      %MalformedCase{
+        val_in: "2:03:04",
+        expected: "00:02:03:04"
+      },
+      %MalformedCase{
+        val_in: "03:04",
+        expected: "00:00:03:04"
+      },
+      %MalformedCase{
+        val_in: "3:04",
+        expected: "00:00:03:04"
+      },
+      %MalformedCase{
+        val_in: "04",
+        expected: "00:00:00:04"
+      },
+      %MalformedCase{
+        val_in: "4",
+        expected: "00:00:00:04"
+      }
+    ]
+
+    for test_case <- @partial_tc_cases do
+      @test_case test_case
+
+      test "#{@test_case.val_in} == #{@test_case.expected}" do
+        parsed = Timecode.with_frames!(@test_case.val_in, Rates.f23_98())
+        assert @test_case.expected == Timecode.timecode(parsed)
+      end
+    end
+  end
+
+  describe "#parse partial runtime" do
+    @partial_runtime_cases [
+      %MalformedCase{
+        val_in: "1:02:03.5",
+        expected: "01:02:03.5"
+      },
+      %MalformedCase{
+        val_in: "02:03.5",
+        expected: "00:02:03.5"
+      },
+      %MalformedCase{
+        val_in: "2:03.5",
+        expected: "00:02:03.5"
+      },
+      %MalformedCase{
+        val_in: "03.5",
+        expected: "00:00:03.5"
+      },
+      %MalformedCase{
+        val_in: "3.5",
+        expected: "00:00:03.5"
+      },
+      %MalformedCase{
+        val_in: "0.5",
+        expected: "00:00:00.5"
+      }
+    ]
+
+    for test_case <- @partial_runtime_cases do
+      @test_case test_case
+
+      test "#{@test_case.val_in} == #{@test_case.expected}" do
+        parsed = Timecode.with_seconds!(@test_case.val_in, Rates.f24())
+        assert @test_case.expected == Timecode.runtime(parsed, 9)
+      end
+    end
+  end
+
+  describe "#parse errors" do
+    test "ParseTimecodeError - Format" do
+      assert {:error, %Timecode.ParseError{} = error} =
+               Timecode.with_frames("notatimecode", Rates.f24())
+
+      assert :unrecognized_format == error.reason
+      assert "string format not recognized" = Timecode.ParseError.message(error)
+    end
+
+    test "ParseTimecodeError - Bad Drop Frame" do
+      assert {:error, %Timecode.ParseError{} = error} =
+               Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
+
+      assert :bad_drop_frames == error.reason
+
+      assert "frames value not allowed for drop-frame timecode. frame should have been dropped" =
+               Timecode.ParseError.message(error)
+    end
+
+    test "ParseTimecodeError - Runtime Format" do
+      {:error, %Timecode.ParseError{} = error} =
+        Timecode.with_seconds("notatimecode", Rates.f24())
+
+      assert :unrecognized_format == error.reason
+      assert "string format not recognized" = Timecode.ParseError.message(error)
+    end
+
+    test "ParseTimecodeError - with_frames! Throws" do
+      assert_raise Timecode.ParseError, fn ->
+        Timecode.with_frames!("notatimecode", Rates.f24())
       end
     end
 
-    ticks = tc.premiere_ticks
-
-    test "#{case_name}: #{ticks} - with_premiere_ticks" do
-      parsed = Vtc.Timecode.with_premiere_ticks(@test_case.premiere_ticks, @test_case.rate)
-      check_parsed(@test_case, parsed)
-    end
-
-    test "#{case_name}: #{ticks} - with_premiere_ticks!" do
-      parsed = Vtc.Timecode.with_premiere_ticks!(@test_case.premiere_ticks, @test_case.rate)
-      check_parsed(@test_case, parsed)
-    end
-  end
-end
-
-defmodule MalformedCase do
-  defstruct [
-    :val_in,
-    :expected
-  ]
-
-  @type t :: %MalformedCase{val_in: String.t(), expected: String.t()}
-end
-
-defmodule TimecodeOverflowTest do
-  use ExUnit.Case
-  use Ratio
-
-  cases = [
-    %MalformedCase{
-      val_in: "00:59:59:24",
-      expected: "01:00:00:00"
-    },
-    %MalformedCase{
-      val_in: "00:59:59:28",
-      expected: "01:00:00:04"
-    },
-    %MalformedCase{
-      val_in: "00:00:62:04",
-      expected: "00:01:02:04"
-    },
-    %MalformedCase{
-      val_in: "00:62:01:04",
-      expected: "01:02:01:04"
-    },
-    %MalformedCase{
-      val_in: "00:62:62:04",
-      expected: "01:03:02:04"
-    },
-    %MalformedCase{
-      val_in: "123:00:00:00",
-      expected: "123:00:00:00"
-    },
-    %MalformedCase{
-      val_in: "01:00:00:48",
-      expected: "01:00:02:00"
-    },
-    %MalformedCase{
-      val_in: "01:00:120:00",
-      expected: "01:02:00:00"
-    },
-    %MalformedCase{
-      val_in: "01:120:00:00",
-      expected: "03:00:00:00"
-    }
-  ]
-
-  for tc <- cases do
-    val_in = tc.val_in
-    expected = tc.expected
-    @test_case tc
-
-    test "#{val_in} == #{expected}" do
-      parsed = Vtc.Timecode.with_frames!(@test_case.val_in, Vtc.Rate.f23_98())
-      assert @test_case.expected == Vtc.Timecode.timecode(parsed)
-    end
-  end
-end
-
-defmodule TimecodePartialTest do
-  use ExUnit.Case
-  use Ratio
-
-  cases = [
-    %MalformedCase{
-      val_in: "1:02:03:04",
-      expected: "01:02:03:04"
-    },
-    %MalformedCase{
-      val_in: "02:03:04",
-      expected: "00:02:03:04"
-    },
-    %MalformedCase{
-      val_in: "2:03:04",
-      expected: "00:02:03:04"
-    },
-    %MalformedCase{
-      val_in: "03:04",
-      expected: "00:00:03:04"
-    },
-    %MalformedCase{
-      val_in: "3:04",
-      expected: "00:00:03:04"
-    },
-    %MalformedCase{
-      val_in: "04",
-      expected: "00:00:00:04"
-    },
-    %MalformedCase{
-      val_in: "4",
-      expected: "00:00:00:04"
-    }
-  ]
-
-  for tc <- cases do
-    val_in = tc.val_in
-    expected = tc.expected
-    @test_case tc
-
-    test "#{val_in} == #{expected}" do
-      parsed = Vtc.Timecode.with_frames!(@test_case.val_in, Vtc.Rate.f23_98())
-      assert @test_case.expected == Vtc.Timecode.timecode(parsed)
-    end
-  end
-end
-
-defmodule RuntimePartialTest do
-  use ExUnit.Case
-
-  cases = [
-    %MalformedCase{
-      val_in: "1:02:03.5",
-      expected: "01:02:03.5"
-    },
-    %MalformedCase{
-      val_in: "02:03.5",
-      expected: "00:02:03.5"
-    },
-    %MalformedCase{
-      val_in: "2:03.5",
-      expected: "00:02:03.5"
-    },
-    %MalformedCase{
-      val_in: "03.5",
-      expected: "00:00:03.5"
-    },
-    %MalformedCase{
-      val_in: "3.5",
-      expected: "00:00:03.5"
-    },
-    %MalformedCase{
-      val_in: "0.5",
-      expected: "00:00:00.5"
-    }
-  ]
-
-  for tc <- cases do
-    val_in = tc.val_in
-    expected = tc.expected
-    @test_case tc
-
-    test "#{val_in} == #{expected}" do
-      parsed = Vtc.Timecode.with_seconds!(@test_case.val_in, Vtc.Rate.f24())
-      assert @test_case.expected == Vtc.Timecode.runtime(parsed, 9)
-    end
-  end
-end
-
-defmodule TestErrors do
-  use ExUnit.Case
-
-  test "ParseTimecodeError - Format" do
-    result = Vtc.Timecode.with_frames("notatimecode", Vtc.Rate.f24())
-    assert {:error, %Vtc.Timecode.ParseError{} = err} = result
-    assert :unrecognized_format == err.reason
-    assert "string format not recognized" = Vtc.Timecode.ParseError.message(err)
-  end
-
-  test "ParseTimecodeError - Bad Drop Frame" do
-    result = Vtc.Timecode.with_frames("00:01:00;01", Vtc.Rate.f29_97_df())
-    assert {:error, %Vtc.Timecode.ParseError{} = err} = result
-    assert :bad_drop_frames == err.reason
-
-    assert "frames value not allowed for drop-frame timecode. frame should have been dropped" =
-             Vtc.Timecode.ParseError.message(err)
-  end
-
-  test "ParseTimecodeError - Runtime Format" do
-    result = Vtc.Timecode.with_seconds("notatimecode", Vtc.Rate.f24())
-    assert {:error, %Vtc.Timecode.ParseError{} = err} = result
-    assert :unrecognized_format == err.reason
-    assert "string format not recognized" = Vtc.Timecode.ParseError.message(err)
-  end
-
-  test "ParseTimecodeError - with_frames! Throws" do
-    assert_raise Vtc.Timecode.ParseError, fn ->
-      Vtc.Timecode.with_frames!("notatimecode", Vtc.Rate.f24())
-    end
-  end
-
-  test "ParseTimecodeError - with_seconds! Throws" do
-    assert_raise Vtc.Timecode.ParseError, fn ->
-      Vtc.Timecode.with_seconds!("notatimecode", Vtc.Rate.f24())
+    test "ParseTimecodeError - with_seconds! Throws" do
+      assert_raise Timecode.ParseError, fn ->
+        Timecode.with_seconds!("notatimecode", Rates.f24())
+      end
     end
   end
 end
