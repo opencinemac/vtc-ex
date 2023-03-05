@@ -18,8 +18,8 @@ defmodule Vtc.TimecodeTest.TcParseCase do
   @type t :: %__MODULE__{
           name: String.t(),
           rate: Framerate.t(),
-          seconds_inputs: list(Seconds.t()),
-          frames_inputs: list(Frames.t()),
+          seconds_inputs: [Seconds.t()],
+          frames_inputs: [Frames.t()],
           seconds: Ratio.t(),
           frames: integer(),
           timecode: String.t(),
@@ -30,8 +30,6 @@ defmodule Vtc.TimecodeTest.TcParseCase do
 end
 
 defmodule Vtc.TimecodeTest.ParseHelpers do
-  use Ratio
-
   alias Vtc.Timecode
   alias Vtc.TimecodeTest.TcParseCase
 
@@ -41,7 +39,7 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
   def make_negative_case(test_case) do
     %{
       test_case
-      | seconds: -test_case.seconds,
+      | seconds: Ratio.negate(test_case.seconds),
         frames: -test_case.frames,
         timecode: "-" <> test_case.timecode,
         runtime: "-" <> test_case.runtime,
@@ -50,9 +48,9 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
     }
   end
 
-  @spec make_negative_input(input) :: input when [input: String.t() | integer()]
+  @spec make_negative_input(input) :: input when [input: String.t() | Rational.t()]
   def make_negative_input(input) when is_binary(input), do: "-" <> input
-  def make_negative_input(input), do: -input
+  def make_negative_input(input), do: Ratio.negate(input)
 end
 
 defmodule Vtc.TimecodeTest.MalformedCase do
@@ -70,7 +68,7 @@ end
 
 defmodule Vtc.TimecodeTest do
   use ExUnit.Case
-  use Ratio
+  use ExUnitProperties
 
   alias Vtc.Rates
   alias Vtc.Framerate
@@ -371,6 +369,14 @@ defmodule Vtc.TimecodeTest do
         end
       end
     end
+
+    test "ParseTimecodeError when bad format" do
+      {:error, %Timecode.ParseError{} = error} =
+        Timecode.with_seconds("notatimecode", Rates.f24())
+
+      assert :unrecognized_format == error.reason
+      assert "string format not recognized" = Timecode.ParseError.message(error)
+    end
   end
 
   describe "#with_seconds!/1" do
@@ -393,6 +399,12 @@ defmodule Vtc.TimecodeTest do
           |> Timecode.with_seconds!(@test_case_negative.rate)
           |> check_parsed!(@test_case_negative)
         end
+      end
+    end
+
+    test "ParseTimecodeError throws" do
+      assert_raise Timecode.ParseError, fn ->
+        Timecode.with_seconds!("notatimecode", Rates.f24())
       end
     end
   end
@@ -419,6 +431,24 @@ defmodule Vtc.TimecodeTest do
         end
       end
     end
+
+    test "ParseTimecodeError - Format" do
+      assert {:error, %Timecode.ParseError{} = error} =
+               Timecode.with_frames("notatimecode", Rates.f24())
+
+      assert :unrecognized_format == error.reason
+      assert "string format not recognized" = Timecode.ParseError.message(error)
+    end
+
+    test "ParseTimecodeError - Bad Drop Frame" do
+      assert {:error, %Timecode.ParseError{} = error} =
+               Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
+
+      assert :bad_drop_frames == error.reason
+
+      assert "frames value not allowed for drop-frame timecode. frame should have been dropped" =
+               Timecode.ParseError.message(error)
+    end
   end
 
   describe "#with_frames!/1" do
@@ -441,6 +471,12 @@ defmodule Vtc.TimecodeTest do
           |> Timecode.with_frames!(@test_case_negative.rate)
           |> check_parsed!(@test_case_negative)
         end
+      end
+    end
+
+    test "ParseTimecodeError throws" do
+      assert_raise Timecode.ParseError, fn ->
+        Timecode.with_frames!("notatimecode", Rates.f24())
       end
     end
   end
@@ -607,7 +643,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#parse malformed" do
+  describe "#with_frames/2 - malformed tc" do
     @malformed_cases [
       %MalformedCase{
         val_in: "00:59:59:24",
@@ -657,7 +693,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#parse partial tc" do
+  describe "#with_frames/2 - partial tc" do
     @partial_tc_cases [
       %MalformedCase{
         val_in: "1:02:03:04",
@@ -699,7 +735,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#parse partial runtime" do
+  describe "#with_seconds/2 - partial runtime" do
     @partial_runtime_cases [
       %MalformedCase{
         val_in: "1:02:03.5",
@@ -737,42 +773,107 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#parse errors" do
-    test "ParseTimecodeError - Format" do
-      assert {:error, %Timecode.ParseError{} = error} =
-               Timecode.with_frames("notatimecode", Rates.f24())
+  describe "#compare/2" do
+    @test_cases [
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :eq
+      },
+      %{
+        a: Timecode.with_frames!("00:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :lt
+      },
+      %{
+        a: Timecode.with_frames!("-01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :lt
+      },
+      %{
+        a: Timecode.with_frames!("02:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :gt
+      },
+      %{
+        a: Timecode.with_frames!("02:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("00:00:00:00", Rates.f23_98()),
+        expected: :gt
+      },
+      %{
+        a: Timecode.with_frames!("02:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("-01:00:00:00", Rates.f23_98()),
+        expected: :gt
+      },
+      %{
+        a: Timecode.with_frames!("00:00:59:23", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :lt
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: :gt
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f24()),
+        expected: :gt
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f59_94_ndf()),
+        expected: :eq
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f59_94_df()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f59_94_ndf()),
+        expected: :lt
+      }
+    ]
 
-      assert :unrecognized_format == error.reason
-      assert "string format not recognized" = Timecode.ParseError.message(error)
-    end
+    for test_case <- @test_cases do
+      @test_case test_case
 
-    test "ParseTimecodeError - Bad Drop Frame" do
-      assert {:error, %Timecode.ParseError{} = error} =
-               Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
+      test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]}" do
+        %{a: a, b: b, expected: expected} = @test_case
+        assert Timecode.compare(a, b) == expected
+      end
 
-      assert :bad_drop_frames == error.reason
+      if @test_case[:a].rate == @test_case[:b].rate do
+        test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]} | b = tc string" do
+          %{a: a, b: b, expected: expected} = @test_case
+          assert Timecode.compare(a, Timecode.timecode(b)) == expected
+        end
 
-      assert "frames value not allowed for drop-frame timecode. frame should have been dropped" =
-               Timecode.ParseError.message(error)
-    end
-
-    test "ParseTimecodeError - Runtime Format" do
-      {:error, %Timecode.ParseError{} = error} =
-        Timecode.with_seconds("notatimecode", Rates.f24())
-
-      assert :unrecognized_format == error.reason
-      assert "string format not recognized" = Timecode.ParseError.message(error)
-    end
-
-    test "ParseTimecodeError - with_frames! Throws" do
-      assert_raise Timecode.ParseError, fn ->
-        Timecode.with_frames!("notatimecode", Rates.f24())
+        test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]} | b = frames int" do
+          %{a: a, b: b, expected: expected} = @test_case
+          assert Timecode.compare(a, Timecode.frames(b)) == expected
+        end
       end
     end
 
-    test "ParseTimecodeError - with_seconds! Throws" do
-      assert_raise Timecode.ParseError, fn ->
-        Timecode.with_seconds!("notatimecode", Rates.f24())
+    property "if a.rate = b.rate then a and b comparison should equal the comparison of their frame count" do
+      check all(
+              [a_frames, b_frames] <- StreamData.list_of(StreamData.integer(), length: 2),
+              rate_x <- StreamData.integer(1..240),
+              ntsc <- StreamData.boolean(),
+              max_runs: 100
+            ) do
+        ntsc = if ntsc, do: :non_drop, else: nil
+        rate = Framerate.new!(rate_x, ntsc, false)
+
+        a = Timecode.with_frames!(a_frames, rate)
+        b = Timecode.with_frames!(b_frames, rate)
+
+        expected =
+          cond do
+            a_frames == b_frames -> :eq
+            a_frames < b_frames -> :lt
+            true -> :gt
+          end
+
+        assert Timecode.compare(a, b) == expected
       end
     end
   end

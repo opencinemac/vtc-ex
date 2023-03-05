@@ -5,9 +5,6 @@ defmodule Vtc.Timecode do
   New Timecode values are created with the `with_seconds/2` and `with_frames/2`, and
   other function prefaced by `with_*`.
   """
-
-  use Ratio, comparison: true
-
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
@@ -64,6 +61,36 @@ defmodule Vtc.Timecode do
   end
 
   @doc """
+  Returns wheter a is greater than, equal to, or less than b in terms of real-world
+  seconds.
+
+  b May be any value that implements the `Frames` protocol, such as a timecode string,
+  and will be assumed to be the same framerate as `a`. This is mostly to support quick
+  scripting.
+
+  ## Examples
+
+  Using two timecodes, `01:00:00:00` NTSC is greater than `01:00:00:00` true because it
+  represents more real-world time.
+
+  ```elixir
+  a = Timecode.new("01:00:00:00", Rates.f23_98())
+  b = Timecode.new("01:00:00:00", Rates.f24())
+
+  :gt = Timecode.compare(a, b)
+  ```
+
+  Using a timcode and a bare string:
+
+  ```elixir
+  :eq = "01:00:00:00" |> Timecode.new(Rates.f23_98()) |> Timecode.compare("01:00:00:00")
+  ```
+  """
+  @spec compare(t(), t() | Frames.t()) :: :lt | :eq | :gt
+  def compare(%__MODULE__{} = a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
+  def compare(%__MODULE__{} = a, b), do: compare(a, with_frames!(b, a.rate))
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 
@@ -91,7 +118,11 @@ defmodule Vtc.Timecode do
       ```
   """
   @spec frames(t()) :: integer()
-  def frames(%__MODULE__{} = tc), do: Rational.round(tc.seconds * tc.rate.playback)
+  def frames(%__MODULE__{} = tc) do
+    tc.seconds
+    |> Ratio.mult(tc.rate.playback)
+    |> Rational.round()
+  end
 
   @doc """
   The individual sections of a timecode string as i64 values.
@@ -100,8 +131,8 @@ defmodule Vtc.Timecode do
   def sections(%__MODULE__{} = timecode) do
     rate = timecode.rate
     timebase = Framerate.timebase(rate)
-    frames_per_minute = timebase * Consts.seconds_per_minute()
-    frames_per_hour = timebase * Consts.seconds_per_hour()
+    frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
+    frames_per_hour = Ratio.mult(timebase, Consts.seconds_per_hour())
 
     total_frames =
       timecode
@@ -145,7 +176,7 @@ defmodule Vtc.Timecode do
   def timecode(%__MODULE__{} = tc) do
     sections = sections(tc)
 
-    sign = if tc.seconds < 0, do: "-", else: ""
+    sign = if Ratio.compare(tc.seconds, 0) == :lt, do: "-", else: ""
     frame_sep = if tc.rate.ntsc == :drop, do: ";", else: ":"
 
     [
@@ -200,7 +231,10 @@ defmodule Vtc.Timecode do
   """
   @spec runtime(t(), integer()) :: String.t()
   def runtime(tc, precision) do
-    {seconds, negative?} = if tc.seconds < 0, do: {-tc.seconds, true}, else: {tc.seconds, false}
+    {seconds, negative?} =
+      if Ratio.compare(tc.seconds, 0) == :lt,
+        do: {Ratio.negate(tc.seconds), true},
+        else: {tc.seconds, false}
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
 
@@ -270,7 +304,7 @@ defmodule Vtc.Timecode do
   """
   @spec premiere_ticks(t()) :: integer()
   def premiere_ticks(%__MODULE__{} = tc),
-    do: Rational.round(tc.seconds * Consts.ppro_tick_per_second())
+    do: tc.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round()
 
   @doc """
   Returns the number of feet and frames this timecode represents if it were shot on 35mm
@@ -308,7 +342,7 @@ defmodule Vtc.Timecode do
     feet = Integer.to_string(feet)
     frames = frames |> Integer.to_string() |> String.pad_leading(2, "0")
 
-    sign = if tc.seconds < 0, do: "-", else: ""
+    sign = if Ratio.compare(tc.seconds, 0) == :lt, do: "-", else: ""
 
     "#{sign}#{feet}+#{frames}"
   end
@@ -391,8 +425,9 @@ defmodule Vtc.Timecode do
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
     with {:ok, frames} <- Frames.frames(frames, rate) do
-      seconds = frames / rate.playback
-      with_seconds(seconds, rate)
+      frames
+      |> Ratio.div(rate.playback)
+      |> with_seconds(rate)
     end
   end
 
@@ -449,14 +484,14 @@ defmodule Vtc.Timecode do
   defp handle_raise_function({:error, error}), do: raise(error)
 end
 
-defimpl Inspect, for: Timecode do
+defimpl Inspect, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(tc, _opts), do: Timecode.to_string(tc)
 end
 
-defimpl String.Chars, for: Timecode do
+defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec to_string(Timecode.t()) :: String.t()

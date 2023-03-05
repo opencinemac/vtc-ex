@@ -3,8 +3,6 @@ defmodule Vtc.Utils.Rational do
   Helper functions and types for working with the Ratio module.
   """
 
-  use Ratio, comparison: true
-
   @typedoc """
   The Ratio module will often convert itself to an integer value if the result would be
   a whole number, but otherwise return a %Ratio{} struct.
@@ -20,9 +18,13 @@ defmodule Vtc.Utils.Rational do
   def round(x) when is_integer(x), do: x
 
   def round(%Ratio{} = x) do
-    floored = floor(x)
-    remainder = x - floored
-    if remainder > Ratio.new(1, 2), do: floored + 1, else: floored
+    floored = Ratio.floor(x)
+    remainder = Ratio.sub(x, floored)
+
+    case Ratio.compare(remainder, Ratio.new(1, 2)) do
+      :gt -> Ratio.add(floored, 1)
+      _ -> floored
+    end
   end
 
   @doc """
@@ -31,9 +33,9 @@ defmodule Vtc.Utils.Rational do
   """
   @spec divmod(t(), t()) :: {integer(), t()}
   def divmod(a, b) do
-    dividend = floor(a / b)
-    multiplied = dividend * b
-    remainder = a - multiplied
+    dividend = a |> Ratio.div(b) |> Ratio.floor()
+    multiplied = Ratio.mult(dividend, b)
+    remainder = Ratio.sub(a, multiplied)
     {dividend, remainder}
   end
 end
