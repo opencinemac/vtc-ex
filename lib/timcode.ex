@@ -11,7 +11,7 @@ defmodule Vtc.Timecode do
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
-  alias Vtc.Private.Rational
+  alias Vtc.Utils.Rational
   alias Vtc.Source.Frames
   alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
@@ -30,7 +30,10 @@ defmodule Vtc.Timecode do
 
   - **:rate**: the Framerate of the timecode.
   """
-  @type t :: %__MODULE__{seconds: Ratio.t() | integer, rate: Framerate.t()}
+  @type t :: %__MODULE__{
+          seconds: Rational.t(),
+          rate: Framerate.t()
+        }
 
   defmodule Sections do
     @moduledoc """
@@ -52,11 +55,11 @@ defmodule Vtc.Timecode do
     - **frames**: Frames place value.
     """
     @type t :: %__MODULE__{
-            negative: boolean,
-            hours: integer,
-            minutes: integer,
-            seconds: integer,
-            frames: integer
+            negative: boolean(),
+            hours: integer(),
+            minutes: integer(),
+            seconds: integer(),
+            frames: integer()
           }
   end
 
@@ -87,47 +90,41 @@ defmodule Vtc.Timecode do
       </timecode>
       ```
   """
-  @spec frames(t()) :: integer
-  def frames(%__MODULE__{} = tc) do
-    Rational.round_ratio?(tc.seconds * tc.rate.playback)
-  end
+  @spec frames(t()) :: integer()
+  def frames(%__MODULE__{} = tc), do: Rational.round(tc.seconds * tc.rate.playback)
 
   @doc """
   The individual sections of a timecode string as i64 values.
   """
   @spec sections(t()) :: Sections.t()
-  def sections(%__MODULE__{} = tc) do
-    timebase = Framerate.timebase(tc.rate)
+  def sections(%__MODULE__{} = timecode) do
+    rate = timecode.rate
+    timebase = Framerate.timebase(rate)
     frames_per_minute = timebase * Consts.seconds_per_minute()
     frames_per_hour = timebase * Consts.seconds_per_hour()
 
-    is_negative = tc.seconds < 0
-    frames = abs(frames(tc))
+    total_frames =
+      timecode
+      |> frames()
+      |> abs()
+      |> then(&if rate.ntsc == :Drop, do: DropFrame.frame_num_adjustment(&1, rate), else: &1)
 
-    # adjust our frame number if this is a drop-frame framerate.
-    frames =
-      if tc.rate.ntsc == :Drop do
-        DropFrame.frame_num_adjustment(frames, tc.rate)
-      else
-        frames
-      end
-
-    {hours, frames} = Rational.divmod(frames, frames_per_hour)
-    {minutes, frames} = Rational.divmod(frames, frames_per_minute)
-    {seconds, frames} = Rational.divmod(frames, timebase)
-    frames = Rational.round_ratio?(frames)
+    {hours, remainder} = Rational.divmod(total_frames, frames_per_hour)
+    {minutes, remainder} = Rational.divmod(remainder, frames_per_minute)
+    {seconds, frames} = Rational.divmod(remainder, timebase)
 
     %Sections{
-      negative: is_negative,
+      negative: timecode.seconds < 0,
       hours: hours,
       minutes: minutes,
       seconds: seconds,
-      frames: frames
+      frames: Rational.round(frames)
     }
   end
 
   @doc """
-  Returns the the formatted SMPTE timecode: (ex: 01:00:00:00).
+  Returns the the formatted SMPTE timecode: (ex: 01:00:00:00). Drop frame timecode will
+  be rendered with a ';' sperator before the frames field.
 
   # What it is
 
@@ -148,30 +145,25 @@ defmodule Vtc.Timecode do
   def timecode(%__MODULE__{} = tc) do
     sections = sections(tc)
 
-    # We'll add a negative sign if the timecode is negative.
-    sign =
-      if tc.seconds < 0 do
-        "-"
-      else
-        ""
-      end
+    sign = if tc.seconds < 0, do: "-", else: ""
+    frame_sep = if tc.rate.ntsc == :Drop, do: ";", else: ":"
 
-    # If this is a drop-frame timecode, we need to use a ';' to separate the frames
-    # 	from the seconds.
-    frame_sep =
-      if tc.rate.ntsc == :Drop do
-        ";"
-      else
-        ":"
-      end
-
-    hours = sections.hours |> Integer.to_string() |> String.pad_leading(2, "0")
-    minutes = sections.minutes |> Integer.to_string() |> String.pad_leading(2, "0")
-    seconds = sections.seconds |> Integer.to_string() |> String.pad_leading(2, "0")
-    frames = sections.frames |> Integer.to_string() |> String.pad_leading(2, "0")
-
-    "#{sign}#{hours}:#{minutes}:#{seconds}#{frame_sep}#{frames}"
+    [
+      sections.hours,
+      sections.minutes,
+      sections.seconds,
+      sections.frames
+    ]
+    |> Enum.map(&render_tc_field/1)
+    |> Enum.intersperse(":")
+    |> then(&[sign | &1])
+    |> List.replace_at(-2, frame_sep)
+    |> List.to_string()
   end
+
+  @spec render_tc_field(integer()) :: String.t()
+  defp render_tc_field(value),
+    do: value |> Integer.to_string() |> String.pad_leading(2, "0")
 
   @doc """
   Runtime Returns the true, real-world runtime of the timecode in HH:MM:SS.FFFFFFFFF
@@ -206,14 +198,9 @@ defmodule Vtc.Timecode do
   '00:59:59.9964', and <01:00:00:00 @ <23.98 NTSC NDF>> has a true runtime of
   '01:00:03.6'
   """
-  @spec runtime(t(), integer) :: String.t()
+  @spec runtime(t(), integer()) :: String.t()
   def runtime(tc, precision) do
-    {seconds, is_negative} =
-      if tc.seconds < 0 do
-        {-tc.seconds, true}
-      else
-        {tc.seconds, false}
-      end
+    {seconds, negative?} = if tc.seconds < 0, do: {-tc.seconds, true}, else: {tc.seconds, false}
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
 
@@ -223,7 +210,7 @@ defmodule Vtc.Timecode do
     Decimal.Context
     seconds = Decimal.round(seconds, precision)
     seconds_floor = Decimal.round(seconds, 0, :down)
-    seconds_fractal = Decimal.sub(seconds, seconds_floor)
+    fractal_seconds = Decimal.sub(seconds, seconds_floor)
 
     hours = hours |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
     minutes = minutes |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
@@ -231,36 +218,28 @@ defmodule Vtc.Timecode do
     seconds_floor =
       seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
 
-    seconds_fractal =
+    fractal_seconds = runtime_render_fractal_seconds(fractal_seconds)
+
+    # We'll add a negative sign if the timecode is negative.
+    sign = if negative?, do: "-", else: ""
+
+    "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{fractal_seconds}"
+  end
+
+  # Renders fractal seconds to a string.
+  @spec runtime_render_fractal_seconds(Decimal.t()) :: String.t()
+  defp runtime_render_fractal_seconds(seconds_fractal) do
+    rendered =
       if Decimal.eq?(seconds_fractal, 0) do
         ""
       else
-        # We dont want the leadin zero and we want to trim all trailing zeroes. We are
-        # also going to trim the '.' if there is nothing less so that the string is blank
-        # for a later check.
         Decimal.to_string(seconds_fractal)
         |> String.trim_leading("0")
         |> String.trim_trailing("0")
         |> String.trim_trailing(".")
       end
 
-    # If the fractal string is blank, use ".0"
-    seconds_fractal =
-      if seconds_fractal == "" do
-        ".0"
-      else
-        seconds_fractal
-      end
-
-    # We'll add a negative sign if the timecode is negative.
-    sign =
-      if is_negative do
-        "-"
-      else
-        ""
-      end
-
-    "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{seconds_fractal}"
+    if rendered == "", do: ".0", else: rendered
   end
 
   @doc """
@@ -289,10 +268,9 @@ defmodule Vtc.Timecode do
     </clipitem>
     ```
   """
-  @spec premiere_ticks(t()) :: integer
-  def premiere_ticks(%__MODULE__{} = tc) do
-    Rational.round_ratio?(tc.seconds * Consts.ppro_tick_per_second())
-  end
+  @spec premiere_ticks(t()) :: integer()
+  def premiere_ticks(%__MODULE__{} = tc),
+    do: Rational.round(tc.seconds * Consts.ppro_tick_per_second())
 
   @doc """
   Returns the number of feet and frames this timecode represents if it were shot on 35mm
@@ -330,13 +308,7 @@ defmodule Vtc.Timecode do
     feet = Integer.to_string(feet)
     frames = frames |> Integer.to_string() |> String.pad_leading(2, "0")
 
-    # We'll add a negative sign if the timecode is negative.
-    sign =
-      if tc.seconds < 0 do
-        "-"
-      else
-        ""
-      end
+    sign = if tc.seconds < 0, do: "-", else: ""
 
     "#{sign}#{feet}+#{frames}"
   end
@@ -362,22 +334,18 @@ defmodule Vtc.Timecode do
     @doc """
     Returns a message for the error reason.
     """
-    @spec message(Framerate.ParseError.t()) :: String.t()
-    def message(error) do
-      case error.reason do
-        :unrecognized_format ->
-          "string format not recognized"
+    @spec message(t()) :: String.t()
+    def message(%__MODULE__{reason: :unrecognized_format}),
+      do: "string format not recognized"
 
-        :bad_drop_frames ->
-          "frames value not allowed for drop-frame timecode. frame should have been dropped"
-      end
-    end
+    def message(%__MODULE__{reason: :bad_drop_frames}),
+      do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
   end
 
   @typedoc """
   Type returned by `Timecode.with_seconds/2` and `Timecode.with_frames/2`.
   """
-  @type parse_result :: {:ok, t()} | {:error, ParseError.t()}
+  @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
 
   @doc """
   Returns a new `Timecode` with a Timecode.seconds field value equal to the
@@ -392,12 +360,9 @@ defmodule Vtc.Timecode do
   - `rate` - The Framerate at which the frames are being played back.
   """
   @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result
-  def with_seconds(seconds, %Framerate{} = rate) do
-    result = Seconds.seconds(seconds, rate)
-
-    case result do
-      {:ok, seconds} -> {:ok, %__MODULE__{seconds: seconds, rate: rate}}
-      {:error, err} -> {:error, err}
+  def with_seconds(seconds, rate) do
+    with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
+      {:ok, %__MODULE__{seconds: seconds, rate: rate}}
     end
   end
 
@@ -405,11 +370,10 @@ defmodule Vtc.Timecode do
   As `Timecode.with_seconds/2`, but raises on error.
   """
   @spec with_seconds!(Seconds.t(), Framerate.t()) :: t()
-  def with_seconds!(seconds, %Framerate{} = rate) do
-    case with_seconds(seconds, rate) do
-      {:ok, tc} -> tc
-      {:error, err} -> raise err
-    end
+  def with_seconds!(seconds, rate) do
+    seconds
+    |> with_seconds(rate)
+    |> handle_raise_function()
   end
 
   @doc """
@@ -424,15 +388,11 @@ defmodule Vtc.Timecode do
   - `frames` - A value which can be represented as a frame number / frame count.
   - `rate` - The Framerate at which the frames are being played back.
   """
-  @spec with_frames(Frames.t(), Framerate.t()) :: parse_result
-  def with_frames(frames, %Framerate{} = rate) do
-    case Frames.frames(frames, rate) do
-      {:ok, frames} ->
-        seconds = frames / rate.playback
-        with_seconds(seconds, rate)
-
-      {:error, err} ->
-        {:error, err}
+  @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
+  def with_frames(frames, rate) do
+    with {:ok, frames} <- Frames.frames(frames, rate) do
+      seconds = frames / rate.playback
+      with_seconds(seconds, rate)
     end
   end
 
@@ -440,11 +400,10 @@ defmodule Vtc.Timecode do
   As `Timecode.with_frames/2`, but raises on error.
   """
   @spec with_frames!(Frames.t(), Framerate.t()) :: t()
-  def with_frames!(frames, %Framerate{} = rate) do
-    case with_frames(frames, rate) do
-      {:ok, tc} -> tc
-      {:error, err} -> raise err
-    end
+  def with_frames!(frames, rate) do
+    frames
+    |> with_frames(rate)
+    |> handle_raise_function()
   end
 
   @doc """
@@ -459,15 +418,11 @@ defmodule Vtc.Timecode do
   - `frames` - A value which can be represented as a frame number / frame count.
   - `rate` - The Framerate at which the frames are being played back.
   """
-  @spec with_premiere_ticks(PremiereTicks.t(), Framerate.t()) :: parse_result
-  def with_premiere_ticks(ticks, %Framerate{} = rate) do
-    case PremiereTicks.ticks(ticks, rate) do
-      {:ok, ticks} ->
-        seconds = ticks / Consts.ppro_tick_per_second()
-        with_seconds(seconds, rate)
-
-      {:error, err} ->
-        {:error, err}
+  @spec with_premiere_ticks(PremiereTicks.t(), Framerate.t()) :: parse_result()
+  def with_premiere_ticks(ticks, rate) do
+    with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
+      seconds = ticks / Consts.ppro_tick_per_second()
+      with_seconds(seconds, rate)
     end
   end
 
@@ -475,11 +430,10 @@ defmodule Vtc.Timecode do
   As `Timecode.with_premiere_ticks/2`, but raises on error.
   """
   @spec with_premiere_ticks!(Frames.t(), Framerate.t()) :: t()
-  def with_premiere_ticks!(ticks, %Framerate{} = rate) do
-    case with_premiere_ticks(ticks, rate) do
-      {:ok, tc} -> tc
-      {:error, err} -> raise err
-    end
+  def with_premiere_ticks!(ticks, rate) do
+    ticks
+    |> with_premiere_ticks(rate)
+    |> handle_raise_function()
   end
 
   @spec to_string(t()) :: String.t()
@@ -489,22 +443,22 @@ defmodule Vtc.Timecode do
 
     "<#{tc_str} @ #{rate_str}>"
   end
+
+  @spec handle_raise_function({:ok, t()} | {:error, Exception.t()}) :: t()
+  defp handle_raise_function({:ok, result}), do: result
+  defp handle_raise_function({:error, error}), do: raise(error)
 end
 
 defimpl Inspect, for: Timecode do
   alias Vtc.Timecode
 
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(tc, _opts) do
-    Timecode.to_string(tc)
-  end
+  def inspect(tc, _opts), do: Timecode.to_string(tc)
 end
 
 defimpl String.Chars, for: Timecode do
   alias Vtc.Timecode
 
   @spec to_string(Timecode.t()) :: String.t()
-  def to_string(term) do
-    Timecode.to_string(term)
-  end
+  def to_string(term), do: Timecode.to_string(term)
 end
