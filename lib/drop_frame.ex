@@ -14,7 +14,7 @@ defmodule Vtc.Private.DropFrame do
   @spec parse_adjustment(Timecode.Sections.t(), Framerate.t()) ::
           {:ok, integer()} | {:error, Timecode.ParseError.t()}
 
-  def parse_adjustment(sections, %Framerate{ntsc: :Drop} = rate) do
+  def parse_adjustment(sections, %Framerate{ntsc: :drop} = rate) do
     drop_rate = frames_dropped_per_minute(rate)
 
     with :ok <- parse_adjustment_validate(sections, drop_rate) do

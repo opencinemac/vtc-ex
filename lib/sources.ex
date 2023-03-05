@@ -219,12 +219,11 @@ defmodule Vtc.Private.Parse do
     end
   end
 
+  @tc_regex ~r/^(?P<negative>-)?((?P<section_1>[0-9]+)[:|;])?((?P<section_2>[0-9]+)[:|;])?((?P<section_3>[0-9]+)[:|;])?(?P<frames>[0-9]+)$/
+
   @spec parse_tc_string(String.t(), Framerate.t()) :: Source.frames_result()
   def parse_tc_string(value, rate) do
-    tc_regex =
-      ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?((?P<section3>[0-9]+)[:|;])?(?P<frames>[0-9]+)$/
-
-    with {:ok, matched} <- apply_regex(tc_regex, value) do
+    with {:ok, matched} <- apply_regex(@tc_regex, value) do
       matched
       |> tc_matched_to_sections()
       |> tc_sections_to_frames(rate)
@@ -244,21 +243,17 @@ defmodule Vtc.Private.Parse do
   # Extract TC sections from regex match.
   @spec tc_matched_to_sections(map()) :: Timecode.Sections.t()
   defp tc_matched_to_sections(matched) do
-    # It's faster to append to the front of a list, so we will work backwards
-    section_keys = ["section3", "section2", "section1"]
-    sections = build_groups(matched, section_keys)
+    negative? = Map.fetch!(matched, "negative") == "-"
 
-    {seconds, sections} = tc_get_next_section(sections)
-    {minutes, sections} = tc_get_next_section(sections)
-    {hours, _} = tc_get_next_section(sections)
+    sections = extract_time_sections(matched, 3)
 
-    # If the regex matched, then the frames place has to have matched.
-    frames = String.to_integer(matched["frames"])
-
-    negative? = matched["negative"] != ""
+    {seconds, sections} = pop_time_section(sections)
+    {minutes, sections} = pop_time_section(sections)
+    {hours, _} = pop_time_section(sections)
+    frames = matched |> Map.fetch!("frames") |> String.to_integer()
 
     %Timecode.Sections{
-      negative: negative?,
+      negative?: negative?,
       hours: hours,
       minutes: minutes,
       seconds: seconds,
@@ -266,97 +261,92 @@ defmodule Vtc.Private.Parse do
     }
   end
 
-  # Extracts groups that may or may not be in the match into a list of values.
-  @spec build_groups(map(), [String.t()]) :: [String.t()]
-  defp build_groups(matched, section_keys) do
-    Enum.reduce(section_keys, [], fn section_key, sections ->
-      case Map.fetch!(matched, section_key) do
+  # Extracts a set of sections in a time string of format xx:yy:.. that may or may not
+  # be truncated at the head.
+  #
+  # The regex matches are expected to have a series of fields like "section_1",
+  # "section_2", etc that denote present sections whose meaning depends on the  number
+  # of sections present.
+  @spec extract_time_sections(map(), non_neg_integer()) :: [String.t()]
+  defp extract_time_sections(regex_matches, section_count) do
+    1..section_count
+    |> Enum.map(&Integer.to_string/1)
+    |> Enum.reduce([], fn section_index, sections ->
+      case Map.fetch!(regex_matches, "section_#{section_index}") do
         "" -> sections
         this_section -> [this_section | sections]
       end
     end)
   end
 
-  @spec tc_get_next_section([String.t()]) :: {integer(), [String.t()]}
-  defp tc_get_next_section(sections) do
-    sections
-    |> List.pop_at(-1)
-    |> then(fn
-      {value, sections} when value in [nil, ""] -> {0, sections}
-      {value, sections} -> {String.to_integer(value), sections}
-    end)
-  end
+  # Pops the next section at the end of the list and returns it as an integer.
+  #
+  # Returns `0` if the value is not present
+  @spec pop_time_section([String.t()]) :: {integer(), [String.t()]}
+  defp pop_time_section(["" | remaining]), do: {0, remaining}
+  defp pop_time_section([value | remaining]), do: {String.to_integer(value), remaining}
+  defp pop_time_section([]), do: {0, []}
 
+  # Converts all TC fields to a total frame count
   @spec tc_sections_to_frames(Timecode.Sections.t(), Framerate.t()) :: Source.frames_result()
   defp tc_sections_to_frames(sections, rate) do
-    seconds =
-      sections.minutes * Consts.seconds_per_minute() +
-        sections.hours * Consts.seconds_per_hour() +
-        sections.seconds
+    with {:ok, adjustment} <- DropFrame.parse_adjustment(sections, rate) do
+      frames_per_second = Framerate.timebase(rate)
 
-    frames = sections.frames + seconds * Framerate.timebase(rate)
-
-    case DropFrame.parse_adjustment(sections, rate) do
-      {:ok, adjustment} ->
-        frames = frames + adjustment
-        frames = Rational.round(frames)
-        frames = if sections.negative, do: -frames, else: frames
-        {:ok, frames}
-
-      error ->
-        error
+      sections.seconds
+      |> Ratio.add(sections.minutes * Consts.seconds_per_minute())
+      |> Ratio.add(sections.hours * Consts.seconds_per_hour())
+      |> Ratio.mult(frames_per_second)
+      |> Ratio.add(sections.frames)
+      |> Ratio.add(adjustment)
+      |> Rational.round()
+      |> then(fn frames -> if sections.negative?, do: -frames, else: frames end)
+      |> then(&{:ok, &1})
     end
   end
+
+  @ff_regex ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
 
   @spec parse_feet_and_frames(String.t(), Framerate.t()) :: Source.frames_result()
-  def parse_feet_and_frames(value, rate) do
-    ff_regex = ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
+  defp parse_feet_and_frames(value, rate) do
+    with {:ok, groups} <- apply_regex(@ff_regex, value) do
+      negative? = Map.fetch!(groups, "negative") == "-"
+      feet = groups |> Map.fetch!("feet") |> String.to_integer()
 
-    case apply_regex(ff_regex, value) do
-      {:ok, matched} ->
-        feet = matched["feet"] |> String.to_integer()
-        frames = matched["frames"] |> String.to_integer()
-        frames = feet * Consts.frames_per_foot() + frames
-        frames = if matched["negative"] != "", do: -frames, else: frames
-        Frames.frames(frames, rate)
-
-      error ->
-        error
+      groups
+      |> Map.fetch!("frames")
+      |> String.to_integer()
+      |> Ratio.add(feet * Consts.frames_per_foot())
+      |> then(fn frames -> if negative?, do: -frames, else: frames end)
+      |> Frames.frames(rate)
     end
   end
+
+  @runtime_regex ~r/^(?P<negative>-)?((?P<section_1>[0-9]+)[:|;])?((?P<section_2>[0-9]+)[:|;])?(?P<seconds>[0-9]+(\.[0-9]+)?)$/
 
   @spec parse_runtime_string(String.t(), Framerate.t()) :: Source.seconds_result()
   def parse_runtime_string(value, rate) do
-    runtime_regex =
-      ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?(?P<seconds>[0-9]+(\.[0-9]+)?)$/
-
-    case apply_regex(runtime_regex, value) do
-      {:ok, matched} ->
-        matched
-        |> runtime_matched_to_second()
-        |> Source.Seconds.seconds(rate)
-
-      error ->
-        error
+    with {:ok, matched} <- apply_regex(@runtime_regex, value) do
+      matched
+      |> runtime_matched_to_second()
+      |> Source.Seconds.seconds(rate)
     end
   end
 
   @spec runtime_matched_to_second(map()) :: Rational.t()
   defp runtime_matched_to_second(matched) do
-    section_keys = ["section2", "section1"]
-    sections = build_groups(matched, section_keys)
+    negative? = Map.fetch!(matched, "negative") == "-"
+    sections = extract_time_sections(matched, 2)
 
-    {minutes, sections} = tc_get_next_section(sections)
-    {hours, _} = tc_get_next_section(sections)
+    {minutes, sections} = pop_time_section(sections)
+    {hours, _} = pop_time_section(sections)
 
-    seconds = matched |> Map.fetch!("seconds") |> Decimal.new() |> Ratio.new(1)
-    negative? = matched["negative"] != ""
-
-    seconds =
-      hours * Consts.seconds_per_hour() +
-        minutes * Consts.seconds_per_minute() +
-        seconds
-
-    if negative?, do: -seconds, else: seconds
+    matched
+    |> Map.fetch!("seconds")
+    |> Decimal.new()
+    |> Ratio.new(1)
+    |> Ratio.add(hours * Consts.seconds_per_hour())
+    |> Ratio.add(minutes * Consts.seconds_per_minute())
+    |> then(fn seconds -> if negative?, do: -seconds, else: seconds end)
   end
 end

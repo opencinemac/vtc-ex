@@ -40,8 +40,8 @@ defmodule Vtc.Timecode do
     Holds the individual sections of a timecode for formatting / manipulation.
     """
 
-    @enforce_keys [:negative, :hours, :minutes, :seconds, :frames]
-    defstruct [:negative, :hours, :minutes, :seconds, :frames]
+    @enforce_keys [:negative?, :hours, :minutes, :seconds, :frames]
+    defstruct [:negative?, :hours, :minutes, :seconds, :frames]
 
     @typedoc """
     Holds the individual sections of a timecode for formatting / manipulation.
@@ -55,7 +55,7 @@ defmodule Vtc.Timecode do
     - **frames**: Frames place value.
     """
     @type t :: %__MODULE__{
-            negative: boolean(),
+            negative?: boolean(),
             hours: integer(),
             minutes: integer(),
             seconds: integer(),
@@ -107,14 +107,14 @@ defmodule Vtc.Timecode do
       timecode
       |> frames()
       |> abs()
-      |> then(&if rate.ntsc == :Drop, do: DropFrame.frame_num_adjustment(&1, rate), else: &1)
+      |> then(&if rate.ntsc == :drop, do: DropFrame.frame_num_adjustment(&1, rate), else: &1)
 
     {hours, remainder} = Rational.divmod(total_frames, frames_per_hour)
     {minutes, remainder} = Rational.divmod(remainder, frames_per_minute)
     {seconds, frames} = Rational.divmod(remainder, timebase)
 
     %Sections{
-      negative: timecode.seconds < 0,
+      negative?: timecode.seconds < 0,
       hours: hours,
       minutes: minutes,
       seconds: seconds,
@@ -146,7 +146,7 @@ defmodule Vtc.Timecode do
     sections = sections(tc)
 
     sign = if tc.seconds < 0, do: "-", else: ""
-    frame_sep = if tc.rate.ntsc == :Drop, do: ";", else: ":"
+    frame_sep = if tc.rate.ntsc == :drop, do: ";", else: ":"
 
     [
       sections.hours,
