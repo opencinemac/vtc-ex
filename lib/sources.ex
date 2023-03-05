@@ -157,14 +157,16 @@ defmodule Private.Parse do
   @spec from_seconds_core(Ratio.t() | integer, Vtc.Framerate.t()) :: Vtc.Source.seconds_result()
   def from_seconds_core(value, rate) do
     # If our seconds are not cleanly divisible by the length of a single frame, we need
-    # 	to round to the nearest frame.
+    # to round to the nearest frame.
     seconds =
-      if not is_integer(value / rate.playback) do
-        frames = Private.Rat.round_ratio?(rate.playback * value)
-        seconds = frames / rate.playback
-        seconds
-      else
-        value
+      case value / rate.playback do
+        %Ratio{} ->
+          frames = Private.Rat.round_ratio?(rate.playback * value)
+          seconds = frames / rate.playback
+          seconds
+
+        integer_value ->
+          integer_value
       end
 
     {:ok, seconds}
@@ -268,26 +270,28 @@ defmodule Private.Parse do
           Vtc.Source.frames_result()
   defp tc_sections_to_frames(%Vtc.Timecode.Sections{} = sections, %Vtc.Framerate{} = rate) do
     seconds =
-      sections.minutes * Private.Const.secondsPerMinute() +
-        sections.hours * Private.Const.secondsPerHour() +
+      sections.minutes * Private.Const.seconds_per_minute() +
+        sections.hours * Private.Const.seconds_per_hour() +
         sections.seconds
 
     frames = sections.frames + seconds * Vtc.Framerate.timebase(rate)
 
-    with {:ok, adjustment} <- Private.Drop.parse_adjustment(sections, rate) do
-      frames = frames + adjustment
-      frames = Private.Rat.round_ratio?(frames)
+    case Private.Drop.parse_adjustment(sections, rate) do
+      {:ok, adjustment} ->
+        frames = frames + adjustment
+        frames = Private.Rat.round_ratio?(frames)
 
-      frames =
-        if sections.negative do
-          -frames
-        else
-          frames
-        end
+        frames =
+          if sections.negative do
+            -frames
+          else
+            frames
+          end
 
-      {:ok, frames}
-    else
-      {:error, err} -> {:error, err}
+        {:ok, frames}
+
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -295,21 +299,23 @@ defmodule Private.Parse do
   def parse_feet_and_frames(value, rate) do
     ff_regex = ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
 
-    with {:ok, matched} <- apply_regex(ff_regex, value) do
-      feet = matched["feet"] |> String.to_integer()
-      frames = matched["frames"] |> String.to_integer()
-      frames = feet * Private.Const.frames_per_foot() + frames
+    case apply_regex(ff_regex, value) do
+      {:ok, matched} ->
+        feet = matched["feet"] |> String.to_integer()
+        frames = matched["frames"] |> String.to_integer()
+        frames = feet * Private.Const.frames_per_foot() + frames
 
-      frames =
-        if matched["negative"] != "" do
-          -frames
-        else
-          frames
-        end
+        frames =
+          if matched["negative"] != "" do
+            -frames
+          else
+            frames
+          end
 
-      Vtc.Source.Frames.frames(frames, rate)
-    else
-      :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
+        Vtc.Source.Frames.frames(frames, rate)
+
+      :no_match ->
+        {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
     end
   end
 
@@ -318,17 +324,18 @@ defmodule Private.Parse do
     runtime_regex =
       ~r/^(?P<negative>-)?((?P<section1>[0-9]+)[:|;])?((?P<section2>[0-9]+)[:|;])?(?P<seconds>[0-9]+(\.[0-9]+)?)$/
 
-    with {:ok, matched} <- apply_regex(runtime_regex, value),
-         seconds <- runtime_matched_to_second(matched),
-         {:ok, seconds} = Vtc.Source.Seconds.seconds(seconds, rate) do
-      {:ok, seconds}
-    else
-      :no_match -> {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
-      {:error, err} -> {:error, err}
+    case apply_regex(runtime_regex, value) do
+      {:ok, matched} ->
+        matched
+        |> runtime_matched_to_second()
+        |> Vtc.Source.Seconds.seconds(rate)
+
+      :no_match ->
+        {:error, %Vtc.Timecode.ParseError{reason: :unrecognized_format}}
     end
   end
 
-  @spec runtime_matched_to_second(map) :: Ratio.t() | integer
+  @spec runtime_matched_to_second(map()) :: Ratio.t() | integer()
   defp runtime_matched_to_second(matched) do
     section_keys = ["section2", "section1"]
     sections = build_groups(matched, section_keys)
@@ -342,7 +349,7 @@ defmodule Private.Parse do
     is_negative = matched["negative"] != ""
 
     seconds =
-      hours * Private.Const.secondsPerHour() + minutes * Private.Const.secondsPerMinute() +
+      hours * Private.Const.seconds_per_hour() + minutes * Private.Const.seconds_per_minute() +
         seconds
 
     if is_negative do

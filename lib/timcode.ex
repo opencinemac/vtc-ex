@@ -80,7 +80,7 @@ defmodule Vtc.Timecode do
       ```
   """
   @spec frames(Vtc.Timecode.t()) :: integer
-  def frames(tc = %Vtc.Timecode{}) do
+  def frames(%Vtc.Timecode{} = tc) do
     Private.Rat.round_ratio?(tc.seconds * tc.rate.playback)
   end
 
@@ -88,10 +88,10 @@ defmodule Vtc.Timecode do
   The individual sections of a timecode string as i64 values.
   """
   @spec sections(Vtc.Timecode.t()) :: Sections.t()
-  def sections(tc = %Vtc.Timecode{}) do
+  def sections(%Vtc.Timecode{} = tc) do
     timebase = Vtc.Framerate.timebase(tc.rate)
-    framesPerMinute = timebase * Private.Const.secondsPerMinute()
-    framesPerHour = timebase * Private.Const.secondsPerHour()
+    frames_per_minute = timebase * Private.Const.seconds_per_minute()
+    frames_per_hour = timebase * Private.Const.seconds_per_hour()
 
     is_negative = tc.seconds < 0
     frames = abs(frames(tc))
@@ -104,8 +104,8 @@ defmodule Vtc.Timecode do
         frames
       end
 
-    {hours, frames} = Private.Rat.divmod(frames, framesPerHour)
-    {minutes, frames} = Private.Rat.divmod(frames, framesPerMinute)
+    {hours, frames} = Private.Rat.divmod(frames, frames_per_hour)
+    {minutes, frames} = Private.Rat.divmod(frames, frames_per_minute)
     {seconds, frames} = Private.Rat.divmod(frames, timebase)
     frames = Private.Rat.round_ratio?(frames)
 
@@ -137,7 +137,7 @@ defmodule Vtc.Timecode do
   - Cut lists like an EDL.
   """
   @spec timecode(Vtc.Timecode.t()) :: String.t()
-  def timecode(tc = %Vtc.Timecode{}) do
+  def timecode(%Vtc.Timecode{} = tc) do
     sections = sections(tc)
 
     # We'll add a negative sign if the timecode is negative.
@@ -209,8 +209,8 @@ defmodule Vtc.Timecode do
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
 
-    {hours, seconds} = Decimal.div_rem(seconds, Private.Const.secondsPerHour())
-    {minutes, seconds} = Decimal.div_rem(seconds, Private.Const.secondsPerMinute())
+    {hours, seconds} = Decimal.div_rem(seconds, Private.Const.seconds_per_hour())
+    {minutes, seconds} = Decimal.div_rem(seconds, Private.Const.seconds_per_minute())
 
     Decimal.Context
     seconds = Decimal.round(seconds, precision)
