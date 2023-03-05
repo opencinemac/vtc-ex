@@ -48,7 +48,7 @@ iex> Timecode.feet_and_frames(tc)
 
 # We can inspect the framerate.
 iex> tc.rate.ntsc
-:NonDrop  
+:non_drop  
 
 iex> tc.rate.playback
 24000 <|> 1001
@@ -82,19 +82,29 @@ iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98)
 iex> Timecode.with_frames!("1+08", Rates.f23_98)
 <00:00:01:00 @ <23.98 NTSC NDF>>
 
+# We can compare two timecodes
+iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
+iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98)
+iex> Timecode.compare(a, b)
+:gt
+
+# And even compare directly with a timecode string
+iex> Timecode.compare(a, "00:59:00:00")
+:lt
+
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
 iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
 <00:08:20;18 @ <29.97 NTSC DF>>
 
 # We can make new timecodes with arbitrary framerates if we want:
-iex> rate = Framerate.new!(240, :None)
+iex> rate = Framerate.new!(240, nil)
 <240.0 fps>
 iex> Timecode.with_frames!("01:00:00:00", rate)
 <01:00:00:00 @ <240.0 fps>>
 
 # We do the same thing NTSC framerates / timebases.
-iex> rate = Framerate.new!(240, :NonDrop)
+iex> rate = Framerate.new!(240, :non_drop)
 <239.76 NTSC NDF>
 ```
 
@@ -117,7 +127,7 @@ iex> rate = Framerate.new!(240, :NonDrop)
         - [ ] 16mm
     - [X] Premiere Ticks | 15240960000000
 - Operations:
-    - [ ] Comparisons (==, <, <=, >, >=)
+    - [X] Comparisons (==, <, <=, >, >=)
     - [ ] Add
     - [ ] Subtract
     - [ ] Scale (multiply and divide)
