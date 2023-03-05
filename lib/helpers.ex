@@ -1,4 +1,4 @@
-defmodule Private.Rat do
+defmodule Vtc.Private.Rational do
   @moduledoc false
 
   use Ratio, comparison: true

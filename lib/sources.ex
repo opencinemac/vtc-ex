@@ -154,6 +154,10 @@ defmodule Private.Parse do
 
   use Ratio
 
+  alias Vtc.Private.Consts
+  alias Vtc.Private.DropFrame
+  alias Vtc.Private.Rational
+
   @spec from_seconds_core(Ratio.t() | integer, Vtc.Framerate.t()) :: Vtc.Source.seconds_result()
   def from_seconds_core(value, rate) do
     # If our seconds are not cleanly divisible by the length of a single frame, we need
@@ -161,7 +165,7 @@ defmodule Private.Parse do
     seconds =
       case value / rate.playback do
         %Ratio{} ->
-          frames = Private.Rat.round_ratio?(rate.playback * value)
+          frames = Rational.round_ratio?(rate.playback * value)
           seconds = frames / rate.playback
           seconds
 
@@ -270,16 +274,16 @@ defmodule Private.Parse do
           Vtc.Source.frames_result()
   defp tc_sections_to_frames(%Vtc.Timecode.Sections{} = sections, %Vtc.Framerate{} = rate) do
     seconds =
-      sections.minutes * Private.Const.seconds_per_minute() +
-        sections.hours * Private.Const.seconds_per_hour() +
+      sections.minutes * Consts.seconds_per_minute() +
+        sections.hours * Consts.seconds_per_hour() +
         sections.seconds
 
     frames = sections.frames + seconds * Vtc.Framerate.timebase(rate)
 
-    case Private.Drop.parse_adjustment(sections, rate) do
+    case DropFrame.parse_adjustment(sections, rate) do
       {:ok, adjustment} ->
         frames = frames + adjustment
-        frames = Private.Rat.round_ratio?(frames)
+        frames = Rational.round_ratio?(frames)
 
         frames =
           if sections.negative do
@@ -303,7 +307,7 @@ defmodule Private.Parse do
       {:ok, matched} ->
         feet = matched["feet"] |> String.to_integer()
         frames = matched["frames"] |> String.to_integer()
-        frames = feet * Private.Const.frames_per_foot() + frames
+        frames = feet * Consts.frames_per_foot() + frames
 
         frames =
           if matched["negative"] != "" do
@@ -349,7 +353,7 @@ defmodule Private.Parse do
     is_negative = matched["negative"] != ""
 
     seconds =
-      hours * Private.Const.seconds_per_hour() + minutes * Private.Const.seconds_per_minute() +
+      hours * Consts.seconds_per_hour() + minutes * Consts.seconds_per_minute() +
         seconds
 
     if is_negative do
