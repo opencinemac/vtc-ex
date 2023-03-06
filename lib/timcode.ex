@@ -112,7 +112,7 @@ defmodule Vtc.Timecode do
 
   - **rate**: Frame-per-second playback value of the timecode.
   """
-  @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result
+  @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result()
   def with_seconds(seconds, rate) do
     with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
