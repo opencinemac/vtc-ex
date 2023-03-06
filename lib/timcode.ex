@@ -61,7 +61,7 @@ defmodule Vtc.Timecode do
   end
 
   @doc """
-  Returns wheter a is greater than, equal to, or less than b in terms of real-world
+  Returns whether a is greater than, equal to, or less than b in terms of real-world
   seconds.
 
   b May be any value that implements the `Frames` protocol, such as a timecode string,
