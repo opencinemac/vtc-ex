@@ -331,18 +331,18 @@ defmodule Vtc.Timecode do
   - Sound turnover change lists.
   """
   @spec feet_and_frames(t()) :: String.t()
-  def feet_and_frames(%__MODULE__{} = tc) do
-    frames = tc |> frames() |> abs()
+  def feet_and_frames(%__MODULE__{} = timecode) do
+    total_frames = timecode |> frames() |> abs()
 
-    # We need to call these functions from the kernel or we are going to get Ratio's
-    # since we are using Ratio to overload these functions.
-    feet = Kernel.div(frames, Consts.frames_per_foot())
-    frames = Kernel.rem(frames, Consts.frames_per_foot())
+    feet = total_frames |> div(Consts.frames_per_foot()) |> Integer.to_string()
 
-    feet = Integer.to_string(feet)
-    frames = frames |> Integer.to_string() |> String.pad_leading(2, "0")
+    frames =
+      total_frames
+      |> rem(Consts.frames_per_foot())
+      |> Integer.to_string()
+      |> String.pad_leading(2, "0")
 
-    sign = if Ratio.compare(tc.seconds, 0) == :lt, do: "-", else: ""
+    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
 
     "#{sign}#{feet}+#{frames}"
   end
