@@ -8,10 +8,10 @@ defmodule Vtc.Timecode do
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
-  alias Vtc.Utils.Rational
   alias Vtc.Source.Frames
   alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
+  alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
   defstruct [:seconds, :rate]
@@ -19,13 +19,13 @@ defmodule Vtc.Timecode do
   @typedoc """
   `Timecode` type.
 
-  # Fields
+  ## Fields
 
-  - **:seconds**: The real-world seconds elapsed since 01:00:00:00 as a rational value.
+  - **seconds**: The real-world seconds elapsed since 01:00:00:00 as a rational value.
     (Note: The Ratio module automatically will coerce itself to an integer whenever
     possible, so this value may be an integer when exactly a whole-second value).
 
-  - **:rate**: the Framerate of the timecode.
+  - **rate**: the Framerate of the timecode.
   """
   @type t :: %__MODULE__{
           seconds: Rational.t(),
@@ -46,9 +46,13 @@ defmodule Vtc.Timecode do
     ## Fields
 
     - **negative**: Whether the timecode is less than 0.
+
     - **hours**: Hours place value.
+
     - **minutes**: Minutes place value.
+
     - **seconds**: Seconds place value.
+
     - **frames**: Frames place value.
     """
     @type t :: %__MODULE__{
@@ -60,8 +64,155 @@ defmodule Vtc.Timecode do
           }
   end
 
+  defmodule ParseError do
+    @moduledoc """
+    Exception returned when there is an error parsing a Timecode value.
+    """
+    defexception [:reason]
+
+    @typedoc """
+    Type of `Timecode.ParseError`
+
+    ## Fields
+
+    - **reason**: The reason the error occurred must be one of the following:
+
+      - `:unrecognized_format`: Returned when a string value is not a recognized
+        timecode, runtime, etc. format.
+
+      - `:bad_drop_frames`: The field value cannot exist in properly formatted
+         drop-frame timecode.
+    """
+    @type t :: %ParseError{reason: :unrecognized_format | :bad_drop_frames}
+
+    @doc """
+    Returns a message for the error reason.
+    """
+    @spec message(t()) :: String.t()
+    def message(%__MODULE__{reason: :unrecognized_format}),
+      do: "string format not recognized"
+
+    def message(%__MODULE__{reason: :bad_drop_frames}),
+      do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
+  end
+
+  @typedoc """
+  Type returned by `with_seconds/2` and `with_frames/2`.
+  """
+  @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
+
   @doc """
-  Returns whether a is greater than, equal to, or less than b in terms of real-world
+  Returns a new `Timecode` with a Timecode.seconds field value equal to the
+  seconds arg.
+
+  ## Arguments
+
+  - **seconds**: A value which can be represented as a number of seconds. Must implement
+    the `Seconds` protocol.
+
+  - **rate**: Frame-per-second playback value of the timecode.
+  """
+  @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result()
+  def with_seconds(seconds, rate) do
+    with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
+      {:ok, %__MODULE__{seconds: seconds, rate: rate}}
+    end
+  end
+
+  @doc """
+  As `with_seconds/2`, but raises on error.
+  """
+  @spec with_seconds!(Seconds.t(), Framerate.t()) :: t()
+  def with_seconds!(seconds, rate) do
+    seconds
+    |> with_seconds(rate)
+    |> handle_raise_function()
+  end
+
+  @doc """
+  Returns a new `Timecode` with a `frames/1` return value equal to the `frames` arg.
+
+  ## Arguments
+
+  - **frames**: A value which can be represented as a frame number / frame count. Must
+    implement the `Frames` protocol.
+
+  - **rate**: Frame-per-second playback value of the timecode.
+  """
+  @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
+  def with_frames(frames, rate) do
+    with {:ok, frames} <- Frames.frames(frames, rate) do
+      frames
+      |> Ratio.div(rate.playback)
+      |> with_seconds(rate)
+    end
+  end
+
+  @doc """
+  As `Timecode.with_frames/2`, but raises on error.
+  """
+  @spec with_frames!(Frames.t(), Framerate.t()) :: t()
+  def with_frames!(frames, rate) do
+    frames
+    |> with_frames(rate)
+    |> handle_raise_function()
+  end
+
+  @doc """
+  Returns a new `Timecode` with a `premiere_ticks/1` return value equal
+  to the ticks arg.
+
+  ## Arguments
+
+  - **ticks**: Any value that can represent the number of ticks for a given timecode.
+    Must implement the `PremiereTicks` protocol.
+
+  - **rate**: Frame-per-second playback value of the timecode.
+  """
+  @spec with_premiere_ticks(PremiereTicks.t(), Framerate.t()) :: parse_result()
+  def with_premiere_ticks(ticks, rate) do
+    with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
+      seconds = ticks / Consts.ppro_tick_per_second()
+      with_seconds(seconds, rate)
+    end
+  end
+
+  @doc """
+  As `with_premiere_ticks/2`, but raises on error.
+  """
+  @spec with_premiere_ticks!(Frames.t(), Framerate.t()) :: t()
+  def with_premiere_ticks!(ticks, rate) do
+    ticks
+    |> with_premiere_ticks(rate)
+    |> handle_raise_function()
+  end
+
+  @doc """
+  Rebases the timecode to a new framerate.
+
+  The real-world seconds are recalculated using the same frame count as if they were
+  being played back at `new_rate` instead of `timecode.rate`.
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> {:ok, rebased} = Timecode.rebase(timecode, Rates.f47_95())
+  iex> Timecode.to_string(rebased)
+  "<00:30:00:00 @ <47.95 NTSC NDF>>"
+  ```
+  """
+  @spec rebase(t(), Framerate.t()) :: parse_result()
+  def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
+
+  @doc """
+  As `rebase/2`, but raises on error.
+  """
+  @spec rebase!(t(), Framerate.t()) :: t()
+  def rebase!(timecode, new_rate), do: timecode |> frames() |> with_frames!(new_rate)
+
+  @doc """
+  Returns whether `a` is greater than, equal to, or less than `b` in terms of real-world
   seconds.
 
   b May be any value that implements the `Frames` protocol, such as a timecode string,
@@ -74,16 +225,16 @@ defmodule Vtc.Timecode do
   represents more real-world time.
 
   ```elixir
-  a = Timecode.new("01:00:00:00", Rates.f23_98())
-  b = Timecode.new("01:00:00:00", Rates.f24())
-
-  :gt = Timecode.compare(a, b)
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f24())
+  iex> :gt = Timecode.compare(a, b)
   ```
 
   Using a timcode and a bare string:
 
   ```elixir
-  :eq = "01:00:00:00" |> Timecode.new(Rates.f23_98()) |> Timecode.compare("01:00:00:00")
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> :eq = Timecode.compare(timecode, "01:00:00:00")
   ```
   """
   @spec compare(t(), t() | Frames.t()) :: :lt | :eq | :gt
@@ -94,13 +245,13 @@ defmodule Vtc.Timecode do
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 
-  # What it is
+  ## What it is
 
   Frame number / frames count is the number of a frame if the timecode started at
   00:00:00:00 and had been running until the current value. A timecode of '00:00:00:10'
   has a frame number of 10. A timecode of '01:00:00:00' has a frame number of 86400.
 
-  # Where you see it
+  ## Where you see it
 
   - Frame-sequence files: 'my_vfx_shot.0086400.exr'
   - FCP7XML cut lists:
@@ -157,14 +308,14 @@ defmodule Vtc.Timecode do
   Returns the the formatted SMPTE timecode: (ex: 01:00:00:00). Drop frame timecode will
   be rendered with a ';' sperator before the frames field.
 
-  # What it is
+  ## What it is
 
   Timecode is used as a human-readable way to represent the id of a given frame. It is formatted
   to give a rough sense of where to find a frame: {HOURS}:{MINUTES}:{SECONDS}:{FRAME}. For more on
   timecode, see Frame.io's
   [excellent post](https://blog.frame.io/2017/07/17/timecode-and-frame-rates/) on the subject.
 
-  # Where you see it
+  ## Where you see it
 
   Timecode is ubiquitous in video editing, a small sample of places you might see timecode:
 
@@ -205,12 +356,12 @@ defmodule Vtc.Timecode do
   - `precision`: The number of places to round to. Extra trailing 0's will still be
     trimmed.
 
-  # What it is
+  ## What it is
 
   The formatted version of seconds. It looks like timecode, but with a decimal seconds
   value instead of a frame number place.
 
-  # Where you see it
+  ## Where you see it
 
   • Anywhere real-world time is used.
 
@@ -220,7 +371,7 @@ defmodule Vtc.Timecode do
     ffmpeg -ss 00:00:30.5 -i input.mov -t 00:00:10.25 output.mp4
     ```
 
-  # Note
+  ## Note
 
   The true runtime will often diverge from the hours, minutes, and seconds
   value of the timecode representation when dealing with non-whole-frame
@@ -279,13 +430,13 @@ defmodule Vtc.Timecode do
   @doc """
   Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
 
-  # What it is
+  ## What it is
 
   Internally, Adobe Premiere Pro uses ticks to divide up a second, and keep track of how
   far into that second we are. There are 254016000000 ticks in a second, regardless of
   framerate in Premiere.
 
-  # Where you see it
+  ## Where you see it
 
   - Premiere Pro Panel functions and scripts.
 
@@ -310,14 +461,14 @@ defmodule Vtc.Timecode do
   Returns the number of feet and frames this timecode represents if it were shot on 35mm
   4-perf film (16 frames per foot). ex: '5400+13'.
 
-  # What it is
+  ## What it is
 
   On physical film, each foot contains a certain number of frames. For 35mm, 4-perf film
   (the most common type on Hollywood movies), this number is 16 frames per foot.
   Feet-And-Frames was often used in place of Keycode to quickly reference a frame in the
   edit.
 
-  # Where you see it
+  ## Where you see it
 
   For the most part, feet + frames has died out as a reference, because digital media is
   not measured in feet. The most common place it is still used is Studio Sound
@@ -347,130 +498,6 @@ defmodule Vtc.Timecode do
     "#{sign}#{feet}+#{frames}"
   end
 
-  defmodule ParseError do
-    @moduledoc """
-    Exception returned when there is an error parsing a Timecode value.
-    """
-    defexception [:reason]
-
-    @typedoc """
-    Type of `Timecode.ParseError`
-
-    # Fields
-
-    - `:reason`: The reason the error occurred must be one of the following:
-
-      - `:unrecognized_format`: Returned when a string value is not a recognized
-        timecode, runtime, etc. format.
-    """
-    @type t :: %ParseError{reason: :unrecognized_format | :bad_drop_frames}
-
-    @doc """
-    Returns a message for the error reason.
-    """
-    @spec message(t()) :: String.t()
-    def message(%__MODULE__{reason: :unrecognized_format}),
-      do: "string format not recognized"
-
-    def message(%__MODULE__{reason: :bad_drop_frames}),
-      do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
-  end
-
-  @typedoc """
-  Type returned by `Timecode.with_seconds/2` and `Timecode.with_frames/2`.
-  """
-  @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
-
-  @doc """
-  Returns a new `Timecode` with a Timecode.seconds field value equal to the
-  seconds arg.
-
-  Timecode::with_frames takes many different formats (more than just numeric types) that
-  represent the frame count of the timecode.
-
-  # Arguments
-
-  - `seconds` - A value which can be represented as a number of seconds.
-  - `rate` - The Framerate at which the frames are being played back.
-  """
-  @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result
-  def with_seconds(seconds, rate) do
-    with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
-      {:ok, %__MODULE__{seconds: seconds, rate: rate}}
-    end
-  end
-
-  @doc """
-  As `Timecode.with_seconds/2`, but raises on error.
-  """
-  @spec with_seconds!(Seconds.t(), Framerate.t()) :: t()
-  def with_seconds!(seconds, rate) do
-    seconds
-    |> with_seconds(rate)
-    |> handle_raise_function()
-  end
-
-  @doc """
-  Returns a new `Timecode` with a `Timecode.frames/1` return value equal to the
-  frames arg.
-
-  with_frames takes many different formats (more than just numeric types) that
-  represent the frame count of the timecode.
-
-  # Arguments
-
-  - `frames` - A value which can be represented as a frame number / frame count.
-  - `rate` - The Framerate at which the frames are being played back.
-  """
-  @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
-  def with_frames(frames, rate) do
-    with {:ok, frames} <- Frames.frames(frames, rate) do
-      frames
-      |> Ratio.div(rate.playback)
-      |> with_seconds(rate)
-    end
-  end
-
-  @doc """
-  As `Timecode.with_frames/2`, but raises on error.
-  """
-  @spec with_frames!(Frames.t(), Framerate.t()) :: t()
-  def with_frames!(frames, rate) do
-    frames
-    |> with_frames(rate)
-    |> handle_raise_function()
-  end
-
-  @doc """
-  Returns a new `Timecode` with a `Timecode.premiere_ticks/1` return value equal
-  to the ticks arg.
-
-  with_premiere_ticks takes many different formats (more than just numeric types) that
-  can represent the tick count of the timecode.
-
-  # Arguments
-
-  - `frames` - A value which can be represented as a frame number / frame count.
-  - `rate` - The Framerate at which the frames are being played back.
-  """
-  @spec with_premiere_ticks(PremiereTicks.t(), Framerate.t()) :: parse_result()
-  def with_premiere_ticks(ticks, rate) do
-    with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
-      seconds = ticks / Consts.ppro_tick_per_second()
-      with_seconds(seconds, rate)
-    end
-  end
-
-  @doc """
-  As `Timecode.with_premiere_ticks/2`, but raises on error.
-  """
-  @spec with_premiere_ticks!(Frames.t(), Framerate.t()) :: t()
-  def with_premiere_ticks!(ticks, rate) do
-    ticks
-    |> with_premiere_ticks(rate)
-    |> handle_raise_function()
-  end
-
   @spec to_string(t()) :: String.t()
   def to_string(tc) do
     tc_str = timecode(tc)
@@ -490,6 +517,8 @@ defimpl Inspect, for: Vtc.Timecode do
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(tc, _opts), do: Timecode.to_string(tc)
 end
+
+# opportunities
 
 defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
