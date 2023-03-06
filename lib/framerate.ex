@@ -12,7 +12,7 @@ defmodule Vtc.Framerate do
   @typedoc """
   Enum of `Ntsc` types.
 
-  # Values
+  ## Values
 
   - `nil`: Not an NTSC value
   - `:non_drop` A non-drop NTSC value.
@@ -27,12 +27,12 @@ defmodule Vtc.Framerate do
   @typedoc """
   Type of `Framerate`
 
-  # Fields
+  ## Fields
 
-  - `:playback`: The rational representation of the real-world playback speed as a
+  - **playback**: The rational representation of the real-world playback speed as a
     fraction in frames-per-second.
 
-  - `:ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
+  - **ntsc**: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   @type t :: %__MODULE__{playback: Rational.t(), ntsc: ntsc()}
 
@@ -53,9 +53,9 @@ defmodule Vtc.Framerate do
     @typedoc """
     Type of `ParseError`
 
-    # Fields
+    ## Fields
 
-    - `:reason`: The reason the error occurred must be one of the following:
+    - **reason**: The reason the error occurred must be one of the following:
 
       - `:bad_drop_rate`: Returned when the playback speed of a framerate with an ntsc
         value of :drop is not divisible by 3000/1001 (29.97), for more on why drop-frame
@@ -93,16 +93,14 @@ defmodule Vtc.Framerate do
   end
 
   @typedoc """
-  Type returned by `Framerate.new/2`
-
-  `Framerate.new!/2` raises the error value instead.
+  Type returned by `new/2`
   """
   @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
 
   @doc """
   Creates a new Framerate with a playback speed or timebase.
 
-  # Arguments
+  ## Arguments
 
   - **rate**: Either the playback rate or timebase. For NTSC framerates, the value will
     be rounded to the nearest correct value.
@@ -151,7 +149,7 @@ defmodule Vtc.Framerate do
   end
 
   @doc """
-  As `Framerate.new/2` but raises an error instead.
+  As `new/2` but raises an error instead.
   """
   @spec new!(Rational.t() | float() | String.t(), ntsc(), boolean()) :: t()
   def new!(rate, ntsc, coerce_seconds_per_frame? \\ true) do
@@ -221,9 +219,8 @@ defmodule Vtc.Framerate do
   end
 
   @doc """
-  Returns true if the value represents and NTSC framerate.
-
-  So will return true on `:non_drop` and `:drop`.
+  Returns true if the value represents and NTSC framerate, therefore will return true
+  on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
   """
   @spec ntsc?(t()) :: boolean()
   def ntsc?(%__MODULE__{ntsc: nil}), do: false

@@ -1,6 +1,8 @@
 defmodule Vtc.TimecodeTest.TcParseCase do
-  alias Vtc.Sources.Seconds
+  @moduledoc false
+
   alias Vtc.Sources.Frames
+  alias Vtc.Sources.Seconds
 
   defstruct [
     :name,
@@ -30,6 +32,8 @@ defmodule Vtc.TimecodeTest.TcParseCase do
 end
 
 defmodule Vtc.TimecodeTest.ParseHelpers do
+  @moduledoc false
+
   alias Vtc.Timecode
   alias Vtc.TimecodeTest.TcParseCase
 
@@ -53,40 +57,30 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
   def make_negative_input(input), do: Ratio.negate(input)
 end
 
-defmodule Vtc.TimecodeTest.MalformedCase do
+defmodule Vtc.TimecodeTest do
   @moduledoc false
 
-  # Holds information for testing malformed timecode strings.
-
-  defstruct [
-    :val_in,
-    :expected
-  ]
-
-  @type t :: %__MODULE__{val_in: String.t(), expected: String.t()}
-end
-
-defmodule Vtc.TimecodeTest do
   use ExUnit.Case
   use ExUnitProperties
 
-  alias Vtc.Rates
   alias Vtc.Framerate
+  alias Vtc.Rates
   alias Vtc.Timecode
 
   alias Vtc.TimecodeTest.ParseHelpers
   alias Vtc.TimecodeTest.TcParseCase
-  alias Vtc.TimecodeTest.MalformedCase
+
+  doctest Vtc.Timecode
 
   @parse_cases [
     # 23.98 NTSC #########################
     ######################################
     %TcParseCase{
       name: "01:00:00:00 @ 23.98 NTSC",
-      rate: Framerate.new!(23.98, :non_drop),
+      rate: Rates.f23_98(),
       seconds_inputs: [
         Ratio.new(18_018, 5),
-        3_603.6,
+        3603.6,
         "01:00:03.6"
       ],
       frames_inputs: [
@@ -103,10 +97,10 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:40:00:00 @ 23.98 NTSC",
-      rate: Framerate.new!(23.98, :non_drop),
+      rate: Rates.f23_98(),
       seconds_inputs: [
         Ratio.new(12_012, 5),
-        2_402.4,
+        2402.4,
         "00:40:02.4"
       ],
       frames_inputs: [
@@ -121,11 +115,32 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 610_248_038_400_000,
       feet_and_frames: "3600+00"
     },
+    # 24 True ############################
+    ######################################
+    %TcParseCase{
+      name: "01:00:00:00 @ 24",
+      rate: Rates.f24(),
+      seconds_inputs: [
+        3600,
+        "01:00:00.0"
+      ],
+      frames_inputs: [
+        86_400,
+        "01:00:00:00",
+        "5400+00"
+      ],
+      seconds: Ratio.new(3600, 1),
+      frames: 86_400,
+      timecode: "01:00:00:00",
+      runtime: "01:00:00.0",
+      premiere_ticks: 914_457_600_000_000,
+      feet_and_frames: "5400+00"
+    },
     # 29.97 Drop #########################
     ######################################
     %TcParseCase{
       name: "00:00:00;00 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         0,
         0.0,
@@ -145,7 +160,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:00:02;02 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(31_031, 15_000),
         2.068733333333333333333333333,
@@ -165,7 +180,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:01:00;02 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
@@ -185,7 +200,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:2:00;02 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(1_800_799, 15_000),
         120.0532666666666666666666667,
@@ -205,7 +220,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:10:00;00 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(2_999_997, 5000),
         599.9994,
@@ -225,7 +240,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:11:00;02 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(3_300_297, 5000),
         660.0594,
@@ -245,7 +260,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "01:00:00;00 29.97 Drop-Frame",
-      rate: Framerate.new!(29.97, :drop),
+      rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(8_999_991, 2500),
         3599.9964,
@@ -267,7 +282,7 @@ defmodule Vtc.TimecodeTest do
     ######################################
     %TcParseCase{
       name: "00:00:00;00 59.94 Drop-Frame",
-      rate: Framerate.new!(59.94, :drop),
+      rate: Rates.f59_94_df(),
       seconds_inputs: [
         Ratio.new(0, 1),
         0.0,
@@ -287,7 +302,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:00:01;01 59.94 Drop-Frame",
-      rate: Framerate.new!(59.94, :drop),
+      rate: Rates.f59_94_df(),
       seconds_inputs: [
         Ratio.new(61_061, 60_000),
         1.017683333333333333333333333,
@@ -307,7 +322,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:00:01;03 59.94 Drop-Frame",
-      rate: Framerate.new!(59.94, :drop),
+      rate: Rates.f59_94_df(),
       seconds_inputs: [
         Ratio.new(21_021, 20_000),
         1.05105,
@@ -327,7 +342,7 @@ defmodule Vtc.TimecodeTest do
     },
     %TcParseCase{
       name: "00:01:00;04 59.94 Drop-Frame",
-      rate: Framerate.new!(59.94, :drop),
+      rate: Rates.f59_94_df(),
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
@@ -356,7 +371,7 @@ defmodule Vtc.TimecodeTest do
         @input_case input_case
         @negative_input ParseHelpers.make_negative_input(@input_case)
 
-        test "#{@test_case.name} | #{@input_case} | | #{@test_case.rate}" do
+        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
           @input_case
           |> Timecode.with_seconds(@test_case.rate)
           |> check_parsed(@test_case)
@@ -410,21 +425,25 @@ defmodule Vtc.TimecodeTest do
   end
 
   describe "#with_frames/2" do
-    for test_case <- @parse_cases do
+    @describetag with_frames: true
+
+    for {test_case, case_index} <- Enum.with_index(@parse_cases) do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
 
-      for input_case <- @test_case.frames_inputs do
+      for {input_case, input_index} <- Enum.with_index(@test_case.frames_inputs) do
         @input_case input_case
         @negative_input ParseHelpers.make_negative_input(input_case)
 
-        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+        @tag case: :"with_frames_#{case_index}_#{input_index}"
+        test "#{@test_case.name} | #{case_index}:#{input_index} | #{@input_case} | #{@test_case.rate}" do
           @input_case
           |> Timecode.with_frames(@test_case.rate)
           |> check_parsed(@test_case)
         end
 
-        test "#{@test_case.name}! | #{@input_case} | #{@test_case.rate} | negative" do
+        @tag case: :"with_frames_#{case_index}_#{input_index}_negative"
+        test "#{@test_case.name}! | #{case_index}:#{input_index} | #{@input_case} | #{@test_case.rate} | negative" do
           @negative_input
           |> Timecode.with_frames(@test_case_negative.rate)
           |> check_parsed(@test_case_negative)
@@ -645,39 +664,39 @@ defmodule Vtc.TimecodeTest do
 
   describe "#with_frames/2 - malformed tc" do
     @malformed_cases [
-      %MalformedCase{
+      %{
         val_in: "00:59:59:24",
         expected: "01:00:00:00"
       },
-      %MalformedCase{
+      %{
         val_in: "00:59:59:28",
         expected: "01:00:00:04"
       },
-      %MalformedCase{
+      %{
         val_in: "00:00:62:04",
         expected: "00:01:02:04"
       },
-      %MalformedCase{
+      %{
         val_in: "00:62:01:04",
         expected: "01:02:01:04"
       },
-      %MalformedCase{
+      %{
         val_in: "00:62:62:04",
         expected: "01:03:02:04"
       },
-      %MalformedCase{
+      %{
         val_in: "123:00:00:00",
         expected: "123:00:00:00"
       },
-      %MalformedCase{
+      %{
         val_in: "01:00:00:48",
         expected: "01:00:02:00"
       },
-      %MalformedCase{
+      %{
         val_in: "01:00:120:00",
         expected: "01:02:00:00"
       },
-      %MalformedCase{
+      %{
         val_in: "01:120:00:00",
         expected: "03:00:00:00"
       }
@@ -695,31 +714,31 @@ defmodule Vtc.TimecodeTest do
 
   describe "#with_frames/2 - partial tc" do
     @partial_tc_cases [
-      %MalformedCase{
+      %{
         val_in: "1:02:03:04",
         expected: "01:02:03:04"
       },
-      %MalformedCase{
+      %{
         val_in: "02:03:04",
         expected: "00:02:03:04"
       },
-      %MalformedCase{
+      %{
         val_in: "2:03:04",
         expected: "00:02:03:04"
       },
-      %MalformedCase{
+      %{
         val_in: "03:04",
         expected: "00:00:03:04"
       },
-      %MalformedCase{
+      %{
         val_in: "3:04",
         expected: "00:00:03:04"
       },
-      %MalformedCase{
+      %{
         val_in: "04",
         expected: "00:00:00:04"
       },
-      %MalformedCase{
+      %{
         val_in: "4",
         expected: "00:00:00:04"
       }
@@ -737,27 +756,27 @@ defmodule Vtc.TimecodeTest do
 
   describe "#with_seconds/2 - partial runtime" do
     @partial_runtime_cases [
-      %MalformedCase{
+      %{
         val_in: "1:02:03.5",
         expected: "01:02:03.5"
       },
-      %MalformedCase{
+      %{
         val_in: "02:03.5",
         expected: "00:02:03.5"
       },
-      %MalformedCase{
+      %{
         val_in: "2:03.5",
         expected: "00:02:03.5"
       },
-      %MalformedCase{
+      %{
         val_in: "03.5",
         expected: "00:00:03.5"
       },
-      %MalformedCase{
+      %{
         val_in: "3.5",
         expected: "00:00:03.5"
       },
-      %MalformedCase{
+      %{
         val_in: "0.5",
         expected: "00:00:00.5"
       }
@@ -835,18 +854,18 @@ defmodule Vtc.TimecodeTest do
     for test_case <- @test_cases do
       @test_case test_case
 
-      test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]}" do
+      test "#{@test_case.a} is #{@test_case.expected} #{@test_case.b}" do
         %{a: a, b: b, expected: expected} = @test_case
         assert Timecode.compare(a, b) == expected
       end
 
-      if @test_case[:a].rate == @test_case[:b].rate do
-        test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]} | b = tc string" do
+      if @test_case.a.rate == @test_case.b.rate do
+        test "#{@test_case.a} is #{@test_case.expected} #{@test_case.b} | b = tc string" do
           %{a: a, b: b, expected: expected} = @test_case
           assert Timecode.compare(a, Timecode.timecode(b)) == expected
         end
 
-        test "#{@test_case[:a]} is #{@test_case[:expected]} #{@test_case[:b]} | b = frames int" do
+        test "#{@test_case.a} is #{@test_case.expected} #{@test_case.b} | b = frames int" do
           %{a: a, b: b, expected: expected} = @test_case
           assert Timecode.compare(a, Timecode.frames(b)) == expected
         end
@@ -875,6 +894,101 @@ defmodule Vtc.TimecodeTest do
 
         assert Timecode.compare(a, b) == expected
       end
+    end
+  end
+
+  @rebase_cases [
+    %{
+      original: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+      new_rate: Rates.f47_95(),
+      expected: Timecode.with_frames!("00:30:00:00", Rates.f47_95())
+    },
+    %{
+      original: Timecode.with_frames!("01:00:00:00", Rates.f47_95()),
+      new_rate: Rates.f23_98(),
+      expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    },
+    %{
+      original: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+      new_rate: Rates.f24(),
+      expected: Timecode.with_frames!("01:00:00:00", Rates.f24())
+    },
+    %{
+      original: Timecode.with_frames!("01:00:00;00", Rates.f29_97_df()),
+      new_rate: Rates.f29_97_ndf(),
+      expected: Timecode.with_frames!("00:59:56;12", Rates.f29_97_ndf())
+    },
+    %{
+      original: Timecode.with_frames!("01:00:00;00", Rates.f59_94_df()),
+      new_rate: Rates.f59_94_ndf(),
+      expected: Timecode.with_frames!("00:59:56;24", Rates.f59_94_ndf())
+    }
+  ]
+
+  describe "rebase/2" do
+    for rebase_case <- @rebase_cases do
+      @rebase_case rebase_case
+
+      test "#{@rebase_case.original} -> #{@rebase_case.new_rate}" do
+        %{original: original, new_rate: new_rate, expected: expected} = @rebase_case
+        assert {:ok, rebased} = Timecode.rebase(original, new_rate)
+        assert rebased == expected
+
+        assert {:ok, round_tripped} = Timecode.rebase(rebased, original.rate)
+        assert round_tripped == original
+      end
+    end
+
+    property "round trip rebases do not lose accuracy" do
+      run_rebase_property_test(fn timecode, new_rate ->
+        assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
+        rebased
+      end)
+    end
+  end
+
+  describe "rebase!/2" do
+    for rebase_case <- @rebase_cases do
+      @rebase_case rebase_case
+
+      test "#{@rebase_case.original} -> #{@rebase_case.new_rate}" do
+        %{original: original, new_rate: new_rate, expected: expected} = @rebase_case
+        assert %Timecode{} = rebased = Timecode.rebase!(original, new_rate)
+        assert rebased == expected
+
+        assert %Timecode{} = round_tripped = Timecode.rebase!(rebased, original.rate)
+        assert round_tripped == original
+      end
+    end
+
+    property "round trip rebases do not lose accuracy" do
+      run_rebase_property_test(fn timecode, new_rate ->
+        Timecode.rebase!(timecode, new_rate)
+      end)
+    end
+  end
+
+  @spec run_rebase_property_test((Timecode.t(), Framerate.t() -> Timecode.t())) :: term()
+  defp run_rebase_property_test(do_reabase) do
+    check all(
+            frames <- StreamData.integer(),
+            original_rate_x <- StreamData.integer(1..240),
+            original_ntsc <- StreamData.boolean(),
+            target_rate_x <- StreamData.integer(1..240),
+            target_ntsc <- StreamData.boolean(),
+            max_runs: 20
+          ) do
+      original_ntsc = if original_ntsc, do: :non_drop, else: nil
+      origina_rate = Framerate.new!(original_rate_x, original_ntsc, false)
+
+      target_ntsc = if target_ntsc, do: :non_drop, else: nil
+      target_rate = Framerate.new!(target_rate_x, target_ntsc, false)
+
+      original = Timecode.with_frames!(frames, origina_rate)
+
+      rebased = do_reabase.(original, target_rate)
+      round_trip = do_reabase.(rebased, origina_rate)
+      assert round_trip == original
     end
   end
 end

@@ -1,8 +1,8 @@
 defmodule Vtc.Private.DropFrame do
   @moduledoc false
   alias Vtc.Framerate
-  alias Vtc.Utils.Rational
   alias Vtc.Timecode
+  alias Vtc.Utils.Rational
 
   # Adjusts the frame number based on drop-frame TC conventions.
   #

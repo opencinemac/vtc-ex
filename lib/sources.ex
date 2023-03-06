@@ -5,18 +5,10 @@ defmodule Vtc.Source do
   alias Vtc.Timecode
   alias Vtc.Utils.Rational
 
-  @typedoc """
-  Result type of `Source.Seconds.seconds/2`.
-  """
-  @type seconds_result() :: {:ok, Rational.t()} | {:error, Timecode.ParseError.t()}
-
   defprotocol Seconds do
-    alias Vtc.Framerate
-    alias Vtc.Source
-
     @moduledoc """
     Protocol which types can implement to be passed as the main value of
-    `with_seconds/2`.
+    `Timecode.with_seconds/2`.
 
     ## Implementations
 
@@ -25,15 +17,24 @@ defmodule Vtc.Source do
     - `Ratio`
     - `Integer`
     - `Float`
-    - `String` & 'BitString'
+    - `String`
       - runtime ("01:00:00.0")
       - decimal ("3600.0")
     """
 
+    alias Vtc.Framerate
+    alias Vtc.Source
+    alias Vtc.Timecode
+
+    @typedoc """
+    Result type of `Source.Seconds.seconds/2`.
+    """
+    @type result() :: {:ok, Rational.t()} | {:error, Timecode.ParseError.t()}
+
     @doc """
     Returns the value as a rational seconds value.
 
-    # Arguments
+    ## Arguments
 
     - **value**: The source value.
 
@@ -44,7 +45,7 @@ defmodule Vtc.Source do
     A result tuple with a rational representation of the seconds value using `Ratio` on
     success.
     """
-    @spec seconds(t(), Framerate.t()) :: Source.seconds_result()
+    @spec seconds(t(), Framerate.t()) :: result()
     def seconds(value, rate)
   end
 
@@ -54,7 +55,7 @@ defmodule Vtc.Source do
     alias Vtc.Source
     alias Vtc.Utils.Rational
 
-    @spec seconds(Rational.t(), Framerate.t()) :: Source.seconds_result()
+    @spec seconds(Rational.t(), Framerate.t()) :: Seconds.result()
     def seconds(value, rate), do: Parse.from_seconds_core(value, rate)
   end
 
@@ -62,7 +63,7 @@ defmodule Vtc.Source do
     alias Vtc.Framerate
     alias Vtc.Source
 
-    @spec seconds(float(), Framerate.t()) :: Source.seconds_result()
+    @spec seconds(float(), Framerate.t()) :: Seconds.result()
     def seconds(value, rate), do: value |> Ratio.new(1) |> Seconds.seconds(rate)
   end
 
@@ -71,21 +72,16 @@ defmodule Vtc.Source do
     alias Vtc.Private.Parse
     alias Vtc.Source
 
-    @spec seconds(String.t(), Framerate.t()) :: Source.seconds_result()
+    @spec seconds(String.t(), Framerate.t()) :: Seconds.result()
     def seconds(value, rate), do: Parse.parse_runtime_string(value, rate)
   end
-
-  @typedoc """
-  Result type of `Vtc.Source.Frames.frames/2`.
-  """
-  @type frames_result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
 
   defprotocol Frames do
     @moduledoc """
     Protocol which types can implement to be passed as the main value of
-    `Vtc.Timecode.with_frames/2`.
+    `Timecode.with_frames/2`.
 
-    # Implementations
+    ## Implementations
 
     Out of the box, this protocol is implemented for the following types:
 
@@ -95,6 +91,15 @@ defmodule Vtc.Source do
       - integer ("86400")
       - Feet+Frames ("5400+00")
     """
+
+    alias Vtc.Framerate
+    alias Vtc.Source
+    alias Vtc.Timecode
+
+    @typedoc """
+    Result type of `Vtc.Source.Frames.frames/2 aaa`.
+    """
+    @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
 
     @doc """
     Returns the value as a frame count.
@@ -110,34 +115,26 @@ defmodule Vtc.Source do
     A result tuple with an integer value representing the frame count on success.
     """
 
-    alias Vtc.Framerate
-    alias Vtc.Source
-
-    @spec frames(t(), Framerate.t()) :: Source.frames_result()
+    @spec frames(t(), Framerate.t()) :: result()
     def frames(value, rate)
   end
 
   defimpl Frames, for: Integer do
     alias Vtc.Framerate
-    alias Vtc.Source
+    alias Vtc.Source.Frames
 
-    @spec frames(integer(), Framerate.t()) :: Source.frames_result()
+    @spec frames(integer(), Framerate.t()) :: Frames.result()
     def frames(value, _rate), do: {:ok, value}
   end
 
   defimpl Frames, for: [String, BitString] do
     alias Vtc.Framerate
     alias Vtc.Private.Parse
-    alias Vtc.Source
+    alias Vtc.Source.Frames
 
-    @spec frames(String.t(), Framerate.t()) :: Source.frames_result()
+    @spec frames(String.t(), Framerate.t()) :: Frames.result()
     def frames(value, rate), do: Parse.parse_frames_string(value, rate)
   end
-
-  @typedoc """
-  Result type of `Vtc.Source.PremiereTicks.ticks/2`.
-  """
-  @type ticks_result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
 
   defprotocol PremiereTicks do
     @moduledoc """
@@ -168,8 +165,14 @@ defmodule Vtc.Source do
 
     alias Vtc.Framerate
     alias Vtc.Source
+    alias Vtc.Timecode
 
-    @spec ticks(t(), Framerate.t()) :: Source.ticks_result()
+    @typedoc """
+    Result type of `ticks/2`.
+    """
+    @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
+
+    @spec ticks(t(), Framerate.t()) :: result()
     def ticks(value, rate)
   end
 
@@ -177,7 +180,7 @@ defmodule Vtc.Source do
     alias Vtc.Framerate
     alias Vtc.Source
 
-    @spec ticks(integer(), Framerate.t()) :: Source.ticks_result()
+    @spec ticks(integer(), Framerate.t()) :: PremiereTicks.result()
     def ticks(value, _rate), do: {:ok, value}
   end
 end
@@ -190,24 +193,27 @@ defmodule Vtc.Private.Parse do
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
-  alias Vtc.Utils.Rational
   alias Vtc.Source
   alias Vtc.Source.Frames
+  alias Vtc.Source.Seconds
   alias Vtc.Timecode
+  alias Vtc.Utils.Rational
 
-  @spec from_seconds_core(Rational.t(), Framerate.t()) :: Source.seconds_result()
-  def from_seconds_core(value, rate) do
-    case Ratio.div(value, rate.playback) do
+  @spec from_seconds_core(Rational.t(), Framerate.t()) :: Seconds.result()
+  def from_seconds_core(input, rate) do
+    # If the vaue doesn't cleany divide into the framerate then we need to round to the
+    # nearest frame.
+    case Ratio.div(input, rate.playback) do
       %Ratio{} ->
-        frames = rate.playback |> Ratio.mult(value) |> Rational.round()
+        frames = rate.playback |> Ratio.mult(input) |> Rational.round()
         {:ok, Ratio.div(frames, rate.playback)}
 
-      integer_value ->
-        {:ok, integer_value}
+      _ ->
+        {:ok, input}
     end
   end
 
-  @spec parse_frames_string(String.t(), Framerate.t()) :: Source.frames_result()
+  @spec parse_frames_string(String.t(), Framerate.t()) :: Frames.result()
   def parse_frames_string(value, rate) do
     case parse_tc_string(value, rate) do
       {:ok, _} = result -> result
@@ -218,7 +224,7 @@ defmodule Vtc.Private.Parse do
 
   @tc_regex ~r/^(?P<negative>-)?((?P<section_1>[0-9]+)[:|;])?((?P<section_2>[0-9]+)[:|;])?((?P<section_3>[0-9]+)[:|;])?(?P<frames>[0-9]+)$/
 
-  @spec parse_tc_string(String.t(), Framerate.t()) :: Source.frames_result()
+  @spec parse_tc_string(String.t(), Framerate.t()) :: Frames.result()
   def parse_tc_string(value, rate) do
     with {:ok, matched} <- apply_regex(@tc_regex, value) do
       matched
@@ -285,7 +291,7 @@ defmodule Vtc.Private.Parse do
   defp pop_time_section([]), do: {0, []}
 
   # Converts all TC fields to a total frame count
-  @spec tc_sections_to_frames(Timecode.Sections.t(), Framerate.t()) :: Source.frames_result()
+  @spec tc_sections_to_frames(Timecode.Sections.t(), Framerate.t()) :: Frames.result()
   defp tc_sections_to_frames(sections, rate) do
     with {:ok, adjustment} <- DropFrame.parse_adjustment(sections, rate) do
       frames_per_second = Framerate.timebase(rate)
@@ -304,7 +310,7 @@ defmodule Vtc.Private.Parse do
 
   @ff_regex ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
 
-  @spec parse_feet_and_frames(String.t(), Framerate.t()) :: Source.frames_result()
+  @spec parse_feet_and_frames(String.t(), Framerate.t()) :: Frames.result()
   defp parse_feet_and_frames(value, rate) do
     with {:ok, groups} <- apply_regex(@ff_regex, value) do
       negative? = Map.fetch!(groups, "negative") == "-"
@@ -321,7 +327,7 @@ defmodule Vtc.Private.Parse do
 
   @runtime_regex ~r/^(?P<negative>-)?((?P<section_1>[0-9]+)[:|;])?((?P<section_2>[0-9]+)[:|;])?(?P<seconds>[0-9]+(\.[0-9]+)?)$/
 
-  @spec parse_runtime_string(String.t(), Framerate.t()) :: Source.seconds_result()
+  @spec parse_runtime_string(String.t(), Framerate.t()) :: Seconds.result()
   def parse_runtime_string(value, rate) do
     with {:ok, matched} <- apply_regex(@runtime_regex, value) do
       matched
