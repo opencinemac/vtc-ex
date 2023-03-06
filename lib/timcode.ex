@@ -188,13 +188,19 @@ defmodule Vtc.Timecode do
   end
 
   @doc """
-  Rebases the timecode to a new framerate. T
+  Rebases the timecode to a new framerate.
 
-  he real-world seconds are recalculated using the same frame count if they were running
-  at `new_rate`. So a timecode of `01:00:00:00 @ 23.98 NTSC` getting rebased to
-  `47.95 NTSC` would become `00:30:00:00 @ 47.95 NTSC`.
+  The real-world seconds are recalculated using the same frame count as if they were
+  being played back at `new_rate` instead of `timecode.rate`.
 
   ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> {:ok, rebased} = Timecode.rebase(timecode, Rates.f47_95())
+  iex> Timecode.to_string(rebased)
+  "<00:30:00:00 @ <47.95 NTSC NDF>>"
+  ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
@@ -507,6 +513,8 @@ defimpl Inspect, for: Vtc.Timecode do
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(tc, _opts), do: Timecode.to_string(tc)
 end
+
+# opportunities
 
 defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
