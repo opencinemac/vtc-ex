@@ -204,6 +204,10 @@ defmodule Vtc.Timecode do
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
+
+  @doc """
+  As `rebase/2`, but raises on error.
+  """
   @spec rebase!(t(), Framerate.t()) :: t()
   def rebase!(timecode, new_rate), do: timecode |> frames() |> with_frames!(new_rate)
 
