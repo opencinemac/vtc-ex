@@ -30,15 +30,18 @@ defmodule Vtc.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # Dev dependencies
+      # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:decimal, "~> 2.0"},
-      {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
+      {:stream_data, "~> 0.5.0", only: [:test]},
       {:junit_formatter, "~> 3.1", only: [:test]},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
 
-      # Dependencies
+      # Dev dependencies
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.21", only: [:dev, :test], runtime: false},
+
+      # Library Dependencies
+      {:decimal, "~> 2.0"},
       {:ratio, "~> 2.0"}
     ]
   end

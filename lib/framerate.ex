@@ -4,9 +4,6 @@ defmodule Vtc.Framerate do
 
   Framerate is measured in frames-per-second (24/1 = 24 frames-per-second).
   """
-
-  use Ratio
-
   alias Vtc.Utils.Rational
 
   @enforce_keys [:playback, :ntsc]
@@ -156,9 +153,9 @@ defmodule Vtc.Framerate do
   @doc """
   As `Framerate.new/2` but raises an error instead.
   """
-  @spec new!(Rational.t() | float() | String.t(), ntsc()) :: t()
-  def new!(rate, ntsc) do
-    case new(rate, ntsc) do
+  @spec new!(Rational.t() | float() | String.t(), ntsc(), boolean()) :: t()
+  def new!(rate, ntsc, coerce_seconds_per_frame? \\ true) do
+    case new(rate, ntsc, coerce_seconds_per_frame?) do
       {:ok, framerate} -> framerate
       {:error, error} -> raise error
     end
@@ -167,7 +164,7 @@ defmodule Vtc.Framerate do
   # validates that a rate is a proper drop-frame framerate.
   @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
   defp validate_drop(rate, :drop) do
-    case rate / Ratio.new(30_000, 1_001) do
+    case Ratio.div(rate, Ratio.new(30_000, 1_001)) do
       whole_number when is_integer(whole_number) -> :ok
       _ -> {:error, %ParseError{reason: :bad_drop_rate}}
     end
@@ -196,7 +193,9 @@ defmodule Vtc.Framerate do
   @spec coerce_ntsc_rate(Ratio.t(), ntsc()) :: Ratio.t()
   defp coerce_ntsc_rate(rate, nil), do: rate
   defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _), do: rate
-  defp coerce_ntsc_rate(rate, _), do: Rational.round(rate) * Ratio.new(1000, 1001)
+
+  defp coerce_ntsc_rate(rate, _),
+    do: rate |> Rational.round() |> Ratio.mult(Ratio.new(1000, 1001))
 
   # Coerces timebase to framerate by flipping the numberator and denominator.
   @spec coerce_seconds_per_frame(Rational.t(), boolean()) :: Rational.t()

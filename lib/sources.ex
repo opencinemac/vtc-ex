@@ -2,9 +2,6 @@ defmodule Vtc.Source do
   @moduledoc """
   Protocols for source values that can be used to construct a timecode.
   """
-
-  use Ratio
-
   alias Vtc.Timecode
   alias Vtc.Utils.Rational
 
@@ -200,10 +197,10 @@ defmodule Vtc.Private.Parse do
 
   @spec from_seconds_core(Rational.t(), Framerate.t()) :: Source.seconds_result()
   def from_seconds_core(value, rate) do
-    case value / rate.playback do
+    case Ratio.div(value, rate.playback) do
       %Ratio{} ->
-        frames = Rational.round(rate.playback * value)
-        {:ok, frames / rate.playback}
+        frames = rate.playback |> Ratio.mult(value) |> Rational.round()
+        {:ok, Ratio.div(frames, rate.playback)}
 
       integer_value ->
         {:ok, integer_value}

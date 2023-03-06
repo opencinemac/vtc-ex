@@ -1,8 +1,5 @@
 defmodule Vtc.Private.DropFrame do
   @moduledoc false
-
-  use Ratio, override_math: false, operator: false
-
   alias Vtc.Framerate
   alias Vtc.Utils.Rational
   alias Vtc.Timecode
@@ -53,37 +50,38 @@ defmodule Vtc.Private.DropFrame do
     frames_per_minute_whole = Ratio.mult(timebase, 60)
     # Get the number of frames are in a minute where we have dropped frames at the
     # beginning
-    frames_per_minute_with_drop = frames_per_minute_whole - drop_rate
+    frames_per_minute_with_drop = Ratio.sub(frames_per_minute_whole, drop_rate)
 
     # Get the number of actual frames in a 10-minute span for drop frame timecode. Since
     # we drop 9 times a minute, it will be 9 drop-minute frame counts + 1 whole-minute
     # frame count.
-    frames_per_10minutes_drop = frames_per_minute_with_drop * 9 + frames_per_minute_whole
+    frames_per_10_minutes_drop =
+      frames_per_minute_with_drop |> Ratio.mult(9) |> Ratio.add(frames_per_minute_whole)
 
     # Get the number of 10s of minutes in this count, and the remaining frames.
-    {tens_of_minutes, frames} = Rational.divmod(frame_number, frames_per_10minutes_drop)
+    {tens_of_minutes, frames} = Rational.divmod(frame_number, frames_per_10_minutes_drop)
 
     # Create an adjustment for the number of 10s of minutes. It will be 9 times the
     # drop value (we drop for the first 9 minutes, then leave the 10th alone).
-    adjustment = 9 * drop_rate * tens_of_minutes
+    adjustment = 9 |> Ratio.mult(drop_rate) |> Ratio.mult(tens_of_minutes)
 
     # If our remaining frames are less than a whole minute, we aren't going to drop
     # again. Add the adjustment and return.
-    if frames < frames_per_minute_whole do
-      frame_number + adjustment
+    if Ratio.compare(frames, frames_per_minute_whole) == :lt do
+      Ratio.add(frame_number, adjustment)
     else
       # Remove the first full minute (we don't drop until the next minute) and add the
       # drop-rate to the adjustment.
       frames = Ratio.sub(frames, timebase)
-      adjustment = adjustment + drop_rate
+      adjustment = Ratio.add(adjustment, drop_rate)
 
       # Get the number of remaining drop-minutes present, and add a drop adjustment for
       # each.
-      minutes_drop = floor(div(frames, frames_per_minute_with_drop))
-      adjustment = adjustment + minutes_drop * drop_rate
+      minutes_drop = frames |> Ratio.div(frames_per_minute_with_drop) |> Ratio.floor()
+      adjustment = minutes_drop |> Ratio.mult(drop_rate) |> Ratio.add(adjustment)
 
       # Return our original frame number adjusted by our calculated adjustment.
-      frame_number + adjustment
+      Ratio.add(frame_number, adjustment)
     end
   end
 
