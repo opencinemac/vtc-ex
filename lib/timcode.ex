@@ -269,9 +269,9 @@ defmodule Vtc.Timecode do
       ```
   """
   @spec frames(t()) :: integer()
-  def frames(%__MODULE__{} = tc) do
-    tc.seconds
-    |> Ratio.mult(tc.rate.playback)
+  def frames(timecode) do
+    timecode.seconds
+    |> Ratio.mult(timecode.rate.playback)
     |> Rational.round()
   end
 
@@ -279,7 +279,7 @@ defmodule Vtc.Timecode do
   The individual sections of a timecode string as i64 values.
   """
   @spec sections(t()) :: Sections.t()
-  def sections(%__MODULE__{} = timecode) do
+  def sections(timecode) do
     rate = timecode.rate
     timebase = Framerate.timebase(rate)
     frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
@@ -324,11 +324,11 @@ defmodule Vtc.Timecode do
   - Cut lists like an EDL.
   """
   @spec timecode(t()) :: String.t()
-  def timecode(%__MODULE__{} = tc) do
-    sections = sections(tc)
+  def timecode(timecode) do
+    sections = sections(timecode)
 
-    sign = if Ratio.compare(tc.seconds, 0) == :lt, do: "-", else: ""
-    frame_sep = if tc.rate.ntsc == :drop, do: ";", else: ":"
+    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
+    frame_sep = if timecode.rate.ntsc == :drop, do: ";", else: ":"
 
     [
       sections.hours,
@@ -381,11 +381,11 @@ defmodule Vtc.Timecode do
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()
-  def runtime(tc, precision) do
+  def runtime(timecode, precision) do
     {seconds, negative?} =
-      if Ratio.compare(tc.seconds, 0) == :lt,
-        do: {Ratio.negate(tc.seconds), true},
-        else: {tc.seconds, false}
+      if Ratio.compare(timecode.seconds, 0) == :lt,
+        do: {Ratio.negate(timecode.seconds), true},
+        else: {timecode.seconds, false}
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
 
@@ -454,8 +454,8 @@ defmodule Vtc.Timecode do
     ```
   """
   @spec premiere_ticks(t()) :: integer()
-  def premiere_ticks(%__MODULE__{} = tc),
-    do: tc.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round()
+  def premiere_ticks(timecode),
+    do: timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round()
 
   @doc """
   Returns the number of feet and frames this timecode represents if it were shot on 35mm
@@ -499,11 +499,11 @@ defmodule Vtc.Timecode do
   end
 
   @spec to_string(t()) :: String.t()
-  def to_string(tc) do
-    tc_str = timecode(tc)
-    rate_str = String.Chars.to_string(tc.rate)
+  def to_string(timecode) do
+    timecode_str = timecode(timecode)
+    rate_str = String.Chars.to_string(timecode.rate)
 
-    "<#{tc_str} @ #{rate_str}>"
+    "<#{timecode_str} @ #{rate_str}>"
   end
 
   @spec handle_raise_function({:ok, t()} | {:error, Exception.t()}) :: t()
@@ -515,7 +515,7 @@ defimpl Inspect, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(tc, _opts), do: Timecode.to_string(tc)
+  def inspect(timecode, _opts), do: Timecode.to_string(timecode)
 end
 
 # opportunities
@@ -524,5 +524,5 @@ defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec to_string(Timecode.t()) :: String.t()
-  def to_string(term), do: Timecode.to_string(term)
+  def to_string(timecode), do: Timecode.to_string(timecode)
 end
