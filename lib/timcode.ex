@@ -289,13 +289,7 @@ defmodule Vtc.Timecode do
       timecode
       |> frames()
       |> abs()
-
-    total_frames =
-      if rate.ntsc == :drop do
-        total_frames + DropFrame.frame_num_adjustment(total_frames, rate)
-      else
-        total_frames
-      end
+      |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
     {hours, remainder} = Rational.divmod(total_frames, frames_per_hour)
     {minutes, remainder} = Rational.divmod(remainder, frames_per_minute)
