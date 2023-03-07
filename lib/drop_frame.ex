@@ -43,23 +43,26 @@ defmodule Vtc.Private.DropFrame do
   # https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
   @spec frame_num_adjustment(integer(), Framerate.t()) :: integer()
   def frame_num_adjustment(frame_number, %Framerate{ntsc: :drop} = rate) do
-    dropped_per_min = frames_dropped_per_minute(rate)
+    framerate = Ratio.to_float(rate.playback)
 
-    frames_per_10_min_non_drop =
-      rate.playback |> Ratio.mult(60) |> Ratio.mult(10) |> Rational.round()
+    dropped_per_min = round(framerate * 0.066666)
+    frames_per_hour = round(framerate * 60 * 60)
+    frames_per_24_hours = frames_per_hour * 24
+    frames_per_10_min = round(framerate * 60 * 10)
+    frames_per_min = round(framerate) * 60 - dropped_per_min
 
-    frames_per_min_drop = (rate.playback |> Ratio.mult(60) |> Rational.round()) - dropped_per_min
+    frame_number = rem(frame_number, frames_per_24_hours)
 
-    tens_of_mins = div(frame_number, frames_per_10_min_non_drop)
-    remaining_frames = rem(frame_number, frames_per_10_min_non_drop)
+    tens_of_mins = div(frame_number, frames_per_10_min)
+    remaining_mins = rem(frame_number, frames_per_10_min)
 
     tens_of_mins_adjustment = dropped_per_min * 9 * tens_of_mins
 
-    if remaining_frames > dropped_per_min do
-      remaining_frames = remaining_frames - dropped_per_min
-      frames_adjustment = dropped_per_min * div(remaining_frames, frames_per_min_drop)
+    if remaining_mins > dropped_per_min do
+      remaining_minutes_adjustment =
+        dropped_per_min * div(remaining_mins - dropped_per_min, frames_per_min)
 
-      tens_of_mins_adjustment + frames_adjustment
+      tens_of_mins_adjustment + remaining_minutes_adjustment
     else
       tens_of_mins_adjustment
     end
@@ -70,11 +73,7 @@ defmodule Vtc.Private.DropFrame do
   # Get the number of frames that need to be dropped per minute (minus the 10th miute).
   @spec frames_dropped_per_minute(Framerate.t()) :: integer()
   defp frames_dropped_per_minute(rate) do
-    rate
-    |> Framerate.timebase()
-    |> Rational.round()
-    ## 29.97 drops 2/30 frames per second, so that's the base multiplier we use.
-    |> Ratio.mult(Ratio.new(2, 30))
-    |> Rational.round()
+    time_base = rate |> Framerate.timebase() |> Rational.round()
+    round(time_base * 0.066666)
   end
 end
