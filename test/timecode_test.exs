@@ -159,6 +159,25 @@ defmodule Vtc.TimecodeTest do
       feet_and_frames: "0+00"
     },
     %TcParseCase{
+      name: "00:01:01;00 29.97 Drop-Frame",
+      rate: Rates.f29_97_df(),
+      seconds_inputs: [
+        Ratio.new(457_457, 7500),
+        "00:01:00.994266667"
+      ],
+      frames_inputs: [
+        1828,
+        "00:01:01;00",
+        "114+04"
+      ],
+      seconds: Ratio.new(457_457, 7500),
+      frames: 1828,
+      timecode: "00:01:01;00",
+      runtime: "00:01:00.994266667",
+      premiere_ticks: 15_493_519_641_600,
+      feet_and_frames: "114+04"
+    },
+    %TcParseCase{
       name: "00:00:02;02 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -577,7 +596,7 @@ defmodule Vtc.TimecodeTest do
   end
 
   describe "#timecode/1" do
-    for test_case <- @parse_cases do
+    for {test_case, case_index} <- Enum.with_index(@parse_cases) do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
 
@@ -587,11 +606,13 @@ defmodule Vtc.TimecodeTest do
         rate: @test_case_negative.rate
       }
 
-      test "#{@test_case.name}" do
+      @tag case: :"timecode_#{case_index}"
+      test "#{@test_case.name} | #{case_index}" do
         assert Timecode.timecode(@input_struct) == @test_case.timecode
       end
 
-      test "#{@test_case.name} | negative" do
+      @tag case: :"timecode_#{case_index}_negative"
+      test "#{@test_case.name} | #{case_index} | negative" do
         assert Timecode.timecode(@input_struct_negative) == @test_case_negative.timecode
       end
     end
