@@ -66,6 +66,7 @@ defmodule Vtc.TimecodeTest do
   alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Timecode
+  alias Vtc.Utils.Rational
 
   alias Vtc.TimecodeTest.ParseHelpers
   alias Vtc.TimecodeTest.TcParseCase
@@ -1013,59 +1014,117 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  property "drop frame round trip" do
-    check all(
-            rate_multiplier <- StreamData.integer(1..10),
-            timecode_values <- create_drop_frame_timecode_generator(rate_multiplier),
-            rate <- (30 * rate_multiplier) |> Framerate.new!(:drop) |> StreamData.constant(),
-            max_runs: 100
-          ) do
-      %{
-        timecode_string: timecode_string,
-        minutes: minutes,
-        seconds: seconds,
-        frames: frames
-      } = timecode_values
-
-      timecode = Timecode.with_frames!(timecode_string, rate)
-
-      if frames < 2 * rate_multiplier and rem(minutes, 10) != 0 and seconds == 0 do
-        assert_raise Timecode.ParseError, fn -> Timecode.timecode(timecode) end
-      else
-        assert Timecode.timecode(timecode) == timecode_string
-      end
-    end
-  end
-
-  @spec create_drop_frame_timecode_generator(non_neg_integer()) :: map()
-  defp create_drop_frame_timecode_generator(rate_multiplier) do
-    StreamData.map(
-      {
-        StreamData.integer(1..23),
-        StreamData.integer(0..59),
-        StreamData.integer(0..59),
-        StreamData.integer(0..(30 * rate_multiplier - 1)),
-        StreamData.boolean()
-      },
-      fn {hours, minutes, seconds, frames, negative?} ->
-        timecode_string =
-          [hours, minutes, seconds, frames]
-          |> Enum.map(&Integer.to_string/1)
-          |> Enum.map(&String.pad_leading(&1, 2, "0"))
-          |> Enum.intersperse(":")
-          |> List.replace_at(-2, ";")
-          |> List.to_string()
-
-        timecode_string = if negative?, do: "-" <> timecode_string, else: timecode_string
-
+  describe "round trip" do
+    property "timecode | ntsc | drop" do
+      check all(
+              rate_multiplier <- integer(1..10),
+              rate <- (30 * rate_multiplier) |> Framerate.new!(:drop) |> constant(),
+              timecode_values <- timecode_gen(rate),
+              max_runs: 100
+            ) do
         %{
           timecode_string: timecode_string,
-          hours: hours,
           minutes: minutes,
           seconds: seconds,
           frames: frames
-        }
+        } = timecode_values
+
+        if frames < 2 * rate_multiplier and rem(minutes, 10) != 0 and seconds == 0 do
+          assert_raise Timecode.ParseError, fn -> Timecode.with_frames!(timecode_string, rate) end
+        else
+          timecode = Timecode.with_frames!(timecode_string, rate)
+          assert Timecode.timecode(timecode) == timecode_string
+        end
       end
-    )
+    end
+
+    property "timecode" do
+      check all(
+              rate <- frame_rate_gen(),
+              timecode_values <- timecode_gen(rate),
+              max_runs: 100
+            ) do
+        %{timecode_string: timecode_string} = timecode_values
+        timecode = Timecode.with_frames!(timecode_string, rate)
+        assert Timecode.timecode(timecode) == timecode_string
+      end
+    end
+
+    property "frames" do
+      check all(
+              frames <- integer(),
+              rate <- frame_rate_gen(),
+              max_runs: 20
+            ) do
+        timecode = Timecode.with_frames!(frames, rate)
+        assert Timecode.frames(timecode) == frames
+      end
+    end
+
+    property "seconds" do
+      check all(
+              rate <- frame_rate_gen() |> filter(&(&1.ntsc == nil)),
+              seconds <- map(integer(), fn scalar -> Ratio.mult(rate.playback, scalar) end),
+              max_runs: 20
+            ) do
+        timecode = Timecode.with_seconds!(seconds, rate)
+        assert timecode.seconds == seconds
+      end
+    end
+
+    @spec frame_rate_gen() :: StreamData.t(Framerate.t())
+    defp frame_rate_gen do
+      map(
+        {
+          integer() |> filter(&(&1 > 0)),
+          map(boolean(), fn
+            true -> :non_drop
+            false -> nil
+          end)
+        },
+        fn {rate, ntsc} -> Framerate.new!(rate, ntsc) end
+      )
+    end
+
+    @spec timecode_gen(Framerate.t()) :: StreamData.t(map())
+    defp timecode_gen(rate) do
+      map(
+        {
+          integer(1..23),
+          integer(0..59),
+          integer(0..59),
+          integer(0..((Framerate.timebase(rate) |> Rational.round()) - 1)),
+          boolean()
+        },
+        fn {hours, minutes, seconds, frames, _} = values ->
+          %{
+            timecode_string: build_timecode_string(values, rate),
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds,
+            frames: frames
+          }
+        end
+      )
+    end
+
+    @spec build_timecode_string(map(), Framerate.t()) :: String.t()
+    defp build_timecode_string(values, rate) do
+      {hours, minutes, seconds, frames, negative?} = values
+
+      add_frame_sep = fn values ->
+        if rate.ntsc == :drop, do: List.replace_at(values, -2, ";"), else: values
+      end
+
+      timecode_string =
+        [hours, minutes, seconds, frames]
+        |> Enum.map(&Integer.to_string/1)
+        |> Enum.map(&String.pad_leading(&1, 2, "0"))
+        |> Enum.intersperse(":")
+        |> then(add_frame_sep)
+        |> List.to_string()
+
+      if negative?, do: "-" <> timecode_string, else: timecode_string
+    end
   end
 end
