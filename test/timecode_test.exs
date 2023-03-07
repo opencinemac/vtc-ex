@@ -1047,9 +1047,9 @@ defmodule Vtc.TimecodeTest do
         StreamData.integer(0..(30 * rate_multiplier - 1)),
         StreamData.boolean()
       },
-      fn {hours, seconds, minutes, frames, negative?} ->
+      fn {hours, minutes, seconds, frames, negative?} ->
         timecode_string =
-          [hours, seconds, minutes, frames]
+          [hours, minutes, seconds, frames]
           |> Enum.map(&Integer.to_string/1)
           |> Enum.map(&String.pad_leading(&1, 2, "0"))
           |> Enum.intersperse(":")
