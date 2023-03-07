@@ -1012,4 +1012,60 @@ defmodule Vtc.TimecodeTest do
       assert round_trip == original
     end
   end
+
+  property "drop frame round trip" do
+    check all(
+            rate_multiplier <- StreamData.integer(1..10),
+            timecode_values <- create_drop_frame_timecode_generator(rate_multiplier),
+            rate <- (30 * rate_multiplier) |> Framerate.new!(:drop) |> StreamData.constant(),
+            max_runs: 100
+          ) do
+      %{
+        timecode_string: timecode_string,
+        minutes: minutes,
+        seconds: seconds,
+        frames: frames
+      } = timecode_values
+
+      timecode = Timecode.with_frames!(timecode_string, rate)
+
+      if frames < 2 * rate_multiplier and rem(minutes, 10) != 0 and seconds == 0 do
+        assert_raise Timecode.ParseError, fn -> Timecode.timecode(timecode) end
+      else
+        assert Timecode.timecode(timecode) == timecode_string
+      end
+    end
+  end
+
+  @spec create_drop_frame_timecode_generator(non_neg_integer()) :: map()
+  defp create_drop_frame_timecode_generator(rate_multiplier) do
+    StreamData.map(
+      {
+        StreamData.integer(1..23),
+        StreamData.integer(0..59),
+        StreamData.integer(0..59),
+        StreamData.integer(0..(30 * rate_multiplier - 1)),
+        StreamData.boolean()
+      },
+      fn {hours, minutes, seconds, frames, negative?} ->
+        timecode_string =
+          [hours, minutes, seconds, frames]
+          |> Enum.map(&Integer.to_string/1)
+          |> Enum.map(&String.pad_leading(&1, 2, "0"))
+          |> Enum.intersperse(":")
+          |> List.replace_at(-2, ";")
+          |> List.to_string()
+
+        timecode_string = if negative?, do: "-" <> timecode_string, else: timecode_string
+
+        %{
+          timecode_string: timecode_string,
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          frames: frames
+        }
+      end
+    )
+  end
 end
