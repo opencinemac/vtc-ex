@@ -1130,7 +1130,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "round trip" do
+  describe "parse round trip" do
     property "timecode | ntsc | drop" do
       check all(
               rate_multiplier <- integer(1..10),
@@ -1187,60 +1187,81 @@ defmodule Vtc.TimecodeTest do
         assert timecode.seconds == seconds
       end
     end
+  end
 
-    @spec frame_rate_gen() :: StreamData.t(Framerate.t())
-    defp frame_rate_gen do
-      map(
-        {
-          integer() |> filter(&(&1 > 0)),
-          map(boolean(), fn
-            true -> :non_drop
-            false -> nil
-          end)
-        },
-        fn {rate, ntsc} -> Framerate.new!(rate, ntsc) end
-      )
+  property "add/sub symmetry" do
+    check all(
+            rate <- frame_rate_gen(),
+            a_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
+            b_info <- rate |> timecode_gen() |> filter(&(not &1.negative?))
+          ) do
+      %{timecode_string: a_string} = a_info
+      %{timecode_string: b_string} = b_info
+      a = Timecode.with_frames!(a_string, rate)
+      b = Timecode.with_frames!(b_string, rate)
+
+      added = Timecode.add(a, b)
+      assert Timecode.compare(added, a) == :gt
+      assert Timecode.compare(added, b) == :gt
+
+      subtracted = Timecode.sub(added, b)
+      assert Timecode.compare(subtracted, a) == :eq
     end
+  end
 
-    @spec timecode_gen(Framerate.t()) :: StreamData.t(map())
-    defp timecode_gen(rate) do
-      map(
-        {
-          integer(1..23),
-          integer(0..59),
-          integer(0..59),
-          integer(0..((Framerate.timebase(rate) |> Rational.round()) - 1)),
-          boolean()
-        },
-        fn {hours, minutes, seconds, frames, _} = values ->
-          %{
-            timecode_string: build_timecode_string(values, rate),
-            hours: hours,
-            minutes: minutes,
-            seconds: seconds,
-            frames: frames
-          }
-        end
-      )
-    end
+  @spec frame_rate_gen() :: StreamData.t(Framerate.t())
+  defp frame_rate_gen do
+    map(
+      {
+        integer() |> filter(&(&1 > 0)),
+        map(boolean(), fn
+          true -> :non_drop
+          false -> nil
+        end)
+      },
+      fn {rate, ntsc} -> Framerate.new!(rate, ntsc) end
+    )
+  end
 
-    @spec build_timecode_string(map(), Framerate.t()) :: String.t()
-    defp build_timecode_string(values, rate) do
-      {hours, minutes, seconds, frames, negative?} = values
-
-      add_frame_sep = fn values ->
-        if rate.ntsc == :drop, do: List.replace_at(values, -2, ";"), else: values
+  @spec timecode_gen(Framerate.t()) :: StreamData.t(map())
+  defp timecode_gen(rate) do
+    map(
+      {
+        integer(1..23),
+        integer(0..59),
+        integer(0..59),
+        integer(0..((Framerate.timebase(rate) |> Rational.round()) - 1)),
+        boolean()
+      },
+      fn {hours, minutes, seconds, frames, negative?} = values ->
+        %{
+          timecode_string: build_timecode_string(values, rate),
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          frames: frames,
+          negative?: negative?
+        }
       end
+    )
+  end
 
-      timecode_string =
-        [hours, minutes, seconds, frames]
-        |> Enum.map(&Integer.to_string/1)
-        |> Enum.map(&String.pad_leading(&1, 2, "0"))
-        |> Enum.intersperse(":")
-        |> then(add_frame_sep)
-        |> List.to_string()
+  @spec build_timecode_string(tuple(), Framerate.t()) :: String.t()
+  defp build_timecode_string(values, rate) do
+    {hours, minutes, seconds, frames, negative?} = values
 
-      if negative?, do: "-" <> timecode_string, else: timecode_string
+    add_frame_sep = fn values ->
+      if rate.ntsc == :drop, do: List.replace_at(values, -2, ";"), else: values
     end
+
+    timecode_string =
+      [hours, minutes, seconds, frames]
+      |> Enum.map(&Integer.to_string/1)
+      |> Enum.map(&String.pad_leading(&1, 2, "0"))
+      |> Enum.intersperse(":")
+      |> then(add_frame_sep)
+      |> List.to_string()
+
+    if negative?, do: "-" <> timecode_string, else: timecode_string
   end
 end
