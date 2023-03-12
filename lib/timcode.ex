@@ -287,6 +287,59 @@ defmodule Vtc.Timecode do
   def add(a, b), do: add(a, with_frames!(b, a.rate))
 
   @doc """
+  Subtracts two timecodoes together using their real-world seconds representation. When
+  the rates of `a` and `b` are not equal, the result will inheret the framerat of `a`
+  and be rounded to the seconds representation of the nearest whole-frame at that rate.
+
+  `b` May be any value that implements the `Frames` protocol, such as a timecode string,
+  and will be assumed to be the same framerate as `a`. This is mostly to support quick
+  scripting. This function will raise if there is an error parsing `b`.
+
+  ## Examples
+
+  Two timecodes running at the same rate:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  "<00:30:21:17 @ <23.98 NTSC NDF>>"
+  ```
+
+  When `b` is greater than `a`, the result is negative:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  "<-01:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+
+  Two timecodes running at different rates:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
+  iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  "<01:00:00:01 @ <23.98 NTSC NDF>>"
+  ```
+
+  Using a timcode and a bare string:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> Timecode.sub(a, "01:00:00:00") |> Timecode.to_string()
+  "<00:30:21:17 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec sub(a :: t(), b :: t() | Frames.t()) :: t()
+  def sub(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b),
+    do: %__MODULE__{seconds: Ratio.sub(a.seconds, b.seconds), rate: rate}
+
+  def sub(a, %__MODULE__{} = b), do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate)
+  def sub(a, b), do: sub(a, with_frames!(b, a.rate))
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 

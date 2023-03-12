@@ -90,6 +90,14 @@ iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98))
 iex> tc = Timecode.add(tc, "00:10:00:00")
 <18:33:13:02 @ <23.98 NTSC NDF>>
 
+# Adding ints means adding frames.
+iex> tc = Timecode.add(tc, 2)
+<18:33:13:04 @ <23.98 NTSC NDF>>
+
+# We can subtract too.
+iex> tc = Timecode.sub(tc, "01:00:00:00")
+<17:33:13:04 @ <23.98 NTSC NDF>>
+
 # We can compare two timecodes
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
 iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98)
@@ -140,7 +148,7 @@ iex> tc = Timecode.rebase(tc, Rates.f23_98)
 - Operations:
     - [X] Comparisons (==, <, <=, >, >=)
     - [X] Add
-    - [ ] Subtract
+    - [X] Subtract
     - [ ] Scale (multiply and divide)
     - [ ] Divmod
     - [ ] Modulo
