@@ -1014,6 +1014,64 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
+  describe "add/2" do
+    @add_cases [
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("00:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("-01:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("-02:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("10:12:13:14", Rates.f23_98()),
+        b: Timecode.with_frames!("14:13:12:11", Rates.f23_98()),
+        expected: Timecode.with_frames!("24:25:26:01", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f47_95()),
+        expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("00:00:00:02", Rates.f47_95()),
+        expected: Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+      }
+    ]
+
+    for add_case <- @add_cases do
+      @add_case add_case
+
+      test "#{add_case.a} + #{add_case.b} == #{add_case.expected}" do
+        assert Timecode.add(@add_case.a, @add_case.b) == @add_case.expected
+      end
+
+      if add_case.a.rate == add_case.b.rate do
+        test "#{add_case.a} + #{add_case.b} == #{add_case.expected} | integer b" do
+          assert Timecode.add(@add_case.a, Timecode.frames(@add_case.b)) == @add_case.expected
+        end
+
+        test "#{add_case.a} + #{add_case.b} == #{add_case.expected} | string b" do
+          assert Timecode.add(@add_case.a, Timecode.timecode(@add_case.b)) == @add_case.expected
+        end
+      end
+    end
+  end
+
   describe "round trip" do
     property "timecode | ntsc | drop" do
       check all(
