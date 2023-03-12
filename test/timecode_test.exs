@@ -1072,6 +1072,64 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
+  describe "sub/2" do
+    @sub_cases [
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("00:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("-01:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("02:00:00:00", Rates.f23_98()),
+        expected: Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("34:10:09:08", Rates.f23_98()),
+        b: Timecode.with_frames!("10:06:07:14", Rates.f23_98()),
+        expected: Timecode.with_frames!("24:04:01:18", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("02:00:00:00", Rates.f23_98()),
+        b: Timecode.with_frames!("01:00:00:00", Rates.f47_95()),
+        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:02", Rates.f23_98()),
+        b: Timecode.with_frames!("00:00:00:02", Rates.f47_95()),
+        expected: Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+      }
+    ]
+
+    for sub_case <- @sub_cases do
+      @sub_case sub_case
+
+      test "#{sub_case.a} - #{sub_case.b} == #{sub_case.expected}" do
+        assert Timecode.sub(@sub_case.a, @sub_case.b) == @sub_case.expected
+      end
+
+      if sub_case.a.rate == sub_case.b.rate do
+        test "#{sub_case.a} - #{sub_case.b} == #{sub_case.expected} | integer b" do
+          assert Timecode.sub(@sub_case.a, Timecode.frames(@sub_case.b)) == @sub_case.expected
+        end
+
+        test "#{sub_case.a} - #{sub_case.b} == #{sub_case.expected} | string b" do
+          assert Timecode.sub(@sub_case.a, Timecode.timecode(@sub_case.b)) == @sub_case.expected
+        end
+      end
+    end
+  end
+
   describe "round trip" do
     property "timecode | ntsc | drop" do
       check all(
