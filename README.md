@@ -82,6 +82,14 @@ iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98)
 iex> Timecode.with_frames!("1+08", Rates.f23_98)
 <00:00:01:00 @ <23.98 NTSC NDF>>
 
+# We can add two timecodes:
+iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98))
+<18:23:13:02 @ <23.98 NTSC NDF>>
+
+# But if we want to do something quickly, we just use a timecode string instead.
+iex> tc = Timecode.add(tc, "00:10:00:00")
+<18:33:13:02 @ <23.98 NTSC NDF>>
+
 # We can compare two timecodes
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
 iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98)
@@ -98,14 +106,17 @@ iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
 <00:08:20;18 @ <29.97 NTSC DF>>
 
 # We can make new timecodes with arbitrary framerates if we want:
-iex> rate = Framerate.new!(240, nil)
-<240.0 fps>
-iex> Timecode.with_frames!("01:00:00:00", rate)
+iex> tc = Timecode.with_frames!("01:00:00:00", Framerate.new!(240, nil))
 <01:00:00:00 @ <240.0 fps>>
 
-# We do the same thing NTSC framerates / timebases.
-iex> rate = Framerate.new!(240, :non_drop)
-<239.76 NTSC NDF>
+# Using `:non_drop` indicates this is an NTSC timecode, and will convert whole-number
+# timebases to the correct speed.
+>>> vtc.Timecode("01:00:00:00", Framerate.new!(48, :non_drop))
+<01:00:00:00 @ <47.95 NTSC>>
+
+# We can also rebase the frames using a new framerate!
+iex> tc = Timecode.rebase(tc, Rates.f23_98)
+<02:00:00:00 @ <23.98 NTSC>>
 ```
 
 ## Features
@@ -128,14 +139,14 @@ iex> rate = Framerate.new!(240, :non_drop)
     - [X] Premiere Ticks | 15240960000000
 - Operations:
     - [X] Comparisons (==, <, <=, >, >=)
-    - [ ] Add
+    - [X] Add
     - [ ] Subtract
     - [ ] Scale (multiply and divide)
     - [ ] Divmod
     - [ ] Modulo
     - [ ] Negative
     - [ ] Absolute
-    - [ ] Rebase (recalculate frame count at new framerate)
+    - [X] Rebase (recalculate frame count at new framerate)
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'

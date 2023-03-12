@@ -203,21 +203,22 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
+  def rebase(%__MODULE__{rate: rate} = timecode, rate), do: {:ok, timecode}
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
 
   @doc """
   As `rebase/2`, but raises on error.
   """
   @spec rebase!(t(), Framerate.t()) :: t()
-  def rebase!(timecode, new_rate), do: timecode |> frames() |> with_frames!(new_rate)
+  def rebase!(timecode, new_rate), do: timecode |> rebase(new_rate) |> handle_raise_function()
 
   @doc """
   Returns whether `a` is greater than, equal to, or less than `b` in terms of real-world
   seconds.
 
-  b May be any value that implements the `Frames` protocol, such as a timecode string,
+  `b` May be any value that implements the `Frames` protocol, such as a timecode string,
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
-  scripting.
+  scripting. This function will raise if there is an error parsing `b`.
 
   ## Examples
 
@@ -237,9 +238,53 @@ defmodule Vtc.Timecode do
   iex> :eq = Timecode.compare(timecode, "01:00:00:00")
   ```
   """
-  @spec compare(t(), t() | Frames.t()) :: :lt | :eq | :gt
+  @spec compare(a :: t(), b :: t() | Frames.t()) :: :lt | :eq | :gt
   def compare(%__MODULE__{} = a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
-  def compare(%__MODULE__{} = a, b), do: compare(a, with_frames!(b, a.rate))
+  def compare(a, b), do: compare(a, with_frames!(b, a.rate))
+
+  @doc """
+  Adds two timecodoes together using their real-world seconds representation. When the
+  rates of `a` and `b` are not equal, the result will inheret the framerat of `a` and
+  be rounded to the seconds representation of the nearest whole-frame at that rate.
+
+  `b` May be any value that implements the `Frames` protocol, such as a timecode string,
+  and will be assumed to be the same framerate as `a`. This is mostly to support quick
+  scripting. This function will raise if there is an error parsing `b`.
+
+  ## Examples
+
+  Two timecodes running at the same rate:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> Timecode.add(a, b) |> Timecode.to_string()
+  "<02:30:21:17 @ <23.98 NTSC NDF>>"
+  ```
+
+  Two timecodes running at different rates:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> Timecode.add(a, b) |> Timecode.to_string()
+  "<01:00:00:01 @ <23.98 NTSC NDF>>"
+  ```
+
+  Using a timcode and a bare string:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.add(a, "01:30:21:17") |> Timecode.to_string()
+  "<02:30:21:17 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec add(a :: t(), b :: t() | Frames.t()) :: t()
+  def add(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b),
+    do: %__MODULE__{seconds: Ratio.add(a.seconds, b.seconds), rate: rate}
+
+  def add(a, %__MODULE__{} = b), do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate)
+  def add(a, b), do: add(a, with_frames!(b, a.rate))
 
   @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
