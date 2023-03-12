@@ -340,6 +340,25 @@ defmodule Vtc.Timecode do
   def sub(a, b), do: sub(a, with_frames!(b, a.rate))
 
   @doc """
+  Scales `a` by `b`. The result will inheret the framerat of `a` and be rounded to the
+  seconds representation of the nearest whole-frame at that rate.
+
+  ## Examples
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.mult(a, 2) |> Timecode.to_string()
+  "<02:00:00:00 @ <23.98 NTSC NDF>>"
+
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.mult(a, 0.5) |> Timecode.to_string()
+  "<00:30:00:00 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec mult(a :: t(), b :: Ratio.t() | number()) :: t()
+  def mult(a, b), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate)
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 
