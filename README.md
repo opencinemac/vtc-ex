@@ -91,14 +91,14 @@ iex> tc = Timecode.add(tc, "00:10:00:00")
 <18:33:13:02 @ <23.98 NTSC NDF>>
 
 # Adding ints means adding frames.
-iex> tc = Timecode.add(tc, 2)
-<18:33:13:04 @ <23.98 NTSC NDF>>
+iex> tc = Timecode.add(tc, 38)
+<18:33:14:16 @ <23.98 NTSC NDF>>
 
 # We can subtract too.
 iex> tc = Timecode.sub(tc, "01:00:00:00")
-<17:33:13:04 @ <23.98 NTSC NDF>>
+<17:33:14:16 @ <23.98 NTSC NDF>>
 
-# We can compare two timecodes
+# It's easy to compare two timecodes
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
 iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98)
 iex> Timecode.compare(a, b)
@@ -107,6 +107,10 @@ iex> Timecode.compare(a, b)
 # And even compare directly with a timecode string
 iex> Timecode.compare(a, "00:59:00:00")
 :lt
+
+# We can multiply
+iex> Timecode.mult(tc, 2)
+<35:06:29:08 @ <23.98 NTSC NDF>>
 
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.

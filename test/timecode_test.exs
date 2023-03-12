@@ -1130,6 +1130,48 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
+  describe "#mult/2" do
+    @mult_cases [
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 2,
+        expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 0.5,
+        expected: Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Ratio.new(1, 2),
+        expected: Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      }
+    ]
+
+    for mult_case <- @mult_cases do
+      @mult_case mult_case
+
+      test "#{mult_case.a} * #{inspect(mult_case.b)} == #{mult_case.expected}" do
+        assert Timecode.mult(@mult_case.a, @mult_case.b) == @mult_case.expected
+      end
+    end
+
+    property "always returns frame-rounded" do
+      check all(
+              rate <- frame_rate_gen(),
+              timecode_values <- timecode_gen(rate),
+              multiplier <- float()
+            ) do
+        %{timecode_string: timecode_string} = timecode_values
+        a = Timecode.with_frames!(timecode_string, rate)
+
+        assert %Timecode{rate: ^rate} = result = Timecode.mult(a, multiplier)
+        assert_frame_rounded(result)
+      end
+    end
+  end
+
   describe "parse round trip" do
     property "timecode | ntsc | drop" do
       check all(
@@ -1263,5 +1305,15 @@ defmodule Vtc.TimecodeTest do
       |> List.to_string()
 
     if negative?, do: "-" <> timecode_string, else: timecode_string
+  end
+
+  @spec assert_frame_rounded(Timecode.t()) :: term()
+  defp assert_frame_rounded(timecode) do
+    %{seconds: seconds, rate: %{playback: playback_rate}} = timecode
+
+    seconds_per_frame =
+      Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
+
+    assert {_, 0} = Rational.divmod(seconds, seconds_per_frame)
   end
 end
