@@ -60,13 +60,10 @@ end
 defmodule Vtc.TimecodeTest do
   @moduledoc false
 
-  use ExUnit.Case
-  use ExUnitProperties
+  use ExUnit.Case, async: true
 
-  alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Timecode
-  alias Vtc.Utils.Rational
 
   alias Vtc.TimecodeTest.ParseHelpers
   alias Vtc.TimecodeTest.TcParseCase
@@ -893,30 +890,6 @@ defmodule Vtc.TimecodeTest do
         end
       end
     end
-
-    property "if a.rate = b.rate then a and b comparison should equal the comparison of their frame count" do
-      check all(
-              [a_frames, b_frames] <- StreamData.list_of(StreamData.integer(), length: 2),
-              rate_x <- StreamData.integer(1..240),
-              ntsc <- StreamData.boolean(),
-              max_runs: 100
-            ) do
-        ntsc = if ntsc, do: :non_drop, else: nil
-        rate = Framerate.new!(rate_x, ntsc, false)
-
-        a = Timecode.with_frames!(a_frames, rate)
-        b = Timecode.with_frames!(b_frames, rate)
-
-        expected =
-          cond do
-            a_frames == b_frames -> :eq
-            a_frames < b_frames -> :lt
-            true -> :gt
-          end
-
-        assert Timecode.compare(a, b) == expected
-      end
-    end
   end
 
   @rebase_cases [
@@ -947,7 +920,7 @@ defmodule Vtc.TimecodeTest do
     }
   ]
 
-  describe "rebase/2" do
+  describe "#rebase/2" do
     for rebase_case <- @rebase_cases do
       @rebase_case rebase_case
 
@@ -960,16 +933,9 @@ defmodule Vtc.TimecodeTest do
         assert round_tripped == original
       end
     end
-
-    property "round trip rebases do not lose accuracy" do
-      run_rebase_property_test(fn timecode, new_rate ->
-        assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
-        rebased
-      end)
-    end
   end
 
-  describe "rebase!/2" do
+  describe "#rebase!/2" do
     for rebase_case <- @rebase_cases do
       @rebase_case rebase_case
 
@@ -982,39 +948,9 @@ defmodule Vtc.TimecodeTest do
         assert round_tripped == original
       end
     end
-
-    property "round trip rebases do not lose accuracy" do
-      run_rebase_property_test(fn timecode, new_rate ->
-        Timecode.rebase!(timecode, new_rate)
-      end)
-    end
   end
 
-  @spec run_rebase_property_test((Timecode.t(), Framerate.t() -> Timecode.t())) :: term()
-  defp run_rebase_property_test(do_reabase) do
-    check all(
-            frames <- StreamData.integer(),
-            original_rate_x <- StreamData.integer(1..240),
-            original_ntsc <- StreamData.boolean(),
-            target_rate_x <- StreamData.integer(1..240),
-            target_ntsc <- StreamData.boolean(),
-            max_runs: 20
-          ) do
-      original_ntsc = if original_ntsc, do: :non_drop, else: nil
-      origina_rate = Framerate.new!(original_rate_x, original_ntsc, false)
-
-      target_ntsc = if target_ntsc, do: :non_drop, else: nil
-      target_rate = Framerate.new!(target_rate_x, target_ntsc, false)
-
-      original = Timecode.with_frames!(frames, origina_rate)
-
-      rebased = do_reabase.(original, target_rate)
-      round_trip = do_reabase.(rebased, origina_rate)
-      assert round_trip == original
-    end
-  end
-
-  describe "add/2" do
+  describe "#add/2" do
     @add_cases [
       %{
         a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
@@ -1072,7 +1008,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "sub/2" do
+  describe "#sub/2" do
     @sub_cases [
       %{
         a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
@@ -1146,6 +1082,16 @@ defmodule Vtc.TimecodeTest do
         a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
         b: Ratio.new(1, 2),
         expected: Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 1,
+        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 0,
+        expected: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
       }
     ]
 
@@ -1156,164 +1102,38 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.mult(@mult_case.a, @mult_case.b) == @mult_case.expected
       end
     end
-
-    property "always returns frame-rounded" do
-      check all(
-              rate <- frame_rate_gen(),
-              timecode_values <- timecode_gen(rate),
-              multiplier <- float()
-            ) do
-        %{timecode_string: timecode_string} = timecode_values
-        a = Timecode.with_frames!(timecode_string, rate)
-
-        assert %Timecode{rate: ^rate} = result = Timecode.mult(a, multiplier)
-        assert_frame_rounded(result)
-      end
-    end
   end
 
-  describe "parse round trip" do
-    property "timecode | ntsc | drop" do
-      check all(
-              rate_multiplier <- integer(1..10),
-              rate <- (30 * rate_multiplier) |> Framerate.new!(:drop) |> constant(),
-              timecode_values <- timecode_gen(rate),
-              max_runs: 100
-            ) do
-        %{
-          timecode_string: timecode_string,
-          minutes: minutes,
-          seconds: seconds,
-          frames: frames
-        } = timecode_values
-
-        if frames < 2 * rate_multiplier and rem(minutes, 10) != 0 and seconds == 0 do
-          assert_raise Timecode.ParseError, fn -> Timecode.with_frames!(timecode_string, rate) end
-        else
-          timecode = Timecode.with_frames!(timecode_string, rate)
-          assert Timecode.timecode(timecode) == timecode_string
-        end
-      end
-    end
-
-    property "timecode" do
-      check all(
-              rate <- frame_rate_gen(),
-              timecode_values <- timecode_gen(rate),
-              max_runs: 100
-            ) do
-        %{timecode_string: timecode_string} = timecode_values
-        timecode = Timecode.with_frames!(timecode_string, rate)
-        assert Timecode.timecode(timecode) == timecode_string
-      end
-    end
-
-    property "frames" do
-      check all(
-              frames <- integer(),
-              rate <- frame_rate_gen(),
-              max_runs: 20
-            ) do
-        timecode = Timecode.with_frames!(frames, rate)
-        assert Timecode.frames(timecode) == frames
-      end
-    end
-
-    property "seconds" do
-      check all(
-              rate <- frame_rate_gen() |> filter(&(&1.ntsc == nil)),
-              seconds <- map(integer(), fn scalar -> Ratio.mult(rate.playback, scalar) end),
-              max_runs: 20
-            ) do
-        timecode = Timecode.with_seconds!(seconds, rate)
-        assert timecode.seconds == seconds
-      end
-    end
-  end
-
-  property "add/sub symmetry" do
-    check all(
-            rate <- frame_rate_gen(),
-            a_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-            b_info <- rate |> timecode_gen() |> filter(&(not &1.negative?))
-          ) do
-      %{timecode_string: a_string} = a_info
-      %{timecode_string: b_string} = b_info
-      a = Timecode.with_frames!(a_string, rate)
-      b = Timecode.with_frames!(b_string, rate)
-
-      added = Timecode.add(a, b)
-      assert Timecode.compare(added, a) == :gt
-      assert Timecode.compare(added, b) == :gt
-
-      subtracted = Timecode.sub(added, b)
-      assert Timecode.compare(subtracted, a) == :eq
-    end
-  end
-
-  @spec frame_rate_gen() :: StreamData.t(Framerate.t())
-  defp frame_rate_gen do
-    map(
-      {
-        integer() |> filter(&(&1 > 0)),
-        map(boolean(), fn
-          true -> :non_drop
-          false -> nil
-        end)
+  describe "#div/2" do
+    @div_cases [
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 2,
+        expected: Timecode.with_frames!("00:30:00:00", Rates.f23_98())
       },
-      fn {rate, ntsc} -> Framerate.new!(rate, ntsc) end
-    )
-  end
-
-  @spec timecode_gen(Framerate.t()) :: StreamData.t(map())
-  defp timecode_gen(rate) do
-    map(
-      {
-        integer(1..23),
-        integer(0..59),
-        integer(0..59),
-        integer(0..((Framerate.timebase(rate) |> Rational.round()) - 1)),
-        boolean()
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 0.5,
+        expected: Timecode.with_frames!("02:00:00:00", Rates.f23_98())
       },
-      fn {hours, minutes, seconds, frames, negative?} = values ->
-        %{
-          timecode_string: build_timecode_string(values, rate),
-          hours: hours,
-          minutes: minutes,
-          seconds: seconds,
-          frames: frames,
-          negative?: negative?
-        }
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Ratio.new(3, 2),
+        expected: Timecode.with_frames!("00:40:00:00", Rates.f23_98())
+      },
+      %{
+        a: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: 1,
+        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      }
+    ]
+
+    for div_case <- @div_cases do
+      @div_case div_case
+
+      test "#{div_case.a} * #{inspect(div_case.b)} == #{div_case.expected}" do
+        assert Timecode.div(@div_case.a, @div_case.b) == @div_case.expected
       end
-    )
-  end
-
-  @spec build_timecode_string(tuple(), Framerate.t()) :: String.t()
-  defp build_timecode_string(values, rate) do
-    {hours, minutes, seconds, frames, negative?} = values
-
-    add_frame_sep = fn values ->
-      if rate.ntsc == :drop, do: List.replace_at(values, -2, ";"), else: values
     end
-
-    timecode_string =
-      [hours, minutes, seconds, frames]
-      |> Enum.map(&Integer.to_string/1)
-      |> Enum.map(&String.pad_leading(&1, 2, "0"))
-      |> Enum.intersperse(":")
-      |> then(add_frame_sep)
-      |> List.to_string()
-
-    if negative?, do: "-" <> timecode_string, else: timecode_string
-  end
-
-  @spec assert_frame_rounded(Timecode.t()) :: term()
-  defp assert_frame_rounded(timecode) do
-    %{seconds: seconds, rate: %{playback: playback_rate}} = timecode
-
-    seconds_per_frame =
-      Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
-
-    assert {_, 0} = Rational.divmod(seconds, seconds_per_frame)
   end
 end

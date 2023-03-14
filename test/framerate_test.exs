@@ -36,8 +36,7 @@ end
 defmodule Vtc.FramerateTest do
   @moduledoc false
 
-  use ExUnit.Case
-  use Ratio
+  use ExUnit.Case, async: true
 
   alias Vtc.Rates
 
@@ -206,8 +205,7 @@ defmodule Vtc.FramerateTest do
   end
 
   describe "#consts" do
-    use ExUnit.Case
-    use Ratio
+    use ExUnit.Case, async: true
 
     alias Vtc.Rates
 
