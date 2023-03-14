@@ -5,6 +5,9 @@ defmodule Vtc.Timecode do
   New Timecode values are created with the `with_seconds/2` and `with_frames/2`, and
   other function prefaced by `with_*`.
   """
+
+  import Kernel, except: [div: 2]
+
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
@@ -359,6 +362,25 @@ defmodule Vtc.Timecode do
   def mult(a, b), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate)
 
   @doc """
+  Divides `a` by `b`. The result will inheret the framerat of `a` and be rounded to the
+  seconds representation of the nearest whole-frame at that rate.
+
+  ## Examples
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.div(a, 2) |> Timecode.to_string()
+  "<00:30:00:00 @ <23.98 NTSC NDF>>"
+
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.div(a, 0.5) |> Timecode.to_string()
+  "<02:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec div(a :: t(), b :: Ratio.t() | number()) :: t()
+  def div(a, b), do: a.seconds |> Ratio.div(b) |> with_seconds!(a.rate)
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 
@@ -602,7 +624,7 @@ defmodule Vtc.Timecode do
   def feet_and_frames(%__MODULE__{} = timecode) do
     total_frames = timecode |> frames() |> abs()
 
-    feet = total_frames |> div(Consts.frames_per_foot()) |> Integer.to_string()
+    feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()
 
     frames =
       total_frames

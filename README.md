@@ -112,6 +112,10 @@ iex> Timecode.compare(a, "00:59:00:00")
 iex> Timecode.mult(tc, 2)
 <35:06:29:08 @ <23.98 NTSC NDF>>
 
+# ... divide ...
+iex> Timecode.div(tc, 2)
+<17:33:14:16 @ <23.98 NTSC NDF>>
+
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
 iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
@@ -153,7 +157,7 @@ iex> tc = Timecode.rebase(tc, Rates.f23_98)
     - [X] Comparisons (==, <, <=, >, >=)
     - [X] Add
     - [X] Subtract
-    - [ ] Scale (multiply and divide)
+    - [X] Scale (multiply and divide)
     - [ ] Divmod
     - [ ] Modulo
     - [ ] Negative
