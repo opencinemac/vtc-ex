@@ -24,8 +24,8 @@ alias Vtc.Timecode
 
 # It's easy to make a new 23.98 NTSC timecode. We use the with_frames constructor here 
 # since timecode is really a human-readable way to represent frame count.
-iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98)
-<17:23:00:02 @ <23.98 NTSC NDF>>
+iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98) |> inspect()
+"<17:23:00:02 @ <23.98 NTSC NDF>>"
 
 # We can get all sorts of ways to represent the timecode.
 iex> Timecode.timecode(tc)
@@ -34,8 +34,8 @@ iex> Timecode.timecode(tc)
 iex> Timecode.frames(tc)
 1501922
 
-iex> tc.seconds
-751711961 <|> 12000
+iex> tc.seconds |> inspect()
+"751711961 <|> 12000"
 
 iex> Timecode.runtime(tc, 3)
 "17:24:15.676"
@@ -50,8 +50,8 @@ iex> Timecode.feet_and_frames(tc)
 iex> tc.rate.ntsc
 :non_drop  
 
-iex> tc.rate.playback
-24000 <|> 1001
+iex> tc.rate.playback |> inspect()
+"24000 <|> 1001"
 
 iex> Framerate.timebase(tc.rate)
 24
@@ -59,44 +59,48 @@ iex> Framerate.timebase(tc.rate)
 # Parsing is flexible
 
 # Partial timecode:
-iex> Timecode.with_frames!("3:12", Rates.f23_98)
-<03:00:00:12 @ <23.98 NTSC NDF>>
+iex> Timecode.with_frames!("3:12", Rates.f23_98) |> inspect()
+"<03:00:00:12 @ <23.98 NTSC NDF>>"
 
 # Frame count:
-iex> Timecode.with_frames!(24, Rates.f23_98)    
-<00:00:01:00 @ <23.98 NTSC NDF>>
+iex> Timecode.with_frames!(24, Rates.f23_98) |> inspect()
+"<00:00:01:00 @ <23.98 NTSC NDF>>"
 
 # Seconds:
-iex> Timecode.with_seconds!(1.5, Rates.f23_98)
-<00:05:23:04 @ <23.98 NTSC NDF>>
+iex> Timecode.with_seconds!(1.5, Rates.f23_98) |> inspect()
+"<00:05:23:04 @ <23.98 NTSC NDF>>"
 
 # Runtime:
-iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98)
-<00:05:23:04 @ <23.98 NTSC NDF>>
+iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98) |> inspect()
+"<00:05:23:04 @ <23.98 NTSC NDF>>"
 
 # Premiere Ticks:
-iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98)
-<00:00:01:00 @ <23.98 NTSC NDF>>
+iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98) |> inspect()
+"<00:00:01:00 @ <23.98 NTSC NDF>>"
 
 # Feet and Frames:
-iex> Timecode.with_frames!("1+08", Rates.f23_98)
-<00:00:01:00 @ <23.98 NTSC NDF>>
+iex> Timecode.with_frames!("1+08", Rates.f23_98) |> inspect()
+"<00:00:01:00 @ <23.98 NTSC NDF>>"
 
 # We can add two timecodes:
 iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98))
-<18:23:13:02 @ <23.98 NTSC NDF>>
+iex> inspect(tc)
+"<18:23:13:02 @ <23.98 NTSC NDF>>"
 
 # But if we want to do something quickly, we just use a timecode string instead.
 iex> tc = Timecode.add(tc, "00:10:00:00")
-<18:33:13:02 @ <23.98 NTSC NDF>>
+iex> inspect(tc)
+"<18:33:13:02 @ <23.98 NTSC NDF>>"
 
 # Adding ints means adding frames.
 iex> tc = Timecode.add(tc, 38)
-<18:33:14:16 @ <23.98 NTSC NDF>>
+iex> inspect(tc)
+"<18:33:14:16 @ <23.98 NTSC NDF>>"
 
 # We can subtract too.
 iex> tc = Timecode.sub(tc, "01:00:00:00")
-<17:33:14:16 @ <23.98 NTSC NDF>>
+iex> inspect(tc)
+"<17:33:14:16 @ <23.98 NTSC NDF>>"
 
 # It's easy to compare two timecodes
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
@@ -109,30 +113,40 @@ iex> Timecode.compare(a, "00:59:00:00")
 :lt
 
 # We can multiply
-iex> Timecode.mult(tc, 2)
-<35:06:29:08 @ <23.98 NTSC NDF>>
+iex> tc = Timecode.mult(tc, 2)
+iex> inspect(tc)
+"<35:06:29:08 @ <23.98 NTSC NDF>>"
 
 # ... divide ...
-iex> Timecode.div(tc, 2)
-<17:33:14:16 @ <23.98 NTSC NDF>>
+iex> tc = Timecode.div(tc, 2)
+iex> inspect(tc)
+"<17:33:14:16 @ <23.98 NTSC NDF>>"
+
+# ... and even get the remainder while dividing!
+iex> {dividend, remainder} = Timecode.divmod(tc, 3)
+iex> inspect(dividend)
+"<05:51:04:21 @ <23.98 NTSC NDF>>"
+iex> inspect(remainder)
+"<00:00:00:01 @ <23.98 NTSC NDF>>"
 
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
 iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
-<00:08:20;18 @ <29.97 NTSC DF>>
+iex> inspect(drop_frame)
+"<00:08:20;18 @ <29.97 NTSC DF>>"
 
 # We can make new timecodes with arbitrary framerates if we want:
-iex> tc = Timecode.with_frames!("01:00:00:00", Framerate.new!(240, nil))
-<01:00:00:00 @ <240.0 fps>>
+iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(240, nil)) |> inspect()
+"<01:00:00:00 @ <240.0 fps>>"
 
 # Using `:non_drop` indicates this is an NTSC timecode, and will convert whole-number
 # timebases to the correct speed.
->>> vtc.Timecode("01:00:00:00", Framerate.new!(48, :non_drop))
-<01:00:00:00 @ <47.95 NTSC>>
+iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop)) |> inspect()
+"<01:00:00:00 @ <47.95 NTSC>>"
 
 # We can also rebase the frames using a new framerate!
-iex> tc = Timecode.rebase(tc, Rates.f23_98)
-<02:00:00:00 @ <23.98 NTSC>>
+iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
+"<02:00:00:00 @ <23.98 NTSC>>"
 ```
 
 ## Features

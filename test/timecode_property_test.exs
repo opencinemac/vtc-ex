@@ -336,19 +336,37 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
     property "basic comparisons" do
       check all(
               rate <- frame_rate_gen(),
-              tc_info <- Rates.f23_98() |> timecode_gen() |> filter(&(not &1.negative?)),
-              scalar <- ratio() |> filter(&(&1 != 0))
+              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
+              divisor <- ratio() |> filter(&(&1 != 0))
             ) do
         %{timecode_string: tc_string} = tc_info
-        original = Timecode.with_frames!(tc_string, rate)
-        divided = Timecode.div(original, scalar)
+        dividend = Timecode.with_frames!(tc_string, rate)
+        quotient = Timecode.div(dividend, divisor)
 
-        case {Ratio.compare(scalar, 0), Ratio.compare(scalar, 1)} do
-          {:lt, _} -> assert Timecode.compare(divided, original) == :lt
-          {:gt, :lt} -> assert Timecode.compare(divided, original) == :gt
-          {_, :eq} -> assert Timecode.compare(divided, original) == :eq
-          {:gt, :gt} -> assert Timecode.compare(divided, original) == :lt
+        case {Ratio.compare(divisor, 0), Ratio.compare(divisor, 1)} do
+          {:lt, _} -> assert Timecode.compare(quotient, dividend) == :lt
+          {:gt, :lt} -> assert Timecode.compare(quotient, dividend) == :gt
+          {_, :eq} -> assert Timecode.compare(quotient, dividend) == :eq
+          {:gt, :gt} -> assert Timecode.compare(quotient, dividend) == :lt
         end
+      end
+    end
+  end
+
+  describe "#divmod/2" do
+    property "quotient returns same as div/2" do
+      check all(
+              rate <- frame_rate_gen(),
+              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
+              divisor <- ratio() |> filter(&(&1 != 0))
+            ) do
+        %{timecode_string: tc_string} = tc_info
+        dividend = Timecode.with_frames!(tc_string, rate)
+
+        div_result = Timecode.div(dividend, divisor)
+        {divmod_result, _} = Timecode.divmod(dividend, divisor)
+
+        assert div_result == divmod_result
       end
     end
   end

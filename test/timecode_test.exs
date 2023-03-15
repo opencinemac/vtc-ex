@@ -68,8 +68,6 @@ defmodule Vtc.TimecodeTest do
   alias Vtc.TimecodeTest.ParseHelpers
   alias Vtc.TimecodeTest.TcParseCase
 
-  doctest Vtc.Timecode
-
   @parse_cases [
     # 23.98 NTSC #########################
     ######################################
@@ -1133,6 +1131,85 @@ defmodule Vtc.TimecodeTest do
 
       test "#{div_case.a} * #{inspect(div_case.b)} == #{div_case.expected}" do
         assert Timecode.div(@div_case.a, @div_case.b) == @div_case.expected
+      end
+    end
+  end
+
+  describe "#divmod/2" do
+    @divmod_case [
+      %{
+        dividend: Timecode.with_frames!("01:00:00:00", Rates.f24()),
+        divisor: 2,
+        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
+        expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f24())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+        divisor: 2,
+        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
+        expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+        divisor: 2,
+        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+        divisor: 2,
+        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+        divisor: 4,
+        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f24()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+        divisor: 4,
+        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:02", Rates.f23_98()),
+        divisor: 4,
+        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
+        expected_remainder: Timecode.with_frames!("00:00:00:02", Rates.f23_98())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+        divisor: 1.5,
+        expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f24()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+      },
+      %{
+        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+        divisor: 1.5,
+        expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f23_98()),
+        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+      }
+    ]
+
+    for divmod_case <- @divmod_case do
+      @divmod_case divmod_case
+
+      test_name =
+        "#{divmod_case.dividend} /% #{divmod_case.divisor}" <>
+          " == {divmod_case.expected_quotient, divmod_case.expected_remainder}"
+
+      test test_name do
+        %{
+          dividend: dividend,
+          divisor: divisor,
+          expected_quotient: expected_quotient,
+          expected_remainder: expected_remainder
+        } = @divmod_case
+
+        result = Timecode.divmod(dividend, divisor)
+        assert result == {expected_quotient, expected_remainder}
       end
     end
   end

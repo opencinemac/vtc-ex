@@ -23,6 +23,7 @@ vtc-*.tar
 # IDE's
 .idea/
 *.iml
+.vscode/
 
 # Eggs
 *.egg-info/
