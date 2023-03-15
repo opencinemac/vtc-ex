@@ -261,7 +261,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> Timecode.add(a, b) |> Timecode.to_string()
+  iex> Timecode.add(a, b) |> inspect()
   "<02:30:21:17 @ <23.98 NTSC NDF>>"
   ```
 
@@ -270,7 +270,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
-  iex> Timecode.add(a, b) |> Timecode.to_string()
+  iex> Timecode.add(a, b) |> inspect()
   "<01:00:00:01 @ <23.98 NTSC NDF>>"
   ```
 
@@ -278,7 +278,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.add(a, "01:30:21:17") |> Timecode.to_string()
+  iex> Timecode.add(a, "01:30:21:17") |> inspect()
   "<02:30:21:17 @ <23.98 NTSC NDF>>"
   ```
   """
@@ -305,7 +305,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  iex> Timecode.sub(a, b) |> inspect()
   "<00:30:21:17 @ <23.98 NTSC NDF>>"
   ```
 
@@ -314,7 +314,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  iex> Timecode.sub(a, b) |> inspect()
   "<-01:00:00:00 @ <23.98 NTSC NDF>>"
   ```
 
@@ -323,7 +323,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
-  iex> Timecode.sub(a, b) |> Timecode.to_string()
+  iex> Timecode.sub(a, b) |> inspect()
   "<01:00:00:01 @ <23.98 NTSC NDF>>"
   ```
 
@@ -331,7 +331,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> Timecode.sub(a, "01:00:00:00") |> Timecode.to_string()
+  iex> Timecode.sub(a, "01:00:00:00") |> inspect()
   "<00:30:21:17 @ <23.98 NTSC NDF>>"
   ```
   """
@@ -350,11 +350,11 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.mult(a, 2) |> Timecode.to_string()
+  iex> Timecode.mult(a, 2) |> inspect()
   "<02:00:00:00 @ <23.98 NTSC NDF>>"
 
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.mult(a, 0.5) |> Timecode.to_string()
+  iex> Timecode.mult(a, 0.5) |> inspect()
   "<00:30:00:00 @ <23.98 NTSC NDF>>"
   ```
   """
@@ -362,23 +362,53 @@ defmodule Vtc.Timecode do
   def mult(a, b), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate)
 
   @doc """
-  Divides `a` by `b`. The result will inheret the framerat of `a` and be rounded to the
-  seconds representation of the nearest whole-frame at that rate.
+  Divides `dividend` by `divisor`. The result will inherit the framerate of `dividend`
+  and be floored to the nearest frame.
 
   ## Examples
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.div(a, 2) |> Timecode.to_string()
+  iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.div(dividend, 2) |> inspect()
   "<00:30:00:00 @ <23.98 NTSC NDF>>"
 
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.div(a, 0.5) |> Timecode.to_string()
+  iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.div(dividend, 0.5) |> inspect()
   "<02:00:00:00 @ <23.98 NTSC NDF>>"
   ```
   """
-  @spec div(a :: t(), b :: Ratio.t() | number()) :: t()
-  def div(a, b), do: a.seconds |> Ratio.div(b) |> with_seconds!(a.rate)
+  @spec div(dividend :: t(), divisor :: Ratio.t() | number()) :: t()
+  def div(dividend, divisor),
+    do: frames(dividend) |> Ratio.div(divisor) |> Ratio.floor() |> with_frames!(dividend.rate)
+
+  @doc """
+  Divides the total frame count of `dividend` by `divisor` and returns both a quotient
+  and a remainder as Timecode values.
+
+  If division would result in a non-whole-frame quotient, that value is floored before
+  the remainder is calculated.
+
+  If the remainder would result in a non-whole-frame value, it is rounded.
+
+  ## Examples
+
+  ```elixir
+  iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+  iex> Timecode.divmod(dividend, 4) |> inspect()
+  "{<00:15:00:00 @ <23.98 NTSC NDF>>, <00:00:00:01 @ <23.98 NTSC NDF>>}"
+  ```
+  """
+  @spec divmod(dividend :: t(), divisor :: Ratio.t() | number()) :: {t(), t()}
+  def divmod(dividend, divisor) do
+    %{rate: rate} = dividend
+    divisor = Ratio.new(divisor)
+    dividend = frames(dividend)
+
+    quotient = dividend |> Ratio.div(divisor) |> Ratio.floor()
+    remainder = dividend |> Ratio.sub(Ratio.mult(divisor, quotient)) |> Rational.round()
+
+    {with_frames!(quotient, rate), with_frames!(remainder, rate)}
+  end
 
   @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this

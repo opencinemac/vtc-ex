@@ -32,10 +32,9 @@ defmodule Vtc.Utils.Rational do
   {whole_dividend, rational_rainder} tuple.
   """
   @spec divmod(t(), t()) :: {integer(), t()}
-  def divmod(a, b) do
-    dividend = a |> Ratio.div(b) |> Ratio.floor()
-    multiplied = Ratio.mult(dividend, b)
-    remainder = Ratio.sub(a, multiplied)
-    {dividend, remainder}
+  def divmod(dividend, divisor) do
+    quotient = dividend |> Ratio.div(divisor) |> Ratio.floor()
+    remainder = Ratio.sub(dividend, Ratio.mult(divisor, quotient))
+    {quotient, remainder}
   end
 end
