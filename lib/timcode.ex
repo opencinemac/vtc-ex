@@ -2,11 +2,11 @@ defmodule Vtc.Timecode do
   @moduledoc """
   Represents the frame at a particular time in a video.
 
-  New Timecode values are created with the `with_seconds/2` and `with_frames/2`, and
+  New Timecode values are created with the `with_seconds/3` and `with_frames/2`, and
   other function prefaced by `with_*`.
   """
 
-  import Kernel, except: [div: 2]
+  import Kernel, except: [div: 2, rem: 2]
 
   alias Vtc.Framerate
   alias Vtc.Private.Consts
@@ -34,6 +34,22 @@ defmodule Vtc.Timecode do
           seconds: Rational.t(),
           rate: Framerate.t()
         }
+
+  @typedoc """
+  Valid values for rounding options.
+
+  - `:closest`: Round the to the closet whole frame.
+  - `:floor`: Always round down to the closest whole-frame.
+  - `:ciel`: Always round up to the closest whole-frame.
+  """
+  @type round() :: :closest | :floor | :ceil
+
+  @typedoc """
+  As `round/0`, but includes `:off` option to disable rounding entirely. Not all
+  functions exposed by this Module make logical sense without some form of rouding, so
+  `:off` will not be accepted by all functions.
+  """
+  @type maybe_round() :: round() | :off
 
   defmodule Sections do
     @moduledoc """
@@ -100,35 +116,55 @@ defmodule Vtc.Timecode do
   end
 
   @typedoc """
-  Type returned by `with_seconds/2` and `with_frames/2`.
+  Type returned by `with_seconds/3` and `with_frames/3`.
   """
   @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
 
   @doc """
-  Returns a new `Timecode` with a Timecode.seconds field value equal to the
-  seconds arg.
+  Returns a new `Timecode` with a `Timecode.seconds` field value equal to the
+  `seconds` arg.
 
   ## Arguments
 
-  - **seconds**: A value which can be represented as a number of seconds. Must implement
-    the `Seconds` protocol.
+  - **seconds**: A value which can be represented as a number of real-world seconds.
+    Must implement the `Seconds` protocol.
 
   - **rate**: Frame-per-second playback value of the timecode.
+
+  ## Options
+
+  - **round**: How to round the result with regards to whole-frames.
   """
-  @spec with_seconds(Seconds.t(), Framerate.t()) :: parse_result()
-  def with_seconds(seconds, rate) do
+  @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
+  def with_seconds(seconds, rate, opts \\ []) do
+    round_method = Keyword.get(opts, :round, :closest)
+
     with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
+      # If the vaue doesn't cleany divide into the framerate then we need to round to the
+      # nearest frame.
+      seconds =
+        case Ratio.div(seconds, rate.playback) do
+          %Ratio{} ->
+            rate.playback
+            |> Ratio.mult(seconds)
+            |> Rational.round(round_method)
+            |> Ratio.div(rate.playback)
+
+          _ ->
+            seconds
+        end
+
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
     end
   end
 
   @doc """
-  As `with_seconds/2`, but raises on error.
+  As `with_seconds/3`, but raises on error.
   """
-  @spec with_seconds!(Seconds.t(), Framerate.t()) :: t()
-  def with_seconds!(seconds, rate) do
+  @spec with_seconds!(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: t()
+  def with_seconds!(seconds, rate, opts \\ []) do
     seconds
-    |> with_seconds(rate)
+    |> with_seconds(rate, opts)
     |> handle_raise_function()
   end
 
@@ -141,6 +177,10 @@ defmodule Vtc.Timecode do
     implement the `Frames` protocol.
 
   - **rate**: Frame-per-second playback value of the timecode.
+
+  ## Options
+
+  - **round**: How to round the result with regards to whole-frames.
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
@@ -152,7 +192,7 @@ defmodule Vtc.Timecode do
   end
 
   @doc """
-  As `Timecode.with_frames/2`, but raises on error.
+  As `Timecode.with_frames/3`, but raises on error.
   """
   @spec with_frames!(Frames.t(), Framerate.t()) :: t()
   def with_frames!(frames, rate) do
@@ -171,22 +211,34 @@ defmodule Vtc.Timecode do
     Must implement the `PremiereTicks` protocol.
 
   - **rate**: Frame-per-second playback value of the timecode.
+
+  ## Options
+
+  - **round**: How to round the result with regards to whole-frames.
   """
-  @spec with_premiere_ticks(PremiereTicks.t(), Framerate.t()) :: parse_result()
-  def with_premiere_ticks(ticks, rate) do
+  @spec with_premiere_ticks(
+          PremiereTicks.t(),
+          Framerate.t(),
+          opts :: [round: round()]
+        ) :: parse_result()
+  def with_premiere_ticks(ticks, rate, opts \\ []) do
     with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
-      seconds = ticks / Consts.ppro_tick_per_second()
-      with_seconds(seconds, rate)
+      seconds = Ratio.div(ticks, Consts.ppro_tick_per_second())
+      with_seconds(seconds, rate, opts)
     end
   end
 
   @doc """
-  As `with_premiere_ticks/2`, but raises on error.
+  As `with_premiere_ticks/3`, but raises on error.
   """
-  @spec with_premiere_ticks!(Frames.t(), Framerate.t()) :: t()
-  def with_premiere_ticks!(ticks, rate) do
+  @spec with_premiere_ticks!(
+          PremiereTicks.t(),
+          Framerate.t(),
+          opts :: [round: maybe_round()]
+        ) :: t()
+  def with_premiere_ticks!(ticks, rate, opts \\ []) do
     ticks
-    |> with_premiere_ticks(rate)
+    |> with_premiere_ticks(rate, opts)
     |> handle_raise_function()
   end
 
@@ -254,6 +306,11 @@ defmodule Vtc.Timecode do
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
   scripting. This function will raise if there is an error parsing `b`.
 
+  ## Options
+
+  - **round**: How to round the result with respect to whole-frames when mixing
+    framerates. Default: `:closest`.
+
   ## Examples
 
   Two timecodes running at the same rate:
@@ -282,12 +339,16 @@ defmodule Vtc.Timecode do
   "<02:30:21:17 @ <23.98 NTSC NDF>>"
   ```
   """
-  @spec add(a :: t(), b :: t() | Frames.t()) :: t()
-  def add(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b),
+  @spec add(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
+  def add(a, b, opts \\ [])
+
+  def add(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b, _),
     do: %__MODULE__{seconds: Ratio.add(a.seconds, b.seconds), rate: rate}
 
-  def add(a, %__MODULE__{} = b), do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate)
-  def add(a, b), do: add(a, with_frames!(b, a.rate))
+  def add(a, %__MODULE__{} = b, opts),
+    do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
+
+  def add(a, b, opts), do: add(a, with_frames!(b, a.rate), opts)
 
   @doc """
   Subtracts two timecodoes together using their real-world seconds representation. When
@@ -297,6 +358,11 @@ defmodule Vtc.Timecode do
   `b` May be any value that implements the `Frames` protocol, such as a timecode string,
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
   scripting. This function will raise if there is an error parsing `b`.
+
+  ## Options
+
+  - **round**: How to round the result with respect to whole-frames when mixing
+    framerates. Default: `:closest`.
 
   ## Examples
 
@@ -335,16 +401,25 @@ defmodule Vtc.Timecode do
   "<00:30:21:17 @ <23.98 NTSC NDF>>"
   ```
   """
-  @spec sub(a :: t(), b :: t() | Frames.t()) :: t()
-  def sub(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b),
+  @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
+  def sub(a, b, opts \\ [])
+
+  def sub(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b, _),
     do: %__MODULE__{seconds: Ratio.sub(a.seconds, b.seconds), rate: rate}
 
-  def sub(a, %__MODULE__{} = b), do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate)
-  def sub(a, b), do: sub(a, with_frames!(b, a.rate))
+  def sub(a, %__MODULE__{} = b, opts),
+    do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
+
+  def sub(a, b, opts), do: sub(a, with_frames!(b, a.rate), opts)
 
   @doc """
   Scales `a` by `b`. The result will inheret the framerat of `a` and be rounded to the
-  seconds representation of the nearest whole-frame at that rate.
+  seconds representation of the nearest whole-frame based on the `:round` option.
+
+  ## Options
+
+  - **round**: How to round the result with respect to whole-frame values. Defaults to
+    `:closest`.
 
   ## Examples
 
@@ -358,12 +433,17 @@ defmodule Vtc.Timecode do
   "<00:30:00:00 @ <23.98 NTSC NDF>>"
   ```
   """
-  @spec mult(a :: t(), b :: Ratio.t() | number()) :: t()
-  def mult(a, b), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate)
+  @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
+  def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate, opts)
 
   @doc """
   Divides `dividend` by `divisor`. The result will inherit the framerate of `dividend`
-  and be floored to the nearest frame.
+  and rounded to the nearest whole-frame based on the `:round` option.
+
+  ## Options
+
+  - **round**: How to round the result with respect to whole-frame values. Defaults to
+    `:floor`.
 
   ## Examples
 
@@ -377,42 +457,89 @@ defmodule Vtc.Timecode do
   "<02:00:00:00 @ <23.98 NTSC NDF>>"
   ```
   """
-  @spec div(dividend :: t(), divisor :: Ratio.t() | number()) :: t()
-  def div(dividend, divisor),
-    do: frames(dividend) |> Ratio.div(divisor) |> Ratio.floor() |> with_frames!(dividend.rate)
+  @spec div(
+          dividend :: t(),
+          divisor :: Ratio.t() | number(),
+          opts :: [round: maybe_round()]
+        ) :: t()
+  def div(dividend, divisor, opts \\ []) do
+    opts = Keyword.put_new(opts, :round, :floor)
+    dividend.seconds |> Ratio.div(divisor) |> with_seconds!(dividend.rate, opts)
+  end
 
   @doc """
   Divides the total frame count of `dividend` by `divisor` and returns both a quotient
   and a remainder as Timecode values.
 
-  If division would result in a non-whole-frame quotient, that value is floored before
-  the remainder is calculated.
+  The quotient returned is equivalent to `Timecode.div/3` with the `:round` option set
+  to `:floor`.
 
-  If the remainder would result in a non-whole-frame value, it is rounded.
+  ## Options
+
+  - **round_frames**: How to round the frame count before doing the divrem operation.
+    Default: `:closest`.
+
+  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+    be the result.
 
   ## Examples
 
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
-  iex> Timecode.divmod(dividend, 4) |> inspect()
+  iex> Timecode.divrem(dividend, 4) |> inspect()
   "{<00:15:00:00 @ <23.98 NTSC NDF>>, <00:00:00:01 @ <23.98 NTSC NDF>>}"
   ```
   """
-  @spec divmod(dividend :: t(), divisor :: Ratio.t() | number()) :: {t(), t()}
-  def divmod(dividend, divisor) do
+  @spec divrem(
+          dividend :: t(),
+          divisor :: Ratio.t() | number(),
+          opts :: [round_frames: round(), round_remainder: round()]
+        ) :: {t(), t()}
+  def divrem(dividend, divisor, opts \\ []) do
+    round_frames = Keyword.get(opts, :round_frames, :closest)
+    round_remainder = Keyword.get(opts, :round_remainder, :closest)
     %{rate: rate} = dividend
-    divisor = Ratio.new(divisor)
-    dividend = frames(dividend)
 
-    quotient = dividend |> Ratio.div(divisor) |> Ratio.floor()
-    remainder = dividend |> Ratio.sub(Ratio.mult(divisor, quotient)) |> Rational.round()
+    {quotient, remainder} =
+      dividend |> frames(round: round_frames) |> Rational.divrem(Ratio.new(divisor, 1))
+
+    remainder = Rational.round(remainder, round_remainder)
 
     {with_frames!(quotient, rate), with_frames!(remainder, rate)}
   end
 
   @doc """
+  Devides the total frame count of `dividend` by `devisor`, rounds the quotient down,
+  and returns the remainder rounded to the nearest frame.
+
+  ## Options
+
+  - **round_frames**: How to round the frame count before doing the rem operation.
+    Default: `:closest`.
+
+  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+    be the result.
+
+  ```elixir
+  iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+  iex> Timecode.rem(dividend, 4) |> inspect()
+  "<00:00:00:01 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec rem(
+          dividend :: t(),
+          divisor :: Ratio.t() | number(),
+          opts :: [round_frames: round(), round_remainder: round()]
+        ) :: t()
+  def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(divisor, opts) |> elem(1)
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
+
+  ## Options
+
+  - **round**: How to round the resulting frame number.
 
   ## What it is
 
@@ -437,18 +564,22 @@ defmodule Vtc.Timecode do
       </timecode>
       ```
   """
-  @spec frames(t()) :: integer()
-  def frames(timecode) do
+  @spec frames(t(), opts :: [round: round()]) :: integer()
+  def frames(timecode, opts \\ []) do
+    round_mode = Keyword.get(opts, :round, :closest)
+
     timecode.seconds
     |> Ratio.mult(timecode.rate.playback)
-    |> Rational.round()
+    |> Rational.round(round_mode)
   end
 
   @doc """
   The individual sections of a timecode string as i64 values.
   """
-  @spec sections(t()) :: Sections.t()
-  def sections(timecode) do
+  @spec sections(t(), opts :: [round: round()]) :: Sections.t()
+  def sections(timecode, opts \\ []) do
+    round_mode = Keyword.get(opts, :round, :closest)
+
     rate = timecode.rate
     timebase = Framerate.timebase(rate)
     frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
@@ -456,26 +587,30 @@ defmodule Vtc.Timecode do
 
     total_frames =
       timecode
-      |> frames()
+      |> frames(opts)
       |> abs()
       |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
-    {hours, remainder} = Rational.divmod(total_frames, frames_per_hour)
-    {minutes, remainder} = Rational.divmod(remainder, frames_per_minute)
-    {seconds, frames} = Rational.divmod(remainder, timebase)
+    {hours, remainder} = Rational.divrem(total_frames, frames_per_hour)
+    {minutes, remainder} = Rational.divrem(remainder, frames_per_minute)
+    {seconds, frames} = Rational.divrem(remainder, timebase)
 
     %Sections{
       negative?: timecode.seconds < 0,
       hours: hours,
       minutes: minutes,
       seconds: seconds,
-      frames: Rational.round(frames)
+      frames: Rational.round(frames, round_mode)
     }
   end
 
   @doc """
   Returns the the formatted SMPTE timecode: (ex: 01:00:00:00). Drop frame timecode will
   be rendered with a ';' sperator before the frames field.
+
+  ## Options
+
+  - **round**: How to round the resulting frames field.
 
   ## What it is
 
@@ -492,9 +627,9 @@ defmodule Vtc.Timecode do
   - Burned into the footage for dailies.
   - Cut lists like an EDL.
   """
-  @spec timecode(t()) :: String.t()
-  def timecode(timecode) do
-    sections = sections(timecode)
+  @spec timecode(t(), opts :: [round: round()]) :: String.t()
+  def timecode(timecode, opts \\ []) do
+    sections = sections(timecode, opts)
 
     sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
     frame_sep = if timecode.rate.ntsc == :drop, do: ";", else: ":"
@@ -522,7 +657,7 @@ defmodule Vtc.Timecode do
 
   Arguments
 
-  - `precision`: The number of places to round to. Extra trailing 0's will still be
+  - **precision**: The number of places to round to. Extra trailing 0's will still be
     trimmed.
 
   ## What it is
@@ -599,6 +734,10 @@ defmodule Vtc.Timecode do
   @doc """
   Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
 
+  ## Options
+
+  - **round**: How to round the resulting ticks.
+
   ## What it is
 
   Internally, Adobe Premiere Pro uses ticks to divide up a second, and keep track of how
@@ -622,13 +761,19 @@ defmodule Vtc.Timecode do
     </clipitem>
     ```
   """
-  @spec premiere_ticks(t()) :: integer()
-  def premiere_ticks(timecode),
-    do: timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round()
+  @spec premiere_ticks(t(), opts :: [round: round()]) :: integer()
+  def premiere_ticks(timecode, opts \\ []) do
+    round_mode = Keyword.get(opts, :round, :closest)
+    timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round(round_mode)
+  end
 
   @doc """
   Returns the number of feet and frames this timecode represents if it were shot on 35mm
   4-perf film (16 frames per foot). ex: '5400+13'.
+
+  ## Options
+
+  - **round**: How to round the internal frame count before conversion.
 
   ## What it is
 
@@ -650,15 +795,15 @@ defmodule Vtc.Timecode do
 
   - Sound turnover change lists.
   """
-  @spec feet_and_frames(t()) :: String.t()
-  def feet_and_frames(%__MODULE__{} = timecode) do
-    total_frames = timecode |> frames() |> abs()
+  @spec feet_and_frames(t(), opts :: [round: round()]) :: String.t()
+  def feet_and_frames(%__MODULE__{} = timecode, opts \\ []) do
+    total_frames = timecode |> frames(opts) |> abs()
 
     feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()
 
     frames =
       total_frames
-      |> rem(Consts.frames_per_foot())
+      |> Kernel.rem(Consts.frames_per_foot())
       |> Integer.to_string()
       |> String.pad_leading(2, "0")
 

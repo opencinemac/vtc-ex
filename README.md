@@ -172,8 +172,8 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Add
     - [X] Subtract
     - [X] Scale (multiply and divide)
-    - [ ] Divmod
-    - [ ] Modulo
+    - [X] Divmod
+    - [X] Modulo
     - [ ] Negative
     - [ ] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
@@ -183,6 +183,7 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Negative string values | '-1:12', '-3+00'
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
+- [X] Configurable rounding options.
 - [ ] Range type for working with and comparing frame ranges.
 
 ## Installation
