@@ -342,9 +342,6 @@ defmodule Vtc.Timecode do
   @spec add(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
   def add(a, b, opts \\ [])
 
-  def add(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b, _),
-    do: %__MODULE__{seconds: Ratio.add(a.seconds, b.seconds), rate: rate}
-
   def add(a, %__MODULE__{} = b, opts),
     do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
 
@@ -404,9 +401,6 @@ defmodule Vtc.Timecode do
   @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
   def sub(a, b, opts \\ [])
 
-  def sub(%__MODULE__{rate: rate} = a, %__MODULE__{rate: rate} = b, _),
-    do: %__MODULE__{seconds: Ratio.sub(a.seconds, b.seconds), rate: rate}
-
   def sub(a, %__MODULE__{} = b, opts),
     do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
 
@@ -443,7 +437,8 @@ defmodule Vtc.Timecode do
   ## Options
 
   - **round**: How to round the result with respect to whole-frame values. Defaults to
-    `:floor`.
+    `:floor` to match `divmod` and the expected meaning of `div` to mean integer
+    division in elixir.
 
   ## Examples
 
@@ -685,7 +680,7 @@ defmodule Vtc.Timecode do
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()
-  def runtime(timecode, precision) do
+  def runtime(timecode, precision \\ 9) do
     {seconds, negative?} =
       if Ratio.compare(timecode.seconds, 0) == :lt,
         do: {Ratio.negate(timecode.seconds), true},
