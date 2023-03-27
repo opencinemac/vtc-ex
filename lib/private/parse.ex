@@ -1,190 +1,3 @@
-defmodule Vtc.Source do
-  @moduledoc """
-  Protocols for source values that can be used to construct a timecode.
-  """
-  alias Vtc.Timecode
-  alias Vtc.Utils.Rational
-
-  defprotocol Seconds do
-    @moduledoc """
-    Protocol which types can implement to be passed as the main value of
-    `Timecode.with_seconds/2`.
-
-    ## Implementations
-
-    Out of the box, this protocol is implemented for the following types:
-
-    - `Ratio`
-    - `Integer`
-    - `Float`
-    - `String`
-      - runtime ("01:00:00.0")
-      - decimal ("3600.0")
-    """
-
-    alias Vtc.Framerate
-    alias Vtc.Source
-    alias Vtc.Timecode
-
-    @typedoc """
-    Result type of `Source.Seconds.seconds/2`.
-    """
-    @type result() :: {:ok, Rational.t()} | {:error, Timecode.ParseError.t()}
-
-    @doc """
-    Returns the value as a rational seconds value.
-
-    ## Arguments
-
-    - **value**: The source value.
-
-    - **rate**: The framerate of the timecode being parsed.
-
-    ## Returns
-
-    A result tuple with a rational representation of the seconds value using `Ratio` on
-    success.
-    """
-    @spec seconds(t(), Framerate.t()) :: result()
-    def seconds(value, rate)
-  end
-
-  defimpl Seconds, for: [Ratio, Integer] do
-    alias Vtc.Framerate
-    alias Vtc.Private.Parse
-    alias Vtc.Source
-    alias Vtc.Utils.Rational
-
-    @spec seconds(Rational.t(), Framerate.t()) :: Seconds.result()
-    def seconds(value, rate), do: Parse.from_seconds_core(value, rate)
-  end
-
-  defimpl Seconds, for: Float do
-    alias Vtc.Framerate
-    alias Vtc.Source
-
-    @spec seconds(float(), Framerate.t()) :: Seconds.result()
-    def seconds(value, rate), do: value |> Ratio.new(1) |> Seconds.seconds(rate)
-  end
-
-  defimpl Seconds, for: [String, BitString] do
-    alias Vtc.Framerate
-    alias Vtc.Private.Parse
-    alias Vtc.Source
-
-    @spec seconds(String.t(), Framerate.t()) :: Seconds.result()
-    def seconds(value, rate), do: Parse.parse_runtime_string(value, rate)
-  end
-
-  defprotocol Frames do
-    @moduledoc """
-    Protocol which types can implement to be passed as the main value of
-    `Timecode.with_frames/2`.
-
-    ## Implementations
-
-    Out of the box, this protocol is implemented for the following types:
-
-    - `Integer`
-    - `String` & 'BitString'
-      - timecode ("01:00:00:00")
-      - integer ("86400")
-      - Feet+Frames ("5400+00")
-    """
-
-    alias Vtc.Framerate
-    alias Vtc.Source
-    alias Vtc.Timecode
-
-    @typedoc """
-    Result type of `Vtc.Source.Frames.frames/2 aaa`.
-    """
-    @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
-
-    @doc """
-    Returns the value as a frame count.
-
-    # Arguments
-
-    - **value**: The source value.
-
-    - **rate**: The framerate of the timecode being parsed.
-
-    # Returns
-
-    A result tuple with an integer value representing the frame count on success.
-    """
-
-    @spec frames(t(), Framerate.t()) :: result()
-    def frames(value, rate)
-  end
-
-  defimpl Frames, for: Integer do
-    alias Vtc.Framerate
-    alias Vtc.Source.Frames
-
-    @spec frames(integer(), Framerate.t()) :: Frames.result()
-    def frames(value, _rate), do: {:ok, value}
-  end
-
-  defimpl Frames, for: [String, BitString] do
-    alias Vtc.Framerate
-    alias Vtc.Private.Parse
-    alias Vtc.Source.Frames
-
-    @spec frames(String.t(), Framerate.t()) :: Frames.result()
-    def frames(value, rate), do: Parse.parse_frames_string(value, rate)
-  end
-
-  defprotocol PremiereTicks do
-    @moduledoc """
-    Protocol which types can implement to be passed as the main value of
-    `Vtc.Timecode.with_premiere_ticks/2`.
-
-    # Implementations
-
-    Out of the box, this protocol is implemented for the following types:
-
-    - `Integer`
-    """
-
-    @doc """
-    Returns the number of Adobe Premiere Pro ticks as an integer.
-
-    # Arguments
-
-    - **value**: The source value.
-
-    - **rate**: The framerate of the timecode being parsed.
-
-    # Returns
-
-    A result tuple with a rational representation of the seconds value using `Ratio` on
-    success.
-    """
-
-    alias Vtc.Framerate
-    alias Vtc.Source
-    alias Vtc.Timecode
-
-    @typedoc """
-    Result type of `ticks/2`.
-    """
-    @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
-
-    @spec ticks(t(), Framerate.t()) :: result()
-    def ticks(value, rate)
-  end
-
-  defimpl PremiereTicks, for: Integer do
-    alias Vtc.Framerate
-    alias Vtc.Source
-
-    @spec ticks(integer(), Framerate.t()) :: PremiereTicks.result()
-    def ticks(value, _rate), do: {:ok, value}
-  end
-end
-
 defmodule Vtc.Private.Parse do
   @moduledoc false
 
@@ -193,25 +6,10 @@ defmodule Vtc.Private.Parse do
   alias Vtc.Framerate
   alias Vtc.Private.Consts
   alias Vtc.Private.DropFrame
-  alias Vtc.Source
   alias Vtc.Source.Frames
   alias Vtc.Source.Seconds
   alias Vtc.Timecode
   alias Vtc.Utils.Rational
-
-  @spec from_seconds_core(Rational.t(), Framerate.t()) :: Seconds.result()
-  def from_seconds_core(input, rate) do
-    # If the vaue doesn't cleany divide into the framerate then we need to round to the
-    # nearest frame.
-    case Ratio.div(input, rate.playback) do
-      %Ratio{} ->
-        frames = rate.playback |> Ratio.mult(input) |> Rational.round()
-        {:ok, Ratio.div(frames, rate.playback)}
-
-      _ ->
-        {:ok, input}
-    end
-  end
 
   @spec parse_frames_string(String.t(), Framerate.t()) :: Frames.result()
   def parse_frames_string(value, rate) do
@@ -332,7 +130,7 @@ defmodule Vtc.Private.Parse do
     with {:ok, matched} <- apply_regex(@runtime_regex, value) do
       matched
       |> runtime_matched_to_second()
-      |> Source.Seconds.seconds(rate)
+      |> Seconds.seconds(rate)
     end
   end
 

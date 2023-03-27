@@ -83,7 +83,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
     seconds_per_frame =
       Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
 
-    assert {_, 0} = Rational.divmod(seconds, seconds_per_frame)
+    assert {_, 0} = Rational.divrem(seconds, seconds_per_frame)
   end
 end
 
@@ -353,8 +353,8 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
     end
   end
 
-  describe "#divmod/2" do
-    property "quotient returns same as div/2" do
+  describe "#divrem/2" do
+    property "quotient returns same as div/3 with :floor" do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
@@ -363,10 +363,28 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
 
-        div_result = Timecode.div(dividend, divisor)
-        {divmod_result, _} = Timecode.divmod(dividend, divisor)
+        div_result = Timecode.div(dividend, divisor, round: :floor)
+        {divrem_result, _} = Timecode.divrem(dividend, divisor)
 
-        assert div_result == divmod_result
+        assert divrem_result == div_result
+      end
+    end
+  end
+
+  describe "#rem/2" do
+    property "returns same as divrem/3" do
+      check all(
+              rate <- frame_rate_gen(),
+              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
+              divisor <- ratio() |> filter(&(&1 != 0))
+            ) do
+        %{timecode_string: tc_string} = tc_info
+        dividend = Timecode.with_frames!(tc_string, rate)
+
+        {_, divrem_result} = Timecode.divrem(dividend, divisor)
+        rem_result = Timecode.rem(dividend, divisor)
+
+        assert rem_result == divrem_result
       end
     end
   end

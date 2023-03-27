@@ -172,18 +172,23 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Add
     - [X] Subtract
     - [X] Scale (multiply and divide)
-    - [ ] Divmod
-    - [ ] Modulo
+    - [X] Divmod
+    - [X] Modulo
     - [ ] Negative
     - [ ] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
+    - [ ] Sort Helper
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'
     - [X] Negative string values | '-1:12', '-3+00'
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
+- [X] Configurable rounding options.
 - [ ] Range type for working with and comparing frame ranges.
+    - [ ] Overlap between ranges
+    - [ ] Distance between ranges
+    - [ ] Order Ranfes
 
 ## Installation
 
@@ -193,7 +198,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.1"}
+    {:vtc, "~> 0.3"}
   ]
 end
 ```

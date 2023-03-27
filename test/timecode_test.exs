@@ -62,6 +62,7 @@ defmodule Vtc.TimecodeTest do
 
   use ExUnit.Case, async: true
 
+  alias Vtc.Private.Consts
   alias Vtc.Rates
   alias Vtc.Timecode
 
@@ -377,27 +378,59 @@ defmodule Vtc.TimecodeTest do
     }
   ]
 
-  describe "#with_seconds/2" do
-    for test_case <- @parse_cases do
+  describe "#with_seconds/3" do
+    for {test_case, test_index} <- Enum.with_index(@parse_cases) do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
 
-      for input_case <- @test_case.seconds_inputs do
+      for {input_case, case_index} <- Enum.with_index(@test_case.seconds_inputs) do
         @input_case input_case
         @negative_input ParseHelpers.make_negative_input(@input_case)
 
-        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+        @tag case: :"with_seconds_#{test_index}_#{case_index}"
+        test "#{@test_case.name} | #{test_index}-#{case_index} | #{@input_case} | #{@test_case.rate}" do
           @input_case
           |> Timecode.with_seconds(@test_case.rate)
           |> check_parsed(@test_case)
         end
 
-        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate} | negative" do
+        @tag case: :"with_seconds_#{test_index}_#{case_index}_negative"
+        test "#{@test_case.name} | #{test_index}-#{case_index} | #{@input_case} | #{@test_case.rate} | negative" do
           @negative_input
           |> Timecode.with_seconds(@test_case_negative.rate)
           |> check_parsed(@test_case_negative)
         end
       end
+    end
+
+    test "round | :closest | implied" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24())
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :closest | explicit" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :closest)
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :closest | down" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(234, 240), Rates.f24(), round: :closest)
+      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+    end
+
+    test "round | :floor" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :floor)
+      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+    end
+
+    test "round | :ceil" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(231, 240), Rates.f24(), round: :ceil)
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :off" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
+      assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
     end
 
     test "ParseTimecodeError when bad format" do
@@ -409,7 +442,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#with_seconds!/1" do
+  describe "#with_seconds!/3" do
     for test_case <- @parse_cases do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
@@ -430,6 +463,36 @@ defmodule Vtc.TimecodeTest do
           |> check_parsed!(@test_case_negative)
         end
       end
+    end
+
+    test "round | :closest | implied" do
+      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24())
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :closest | explicit" do
+      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :closest)
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :closest | down" do
+      result = Timecode.with_seconds!(Ratio.new(234, 240), Rates.f24(), round: :closest)
+      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+    end
+
+    test "round | :floor" do
+      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :floor)
+      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+    end
+
+    test "round | :ceil" do
+      result = Timecode.with_seconds!(Ratio.new(231, 240), Rates.f24(), round: :ceil)
+      assert result == %Timecode{seconds: 1, rate: Rates.f24()}
+    end
+
+    test "round | :off" do
+      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
+      assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
     end
 
     test "ParseTimecodeError throws" do
@@ -485,7 +548,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#with_frames!/1" do
+  describe "#with_frames!/2" do
     for test_case <- @parse_cases do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
@@ -515,7 +578,9 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#with_premiere_ticks/2" do
+  @ppro_ticks_per_frame div(Consts.ppro_tick_per_second(), 24)
+
+  describe "#with_premiere_ticks/3" do
     for test_case <- @parse_cases do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
@@ -533,9 +598,64 @@ defmodule Vtc.TimecodeTest do
         |> check_parsed(@test_case_negative)
       end
     end
+
+    test "round | :closest | implied" do
+      {:ok, timecode} =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> Timecode.with_premiere_ticks(Rates.f24())
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :closest | explicit" do
+      {:ok, timecode} =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> Timecode.with_premiere_ticks(Rates.f24(), round: :closest)
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :closest | down" do
+      {:ok, timecode} =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> then(&(&1 - 1))
+        |> Timecode.with_premiere_ticks(Rates.f24(), round: :closest)
+
+      assert timecode == %Timecode{seconds: 0, rate: Rates.f24()}
+    end
+
+    test "round | :ceil" do
+      {:ok, timecode} =
+        @ppro_ticks_per_frame
+        |> div(4)
+        |> Timecode.with_premiere_ticks(Rates.f24(), round: :ceil)
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :floor" do
+      {:ok, timecode} =
+        Timecode.with_premiere_ticks(@ppro_ticks_per_frame - 1, Rates.f24(), round: :floor)
+
+      assert timecode == %Timecode{seconds: 0, rate: Rates.f24()}
+    end
+
+    test "round | :off" do
+      {:ok, timecode} =
+        Timecode.with_premiere_ticks(Consts.ppro_tick_per_second() - 1, Rates.f24(), round: :off)
+
+      assert timecode == %Timecode{
+               seconds:
+                 Ratio.new(Consts.ppro_tick_per_second() - 1, Consts.ppro_tick_per_second()),
+               rate: Rates.f24()
+             }
+    end
   end
 
-  describe "#with_premiere_ticks!/2" do
+  describe "#with_premiere_ticks!/3" do
     for test_case <- @parse_cases do
       @test_case test_case
       @test_case_negative ParseHelpers.make_negative_case(test_case)
@@ -552,6 +672,50 @@ defmodule Vtc.TimecodeTest do
         |> Timecode.with_premiere_ticks!(@test_case_negative.rate)
         |> check_parsed!(@test_case_negative)
       end
+    end
+
+    test "round | :closest | implied" do
+      timecode =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> Timecode.with_premiere_ticks!(Rates.f24())
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :closest | explicit" do
+      timecode =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :closest)
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :closest | down" do
+      timecode =
+        @ppro_ticks_per_frame
+        |> div(2)
+        |> then(&(&1 - 1))
+        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :closest)
+
+      assert timecode == %Timecode{seconds: 0, rate: Rates.f24()}
+    end
+
+    test "round | :ceil" do
+      timecode =
+        @ppro_ticks_per_frame
+        |> div(4)
+        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :ceil)
+
+      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    end
+
+    test "round | :floor" do
+      timecode =
+        Timecode.with_premiere_ticks!(@ppro_ticks_per_frame - 1, Rates.f24(), round: :floor)
+
+      assert timecode == %Timecode{seconds: 0, rate: Rates.f24()}
     end
   end
 
@@ -570,7 +734,7 @@ defmodule Vtc.TimecodeTest do
     assert parsed.rate == test_case.rate
   end
 
-  describe "#frames/1" do
+  describe "#frames/2" do
     for test_case <- @parse_cases do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
@@ -589,9 +753,41 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.frames(@input_struct_negative) == @test_case_negative.frames
       end
     end
+
+    test "round | :closest | implied" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.frames(timecode) == 24
+    end
+
+    test "round | :closest | explicit" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.frames(timecode, round: :closest) == 24
+    end
+
+    test "round | :closest | down" do
+      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      assert Timecode.frames(timecode) == 23
+    end
+
+    test "round | :floor" do
+      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      assert Timecode.frames(timecode, round: :floor) == 23
+    end
+
+    test "round | :ceil" do
+      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      assert Timecode.frames(timecode, round: :ceil) == 24
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception = assert_raise ArgumentError, fn -> Timecode.frames(timecode, round: :off) end
+      assert Exception.message(exception) == "`round` cannot be `:off`"
+    end
   end
 
-  describe "#timecode/1" do
+  describe "#timecode/2" do
     for {test_case, case_index} <- Enum.with_index(@parse_cases) do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
@@ -612,9 +808,41 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.timecode(@input_struct_negative) == @test_case_negative.timecode
       end
     end
+
+    test "round | :closest | implied" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.timecode(timecode) == "00:00:01:00"
+    end
+
+    test "round | :closest | explicit" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.timecode(timecode, round: :closest) == "00:00:01:00"
+    end
+
+    test "round | :closest | down" do
+      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      assert Timecode.timecode(timecode) == "00:00:00:23"
+    end
+
+    test "round | :floor" do
+      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      assert Timecode.timecode(timecode, round: :floor) == "00:00:00:23"
+    end
+
+    test "round | :ceil" do
+      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      assert Timecode.timecode(timecode, round: :ceil) == "00:00:01:00"
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception = assert_raise ArgumentError, fn -> Timecode.timecode(timecode, round: :off) end
+      assert Exception.message(exception) == "`round` cannot be `:off`"
+    end
   end
 
-  describe "#runtime/1" do
+  describe "#runtime/2" do
     for test_case <- @parse_cases do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
@@ -629,13 +857,17 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.runtime(@input_struct, 9) == @test_case.runtime
       end
 
+      test "#{@test_case.name} | precision 9 default" do
+        assert Timecode.runtime(@input_struct) == @test_case.runtime
+      end
+
       test "#{@test_case.name} | negative" do
         assert Timecode.runtime(@input_struct_negative, 9) == @test_case_negative.runtime
       end
     end
   end
 
-  describe "#premiere_ticks/1" do
+  describe "#premiere_ticks/2" do
     for test_case <- @parse_cases do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
@@ -655,9 +887,49 @@ defmodule Vtc.TimecodeTest do
                  @test_case_negative.premiere_ticks
       end
     end
+
+    @one_quarter_tick Ratio.new(1, Consts.ppro_tick_per_second() * 4)
+    @one_half_tick Ratio.new(1, Consts.ppro_tick_per_second() * 2)
+    @three_quarter_tick Ratio.add(@one_half_tick, @one_quarter_tick)
+
+    test "round | :closest | implied" do
+      timecode = %Timecode{seconds: Ratio.add(1, @one_half_tick), rate: Rates.f24()}
+      assert Timecode.premiere_ticks(timecode) == Consts.ppro_tick_per_second() + 1
+    end
+
+    test "round | :closest | explicit" do
+      timecode = %Timecode{seconds: Ratio.add(1, @one_half_tick), rate: Rates.f24()}
+      expexted = Consts.ppro_tick_per_second() + 1
+      assert Timecode.premiere_ticks(timecode, round: :closest) == expexted
+    end
+
+    test "round | :closest | down" do
+      timecode = %Timecode{seconds: Ratio.add(1, @one_quarter_tick), rate: Rates.f24()}
+      assert Timecode.premiere_ticks(timecode, round: :closest) == Consts.ppro_tick_per_second()
+    end
+
+    test "round | :floor" do
+      timecode = %Timecode{seconds: Ratio.add(1, @three_quarter_tick), rate: Rates.f24()}
+      assert Timecode.premiere_ticks(timecode, round: :floor) == Consts.ppro_tick_per_second()
+    end
+
+    test "round | :ceil" do
+      timecode = %Timecode{seconds: Ratio.add(1, @one_quarter_tick), rate: Rates.f24()}
+      expexted = Consts.ppro_tick_per_second() + 1
+      assert Timecode.premiere_ticks(timecode, round: :ceil) == expexted
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.premiere_ticks(timecode, round: :off) end
+
+      assert Exception.message(exception) == "`round` cannot be `:off`"
+    end
   end
 
-  describe "#feet_and_frames/1" do
+  describe "#feet_and_frames/2" do
     for test_case <- @parse_cases do
       @test_case test_case
       @input_struct %Timecode{seconds: @test_case.seconds, rate: @test_case.rate}
@@ -676,6 +948,40 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.feet_and_frames(@input_struct_negative) ==
                  @test_case_negative.feet_and_frames
       end
+    end
+
+    test "round | :closest | implied" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.feet_and_frames(timecode) == "1+08"
+    end
+
+    test "round | :closest | explicit" do
+      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Timecode.feet_and_frames(timecode, round: :closest) == "1+08"
+    end
+
+    test "round | :closest | down" do
+      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      assert Timecode.feet_and_frames(timecode) == "1+07"
+    end
+
+    test "round | :floor" do
+      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      assert Timecode.feet_and_frames(timecode, round: :floor) == "1+07"
+    end
+
+    test "round | :ceil" do
+      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      assert Timecode.feet_and_frames(timecode, round: :ceil) == "1+08"
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
+
+      assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
 
@@ -771,7 +1077,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  describe "#with_seconds/2 - partial runtime" do
+  describe "#with_seconds/3 - partial runtime" do
     @partial_runtime_cases [
       %{
         val_in: "1:02:03.5",
@@ -1004,6 +1310,54 @@ defmodule Vtc.TimecodeTest do
         end
       end
     end
+
+    test "round | :closest | implied" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.add(a, b) == expected
+    end
+
+    test "round | :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.add(a, b, round: :closest) == expected
+    end
+
+    test "round | :closest | down" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(4, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.add(a, b, round: :closest) == expected
+    end
+
+    test "round | :floor" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.add(a, b, round: :floor) == expected
+    end
+
+    test "round | :ceil" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.add(a, b, round: :ceil) == expected
+    end
+
+    test "round | :off" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+
+      assert Timecode.add(a, b, round: :off) == expected
+    end
   end
 
   describe "#sub/2" do
@@ -1062,6 +1416,54 @@ defmodule Vtc.TimecodeTest do
         end
       end
     end
+
+    test "round | :closest | implied" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.sub(a, b) == expected
+    end
+
+    test "round | :closest | explicit" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.sub(a, b, round: :closest) == expected
+    end
+
+    test "round | :closest | down" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(6, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.sub(a, b, round: :closest) == expected
+    end
+
+    test "round | :floor" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.sub(a, b, round: :floor) == expected
+    end
+
+    test "round | :ceil" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.sub(a, b, round: :ceil) == expected
+    end
+
+    test "round | :off" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      expected = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+
+      assert Timecode.sub(a, b, round: :off) == expected
+    end
   end
 
   describe "#mult/2" do
@@ -1100,6 +1502,54 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.mult(@mult_case.a, @mult_case.b) == @mult_case.expected
       end
     end
+
+    test "round | :closest | implied" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(235, 240)
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.mult(a, b) == expected
+    end
+
+    test "round | :closest | explicit" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(235, 240)
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.mult(a, b, round: :closest) == expected
+    end
+
+    test "round | :closest | down" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(234, 240)
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.mult(a, b, round: :closest) == expected
+    end
+
+    test "round | :floor" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(239, 240)
+      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+
+      assert Timecode.mult(a, b, round: :floor) == expected
+    end
+
+    test "round | :ceil" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(231, 240)
+      expected = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      assert Timecode.mult(a, b, round: :ceil) == expected
+    end
+
+    test "round | :off" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = Ratio.new(239, 240)
+      expected = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+
+      assert Timecode.mult(a, b, round: :off) == expected
+    end
   end
 
   describe "#div/2" do
@@ -1133,72 +1583,138 @@ defmodule Vtc.TimecodeTest do
         assert Timecode.div(@div_case.a, @div_case.b) == @div_case.expected
       end
     end
+
+    test "round | :closest | explicit" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 48
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.div(a, b, round: :closest) == expected
+    end
+
+    test "round | :closest | down" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 48 * 2
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.div(a, b, round: :closest) == expected
+    end
+
+    test "round | :floor" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 36
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.div(a, b, round: :floor) == expected
+    end
+
+    test "round | :floor | :implied" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 36
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.div(a, b) == expected
+    end
+
+    test "round | :ceil" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 48 * 2
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.div(a, b, round: :ceil) == expected
+    end
+
+    test "round | :off" do
+      a = %Timecode{seconds: 1, rate: Rates.f24()}
+      b = 48
+      expected = %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
+
+      assert Timecode.div(a, b, round: :off) == expected
+    end
   end
 
-  describe "#divmod/2" do
-    @divmod_case [
-      %{
-        dividend: Timecode.with_frames!("01:00:00:00", Rates.f24()),
-        divisor: 2,
-        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
-        expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f24())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
-        divisor: 2,
-        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
-        expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
-        divisor: 2,
-        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
-        divisor: 2,
-        expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
-        divisor: 4,
-        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f24()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
-        divisor: 4,
-        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:02", Rates.f23_98()),
-        divisor: 4,
-        expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
-        expected_remainder: Timecode.with_frames!("00:00:00:02", Rates.f23_98())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
-        divisor: 1.5,
-        expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f24()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
-      },
-      %{
-        dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
-        divisor: 1.5,
-        expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f23_98()),
-        expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
-      }
-    ]
+  @divrem_cases [
+    %{
+      dividend: Timecode.with_frames!("01:00:00:00", Rates.f24()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("-01:00:00:00", Rates.f24()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("-00:30:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
+      expected_remainder: Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("-01:00:00:01", Rates.f24()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("-00:30:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("-01:00:00:01", Rates.f24()),
+      divisor: -2,
+      expected_quotient: Timecode.with_frames!("00:30:00:01", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("-00:00:00:01", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+      divisor: 2,
+      expected_quotient: Timecode.with_frames!("00:30:00:00", Rates.f23_98()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+      divisor: 4,
+      expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+      divisor: 4,
+      expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:02", Rates.f23_98()),
+      divisor: 4,
+      expected_quotient: Timecode.with_frames!("00:15:00:00", Rates.f23_98()),
+      expected_remainder: Timecode.with_frames!("00:00:00:02", Rates.f23_98())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f24()),
+      divisor: 1.5,
+      expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f24()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f24())
+    },
+    %{
+      dividend: Timecode.with_frames!("01:00:00:01", Rates.f23_98()),
+      divisor: 1.5,
+      expected_quotient: Timecode.with_frames!("00:40:00:00", Rates.f23_98()),
+      expected_remainder: Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+    }
+  ]
 
-    for divmod_case <- @divmod_case do
-      @divmod_case divmod_case
+  describe "#divrem/2" do
+    for divrem_case <- @divrem_cases do
+      @divrem_case divrem_case
 
       test_name =
-        "#{divmod_case.dividend} /% #{divmod_case.divisor}" <>
-          " == {divmod_case.expected_quotient, divmod_case.expected_remainder}"
+        "#{divrem_case.dividend} /% #{divrem_case.divisor}" <>
+          " == {#{divrem_case.expected_quotient}, #{divrem_case.expected_remainder}}"
 
       test test_name do
         %{
@@ -1206,11 +1722,198 @@ defmodule Vtc.TimecodeTest do
           divisor: divisor,
           expected_quotient: expected_quotient,
           expected_remainder: expected_remainder
-        } = @divmod_case
+        } = @divrem_case
 
-        result = Timecode.divmod(dividend, divisor)
+        result = Timecode.divrem(dividend, divisor)
         assert result == {expected_quotient, expected_remainder}
       end
+    end
+
+    test "round | frames :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b) == {expected_q, expected_r}
+    end
+
+    test "round | frames :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :closest) == {expected_q, expected_r}
+    end
+
+    test "round | frames :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :floor) == {expected_q, expected_r}
+    end
+
+    test "round | frames :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :ceil) == {expected_q, expected_r}
+    end
+
+    test "round | rem :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b) == {expected_q, expected_r}
+    end
+
+    test "round | rem :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :closest) == {expected_q, expected_r}
+    end
+
+    test "round | rem :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :ceil) == {expected_q, expected_r}
+    end
+
+    test "round | rem :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :floor) == {expected_q, expected_r}
+    end
+
+    test "round | frames :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_frames: :off) end
+      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+    end
+
+    test "round | remainder :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_remainder: :off) end
+
+      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
+    end
+  end
+
+  describe "#rem/2" do
+    for rem_case <- @divrem_cases do
+      @rem_case rem_case
+
+      test "#{rem_case.dividend} % #{rem_case.divisor} == #{rem_case.expected_remainder}" do
+        %{
+          dividend: dividend,
+          divisor: divisor,
+          expected_remainder: expected
+        } = @rem_case
+
+        assert Timecode.rem(dividend, divisor) == expected
+      end
+    end
+
+    test "round | frames :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b) == expected
+    end
+
+    test "round | frames :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :closest) == expected
+    end
+
+    test "round | frames :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :floor) == expected
+    end
+
+    test "round | frames :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :ceil) == expected
+    end
+
+    test "round | rem :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b) == expected
+    end
+
+    test "round | rem :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :closest) == expected
+    end
+
+    test "round | rem :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :ceil) == expected
+    end
+
+    test "round | rem :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :floor) == expected
+    end
+
+    test "round | frames :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_frames: :off) end
+      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+    end
+
+    test "round | remainder :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_remainder: :off) end
+
+      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end
   end
 end
