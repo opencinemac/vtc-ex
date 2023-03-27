@@ -557,7 +557,7 @@ defmodule Vtc.Timecode do
     Default: `:closest`.
 
   - **round_remainder**: How to round the remainder frames when a non-whole frame would
-    be the result. Defualt: `:closest`.
+    be the result. Default: `:closest`.
 
   ## Examples
 
