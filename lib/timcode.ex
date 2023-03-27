@@ -134,6 +134,43 @@ defmodule Vtc.Timecode do
   ## Options
 
   - **round**: How to round the result with regards to whole-frames.
+
+  ## Examples
+
+  Accetps runtime strings...
+
+  ```elixir
+  iex> Timecode.with_seconds("01:00:00.5", Rates.f23_98) |> inspect()
+  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... floats...
+
+  ```elixir
+  iex> Timecode.with_seconds(3600.5, Rates.f23_98) |> inspect()
+  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... integers...
+
+  ```elixir
+  iex> Timecode.with_seconds(3600, Rates.f23_98) |> inspect()
+  "{:ok, <00:59:56:10 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... integer Strings...
+
+  ```elixir
+  iex> Timecode.with_seconds("3600", Rates.f23_98) |> inspect()
+  "{:ok, <00:59:56:10 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... and float strings.
+
+  ```elixir
+  iex> Timecode.with_seconds("3600.5", Rates.f23_98) |> inspect()
+  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  ```
   """
   @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
@@ -187,6 +224,36 @@ defmodule Vtc.Timecode do
   ## Options
 
   - **round**: How to round the result with regards to whole-frames.
+
+  ## Examples
+
+  Accepts timecode strings...
+
+  ```elixir
+  iex> Timecode.with_frames("01:00:00:00", Rates.f23_98) |> inspect()
+  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... feet+frames strings...
+
+  ```elixir
+  iex> Timecode.with_frames("5400+00", Rates.f23_98) |> inspect()
+  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... integers...
+
+  ```elixir
+  iex> Timecode.with_frames(86400, Rates.f23_98) |> inspect()
+  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  ```
+
+  ... and integer strings.
+
+  ```elixir
+  iex> Timecode.with_frames("86400", Rates.f23_98) |> inspect()
+  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  ```
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
@@ -221,6 +288,15 @@ defmodule Vtc.Timecode do
   ## Options
 
   - **round**: How to round the result with regards to whole-frames.
+
+  ## Examples
+
+  Accetps integers.
+
+  ```elixir
+  iex> Timecode.with_premiere_ticks(254_016_000_000, Rates.f23_98) |> inspect()
+  "{:ok, <00:00:01:00 @ <23.98 NTSC NDF>>}"
+  ```
   """
   @spec with_premiere_ticks(
           PremiereTicks.t(),
