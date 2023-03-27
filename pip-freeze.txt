@@ -1,0 +1,3 @@
+packaging==23.0
+toml==0.10.2
+-e git+https://github.com/opencinemac/vtc-ex@886dbf367fc2276bab102c0124b409bd32190374#egg=UNKNOWN
