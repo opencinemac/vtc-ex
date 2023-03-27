@@ -932,8 +932,6 @@ defimpl Inspect, for: Vtc.Timecode do
   def inspect(timecode, _opts), do: Timecode.to_string(timecode)
 end
 
-# opportunities
-
 defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
 
