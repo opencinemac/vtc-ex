@@ -525,6 +525,8 @@ defmodule Vtc.Timecode do
   - **round_remainder**: How to round the remainder frames when a non-whole frame would
     be the result.
 
+  ## Examples
+
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
   iex> Timecode.rem(dividend, 4) |> inspect()
