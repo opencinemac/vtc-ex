@@ -118,7 +118,7 @@ defmodule Vtc.Timecode do
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
   """
-  @type parse_result() :: {:ok, t()} | {:error, ParseError.t()}
+  @type parse_result() :: {:ok, t()} | {:error, ParseError.t() | %ArgumentError{}}
 
   @doc """
   Returns a new `Timecode` with a `Timecode.seconds` field value equal to the
@@ -137,24 +137,30 @@ defmodule Vtc.Timecode do
   """
   @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
-    round_method = Keyword.get(opts, :round, :closest)
+    round = Keyword.get(opts, :round, :closest)
 
     with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
       # If the vaue doesn't cleany divide into the framerate then we need to round to the
       # nearest frame.
-      seconds =
-        case Ratio.div(seconds, rate.playback) do
-          %Ratio{} ->
-            rate.playback
-            |> Ratio.mult(seconds)
-            |> Rational.round(round_method)
-            |> Ratio.div(rate.playback)
-
-          _ ->
-            seconds
-        end
-
+      seconds = with_seconds_round_to_frame(seconds, rate, round)
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
+    end
+  end
+
+  # Rounds seconds value to the nearest whole-frame.
+  @spec with_seconds_round_to_frame(Rational.t(), Framerate.t(), maybe_round()) :: Rational.t()
+  def with_seconds_round_to_frame(seconds, _, :off), do: seconds
+
+  def with_seconds_round_to_frame(seconds, rate, round) do
+    case Ratio.div(seconds, rate.playback) do
+      %Ratio{} ->
+        rate.playback
+        |> Ratio.mult(seconds)
+        |> Rational.round(round)
+        |> Ratio.div(rate.playback)
+
+      _ ->
+        seconds
     end
   end
 
@@ -219,7 +225,7 @@ defmodule Vtc.Timecode do
   @spec with_premiere_ticks(
           PremiereTicks.t(),
           Framerate.t(),
-          opts :: [round: round()]
+          opts :: [round: maybe_round()]
         ) :: parse_result()
   def with_premiere_ticks(ticks, rate, opts \\ []) do
     with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
@@ -475,7 +481,7 @@ defmodule Vtc.Timecode do
     Default: `:closest`.
 
   - **round_remainder**: How to round the remainder frames when a non-whole frame would
-    be the result.
+    be the result. Defualt: `:closest`.
 
   ## Examples
 
@@ -493,14 +499,18 @@ defmodule Vtc.Timecode do
   def divrem(dividend, divisor, opts \\ []) do
     round_frames = Keyword.get(opts, :round_frames, :closest)
     round_remainder = Keyword.get(opts, :round_remainder, :closest)
-    %{rate: rate} = dividend
 
-    {quotient, remainder} =
-      dividend |> frames(round: round_frames) |> Rational.divrem(Ratio.new(divisor, 1))
+    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
+         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+      %{rate: rate} = dividend
 
-    remainder = Rational.round(remainder, round_remainder)
+      {quotient, remainder} =
+        dividend |> frames(round: round_frames) |> Rational.divrem(Ratio.new(divisor))
 
-    {with_frames!(quotient, rate), with_frames!(remainder, rate)}
+      remainder = Rational.round(remainder, round_remainder)
+
+      {with_frames!(quotient, rate), with_frames!(remainder, rate)}
+    end
   end
 
   @doc """
@@ -561,11 +571,13 @@ defmodule Vtc.Timecode do
   """
   @spec frames(t(), opts :: [round: round()]) :: integer()
   def frames(timecode, opts \\ []) do
-    round_mode = Keyword.get(opts, :round, :closest)
+    round = Keyword.get(opts, :round, :closest)
 
-    timecode.seconds
-    |> Ratio.mult(timecode.rate.playback)
-    |> Rational.round(round_mode)
+    with :ok <- ensure_round_enabled(round) do
+      timecode.seconds
+      |> Ratio.mult(timecode.rate.playback)
+      |> Rational.round(round)
+    end
   end
 
   @doc """
@@ -573,30 +585,32 @@ defmodule Vtc.Timecode do
   """
   @spec sections(t(), opts :: [round: round()]) :: Sections.t()
   def sections(timecode, opts \\ []) do
-    round_mode = Keyword.get(opts, :round, :closest)
+    round = Keyword.get(opts, :round, :closest)
 
-    rate = timecode.rate
-    timebase = Framerate.timebase(rate)
-    frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
-    frames_per_hour = Ratio.mult(timebase, Consts.seconds_per_hour())
+    with :ok <- ensure_round_enabled(round) do
+      rate = timecode.rate
+      timebase = Framerate.timebase(rate)
+      frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
+      frames_per_hour = Ratio.mult(timebase, Consts.seconds_per_hour())
 
-    total_frames =
-      timecode
-      |> frames(opts)
-      |> abs()
-      |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
+      total_frames =
+        timecode
+        |> frames(opts)
+        |> abs()
+        |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
-    {hours, remainder} = Rational.divrem(total_frames, frames_per_hour)
-    {minutes, remainder} = Rational.divrem(remainder, frames_per_minute)
-    {seconds, frames} = Rational.divrem(remainder, timebase)
+      {hours, remainder} = Rational.divrem(total_frames, frames_per_hour)
+      {minutes, remainder} = Rational.divrem(remainder, frames_per_minute)
+      {seconds, frames} = Rational.divrem(remainder, timebase)
 
-    %Sections{
-      negative?: timecode.seconds < 0,
-      hours: hours,
-      minutes: minutes,
-      seconds: seconds,
-      frames: Rational.round(frames, round_mode)
-    }
+      %Sections{
+        negative?: timecode.seconds < 0,
+        hours: hours,
+        minutes: minutes,
+        seconds: seconds,
+        frames: Rational.round(frames, round)
+      }
+    end
   end
 
   @doc """
@@ -758,8 +772,11 @@ defmodule Vtc.Timecode do
   """
   @spec premiere_ticks(t(), opts :: [round: round()]) :: integer()
   def premiere_ticks(timecode, opts \\ []) do
-    round_mode = Keyword.get(opts, :round, :closest)
-    timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round(round_mode)
+    round = Keyword.get(opts, :round, :closest)
+
+    with :ok <- ensure_round_enabled(round) do
+      timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round(round)
+    end
   end
 
   @doc """
@@ -814,6 +831,16 @@ defmodule Vtc.Timecode do
 
     "<#{timecode_str} @ #{rate_str}>"
   end
+
+  # Ensures that rounding is enabled for functions that cannot meaningfully turn
+  # rounding off, such as those that must return an integer.
+  @spec ensure_round_enabled(maybe_round(), String.t()) :: :ok
+  defp ensure_round_enabled(round, arg_name \\ "round")
+
+  defp ensure_round_enabled(:off, arg_name),
+    do: raise(ArgumentError.exception("`#{arg_name}` cannot be `:off`"))
+
+  defp ensure_round_enabled(_, _), do: :ok
 
   @spec handle_raise_function({:ok, t()} | {:error, Exception.t()}) :: t()
   defp handle_raise_function({:ok, result}), do: result

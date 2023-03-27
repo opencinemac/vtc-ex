@@ -642,6 +642,17 @@ defmodule Vtc.TimecodeTest do
 
       assert timecode == %Timecode{seconds: 0, rate: Rates.f24()}
     end
+
+    test "round | :off" do
+      {:ok, timecode} =
+        Timecode.with_premiere_ticks(Consts.ppro_tick_per_second() - 1, Rates.f24(), round: :off)
+
+      assert timecode == %Timecode{
+               seconds:
+                 Ratio.new(Consts.ppro_tick_per_second() - 1, Consts.ppro_tick_per_second()),
+               rate: Rates.f24()
+             }
+    end
   end
 
   describe "#with_premiere_ticks!/3" do
@@ -767,6 +778,13 @@ defmodule Vtc.TimecodeTest do
       timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
       assert Timecode.frames(timecode, round: :ceil) == 24
     end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception = assert_raise ArgumentError, fn -> Timecode.frames(timecode, round: :off) end
+      assert Exception.message(exception) == "`round` cannot be `:off`"
+    end
   end
 
   describe "#timecode/2" do
@@ -814,6 +832,13 @@ defmodule Vtc.TimecodeTest do
     test "round | :ceil" do
       timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
       assert Timecode.timecode(timecode, round: :ceil) == "00:00:01:00"
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception = assert_raise ArgumentError, fn -> Timecode.timecode(timecode, round: :off) end
+      assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
 
@@ -893,6 +918,15 @@ defmodule Vtc.TimecodeTest do
       expexted = Consts.ppro_tick_per_second() + 1
       assert Timecode.premiere_ticks(timecode, round: :ceil) == expexted
     end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.premiere_ticks(timecode, round: :off) end
+
+      assert Exception.message(exception) == "`round` cannot be `:off`"
+    end
   end
 
   describe "#feet_and_frames/2" do
@@ -939,6 +973,15 @@ defmodule Vtc.TimecodeTest do
     test "round | :ceil" do
       timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
       assert Timecode.feet_and_frames(timecode, round: :ceil) == "1+08"
+    end
+
+    test "round: :off raises" do
+      timecode = %Timecode{seconds: 1, rate: Rates.f24()}
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
+
+      assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
 
@@ -1685,6 +1728,96 @@ defmodule Vtc.TimecodeTest do
         assert result == {expected_quotient, expected_remainder}
       end
     end
+
+    test "round | frames :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b) == {expected_q, expected_r}
+    end
+
+    test "round | frames :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :closest) == {expected_q, expected_r}
+    end
+
+    test "round | frames :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :floor) == {expected_q, expected_r}
+    end
+
+    test "round | frames :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected_q = %Timecode{seconds: 1, rate: Rates.f24()}
+      expected_r = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_frames: :ceil) == {expected_q, expected_r}
+    end
+
+    test "round | rem :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b) == {expected_q, expected_r}
+    end
+
+    test "round | rem :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :closest) == {expected_q, expected_r}
+    end
+
+    test "round | rem :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :ceil) == {expected_q, expected_r}
+    end
+
+    test "round | rem :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
+      expected_r = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+
+      assert Timecode.divrem(a, b, round_remainder: :floor) == {expected_q, expected_r}
+    end
+
+    test "round | frames :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_frames: :off) end
+      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+    end
+
+    test "round | remainder :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_remainder: :off) end
+
+      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
+    end
   end
 
   describe "#rem/2" do
@@ -1700,6 +1833,87 @@ defmodule Vtc.TimecodeTest do
 
         assert Timecode.rem(dividend, divisor) == expected
       end
+    end
+
+    test "round | frames :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b) == expected
+    end
+
+    test "round | frames :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :closest) == expected
+    end
+
+    test "round | frames :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :floor) == expected
+    end
+
+    test "round | frames :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+      expected = %Timecode{seconds: 0, rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_frames: :ceil) == expected
+    end
+
+    test "round | rem :closest | implicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b) == expected
+    end
+
+    test "round | rem :closest | explicit" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :closest) == expected
+    end
+
+    test "round | rem :ceil" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :ceil) == expected
+    end
+
+    test "round | rem :floor" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 5 / 3
+      expected = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+
+      assert Timecode.rem(a, b, round_remainder: :floor) == expected
+    end
+
+    test "round | frames :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_frames: :off) end
+      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+    end
+
+    test "round | remainder :off | raises" do
+      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      b = 1
+
+      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_remainder: :off) end
+
+      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end
   end
 end
