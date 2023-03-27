@@ -46,7 +46,7 @@ defmodule Vtc.Timecode do
 
   @typedoc """
   As `round/0`, but includes `:off` option to disable rounding entirely. Not all
-  functions exposed by this Module make logical sense without some form of rouding, so
+  functions exposed by this module make logical sense without some form of rouding, so
   `:off` will not be accepted by all functions.
   """
   @type maybe_round() :: round() | :off
