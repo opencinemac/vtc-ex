@@ -1946,4 +1946,34 @@ defmodule Vtc.TimecodeTest do
       end
     end
   end
+
+  describe "#abs/1" do
+    @abs_cases [
+      %{
+        input: %Timecode{seconds: 1, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: 1, rate: Rates.f23_98()}
+      },
+      %{
+        input: %Timecode{seconds: -1, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: 1, rate: Rates.f23_98()}
+      },
+      %{
+        input: %Timecode{seconds: 0, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: 0, rate: Rates.f23_98()}
+      }
+    ]
+
+    for abs_case <- @abs_cases do
+      @abs_case abs_case
+
+      test "#{abs_case.input} negated == #{abs_case.expected}" do
+        %{
+          input: input,
+          expected: expected
+        } = @abs_case
+
+        assert Timecode.abs(input) == expected
+      end
+    end
+  end
 end
