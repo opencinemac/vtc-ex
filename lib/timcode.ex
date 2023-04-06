@@ -6,7 +6,7 @@ defmodule Vtc.Timecode do
   other function prefaced by `with_*`.
   """
 
-  import Kernel, except: [div: 2, rem: 2]
+  import Kernel, except: [div: 2, rem: 2, abs: 1]
 
   alias Vtc.Framerate
   alias Vtc.Private.Consts
@@ -619,8 +619,8 @@ defmodule Vtc.Timecode do
   @doc """
   As the kernel `-/1` function.
 
-  - Makes a positive tc value negative.
-  - Makes a negative tc value positive.
+  - Makes a positive `tc` value negative.
+  - Makes a negative `tc` value positive.
 
   ## Examples
 
@@ -638,6 +638,26 @@ defmodule Vtc.Timecode do
   """
   @spec negate(t()) :: t()
   def negate(tc), do: %{tc | seconds: Ratio.negate(tc.seconds)}
+
+  @doc """
+  Returns the absolute value of `tc`.
+
+  ## Examples
+
+  ```elixir
+  iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> Timecode.abs(tc) |> inspect()
+  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+
+  ```elixir
+  iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.abs(tc) |> inspect()
+  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec abs(t()) :: t()
+  def abs(tc), do: %{tc | seconds: Ratio.abs(tc.seconds)}
 
   @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
@@ -697,7 +717,7 @@ defmodule Vtc.Timecode do
       total_frames =
         timecode
         |> frames(opts)
-        |> abs()
+        |> Kernel.abs()
         |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
       {hours, remainder} = Rational.divrem(total_frames, frames_per_hour)
@@ -910,7 +930,7 @@ defmodule Vtc.Timecode do
   """
   @spec feet_and_frames(t(), opts :: [round: round()]) :: String.t()
   def feet_and_frames(%__MODULE__{} = timecode, opts \\ []) do
-    total_frames = timecode |> frames(opts) |> abs()
+    total_frames = timecode |> frames(opts) |> Kernel.abs()
 
     feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()
 

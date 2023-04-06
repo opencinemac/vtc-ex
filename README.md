@@ -129,10 +129,16 @@ iex> inspect(dividend)
 iex> inspect(remainder)
 "<00:00:00:01 @ <23.98 NTSC NDF>>"
 
-# We can make a timecode negative.
+# We can make a timecode negative ...
 iex> tc = Timecode.negate(tc)
 iex> inspect(tc)
 "<-17:33:14:16 @ <23.98 NTSC NDF>>"
+
+# ... or take its absolute value.
+
+iex> tc = Timecode.abs(tc)
+iex> inspect(tc)
+"<17:33:14:16 @ <23.98 NTSC NDF>>"
 
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
@@ -180,7 +186,7 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Divmod
     - [X] Modulo
     - [X] Negative
-    - [ ] Absolute
+    - [X] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
     - [ ] Sort Helper
 - Flexible Parsing:
