@@ -188,7 +188,6 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Negative
     - [X] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
-    - [ ] Sort Helper
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'
@@ -199,7 +198,7 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
 - [ ] Range type for working with and comparing frame ranges.
     - [ ] Overlap between ranges
     - [ ] Distance between ranges
-    - [ ] Order Ranfes
+    - [ ] Order Ranges
 
 ## Installation
 

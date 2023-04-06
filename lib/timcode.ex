@@ -660,6 +660,37 @@ defmodule Vtc.Timecode do
   def abs(tc), do: %{tc | seconds: Ratio.abs(tc.seconds)}
 
   @doc """
+  Returns the maximum timecode value in `values`.
+
+  ## Arguments
+
+  - **values**: An enum of values that can be converted into a timecode value.
+  - **get_tc**: Function that takes in an element of `values` and returns a timecode
+    for it. Default: Returns element as-is, and throws on non-`%Timecode{}` value.
+  """
+  @spec max(Enum.t(), (element -> t())) :: element when element: term()
+  def max(values, get_tc \\ &min_max_get_tc/1), do: Enum.max_by(values, &get_tc.(&1).seconds)
+
+  @doc """
+  Returns the maximum timecode value in `values`.
+
+  ## Arguments
+
+  - **values**: An enum of values that can be converted into a timecode value.
+  - **get_tc**: Function that takes in an element of `values` and returns a timecode
+    for it. Default: Returns element as-is, and throws on non-`%Timecode{}` value.
+  """
+  @spec min(Enum.t(), (element -> t())) :: element when element: term()
+  def min(values, get_tc \\ &min_max_get_tc/1), do: Enum.min_by(values, &get_tc.(&1).seconds)
+
+  @min_max_error_message "must supply `get_tc` if enum elements are not `%Timecode{}` values"
+
+  # Default stratgegy for returning timecode from an Enum of elements.
+  @spec min_max_get_tc(term()) :: t()
+  defp min_max_get_tc(%__MODULE__{} = tc), do: tc
+  defp min_max_get_tc(_), do: throw(ArgumentError.exception(@min_max_error_message))
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 
