@@ -44,7 +44,7 @@ defmodule Vtc.Range do
   @spec new(Timecode.t(), Timecode.t(), boolean()) :: {:ok, t()} | {:error, Exception.t()}
   def new(tc_in, tc_out, out_inclusive? \\ false)
 
-  def new(%{rate: rate} = tc_in, tc_out = %{rate: rate}, out_inclusive?) do
+  def new(tc_in, tc_out, out_inclusive?) do
     with :ok <- validate_rates_equal(tc_in, tc_out, :tc_in, :tc_out) do
       {:ok, %__MODULE__{in: tc_in, out: tc_out, out_inclusive?: out_inclusive?}}
     end
@@ -146,10 +146,6 @@ defmodule Vtc.Range do
       true -> true
     end
   end
-
-  @overlap_range_type_mismatch_exc ArgumentError.exception(
-                                     "`range_a` and `range_b` must have matching `out_inclusive?` settings"
-                                   )
 
   @doc """
   Returns `nil` if the two ranges do not intersect, otherwise returns the Range
