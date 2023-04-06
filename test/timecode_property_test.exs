@@ -388,4 +388,20 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       end
     end
   end
+
+  describe "#abs/2" do
+    property "returns input of negate/1" do
+      check all(
+              rate <- frame_rate_gen(),
+              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?))
+            ) do
+        %{timecode_string: tc_string} = tc_info
+
+        positive = Timecode.with_frames!(tc_string, rate)
+        negative = Timecode.negate(positive)
+
+        assert Timecode.abs(positive) == Timecode.abs(negative)
+      end
+    end
+  end
 end
