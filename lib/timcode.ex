@@ -617,6 +617,29 @@ defmodule Vtc.Timecode do
   def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(divisor, opts) |> elem(1)
 
   @doc """
+  As the kernel `-/1` function.
+
+  - Makes a positive tc value negative.
+  - Makes a negative tc value positive.
+
+  ## Examples
+
+  ```elixir
+  iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.negate(tc) |> inspect()
+  "<-01:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+
+  ```elixir
+  iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> Timecode.negate(tc) |> inspect()
+  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  ```
+  """
+  @spec negate(t()) :: t()
+  def negate(tc), do: %{tc | seconds: Ratio.negate(tc.seconds)}
+
+  @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and this
   timecode.
 

@@ -1916,4 +1916,34 @@ defmodule Vtc.TimecodeTest do
       assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end
   end
+
+  describe "#negate/1" do
+    @negate_cases [
+      %{
+        input: %Timecode{seconds: 1, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: -1, rate: Rates.f23_98()}
+      },
+      %{
+        input: %Timecode{seconds: -1, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: 1, rate: Rates.f23_98()}
+      },
+      %{
+        input: %Timecode{seconds: 0, rate: Rates.f23_98()},
+        expected: %Timecode{seconds: 0, rate: Rates.f23_98()}
+      }
+    ]
+
+    for negate_case <- @negate_cases do
+      @negate_case negate_case
+
+      test "#{negate_case.input} negated == #{negate_case.expected}" do
+        %{
+          input: input,
+          expected: expected
+        } = @negate_case
+
+        assert Timecode.negate(input) == expected
+      end
+    end
+  end
 end
