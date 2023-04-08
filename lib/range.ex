@@ -13,7 +13,7 @@ defmodule Vtc.Range do
   Inclusive ranges include the `out` timecode value as a frame that is part of the
   range. This style of tc range is most often associated with AVID.
 
-  Exclusive timecode ranges treat the `out` timecde value as the *boundry* where the
+  Exclusive timecode ranges treat the `out` timecde value as the *boundary* where the
   range ends. This style of tc range is most often associated with Final Cut and
   Premiere.
 

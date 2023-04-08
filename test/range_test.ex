@@ -2,8 +2,8 @@ defmodule Vtc.RangeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Vtc.Rates
   alias Vtc.Range
+  alias Vtc.Rates
   alias Vtc.Timecode
 
   describe "#overlaps?/2" do
