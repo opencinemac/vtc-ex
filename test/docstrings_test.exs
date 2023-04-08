@@ -6,7 +6,9 @@ defmodule Vtc.DocsTest do
   alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Timecode
+  alias Vtc.Range
 
   doctest Timecode
   doctest Framerate
+  doctest Range
 end

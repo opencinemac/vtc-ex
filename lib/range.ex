@@ -38,14 +38,15 @@ defmodule Vtc.Range do
   @doc """
   Creates a new timecode.
 
-  Returns an error if tc_out is less than tc_in or if `tc_in` and `tc_out` do not have
-  the same `rate`.
+  Returns an error if `tc_out` is less than `tc_in` (when measured wuth an exclusive
+  out) or if `tc_in` and `tc_out` do not have the same `rate`.
   """
   @spec new(Timecode.t(), Timecode.t(), boolean()) :: {:ok, t()} | {:error, Exception.t()}
   def new(tc_in, tc_out, out_inclusive? \\ false)
 
   def new(tc_in, tc_out, out_inclusive?) do
-    with :ok <- validate_rates_equal(tc_in, tc_out, :tc_in, :tc_out) do
+    with :ok <- validate_rates_equal(tc_in, tc_out, :tc_in, :tc_out),
+         :ok <- validate_in_amd_out(tc_in, tc_out, out_inclusive?) do
       {:ok, %__MODULE__{in: tc_in, out: tc_out, out_inclusive?: out_inclusive?}}
     end
   end
@@ -58,6 +59,20 @@ defmodule Vtc.Range do
     case new(tc_in, tc_out, out_inclusive?) do
       {:ok, range} -> range
       {:error, error} -> raise error
+    end
+  end
+
+  # Validates that `out_tc` is greater than or equal to `in_tc`, when measured
+  # exclusively.
+  @spec validate_in_amd_out(Timecode.t(), Timecode.t(), boolean()) ::
+          :ok | {:error, Exception.t()}
+  defp validate_in_amd_out(in_tc, out_tc, out_inclusive?) do
+    out_tc = adjust_out_exclusive(out_tc, out_inclusive?)
+
+    if Timecode.compare(out_tc, in_tc) in [:gt, :eq] do
+      :ok
+    else
+      {:error, ArgumentError.exception("`tc_out` must be greater than or equal to `tc_in`")}
     end
   end
 
@@ -117,14 +132,23 @@ defmodule Vtc.Range do
   """
   @spec with_inclusive_out(t()) :: t()
   def with_inclusive_out(%{out_inclusive?: true} = range), do: range
-  def with_inclusive_out(range), do: %__MODULE__{range | out: Timecode.add(range.out, 1)}
+
+  def with_inclusive_out(range),
+    do: %__MODULE__{range | out: Timecode.sub(range.out, 1), out_inclusive?: true} |> dbg()
 
   @doc """
   Adjusts range to have an exclusive out timecode.
   """
   @spec with_exclusive_out(t()) :: t()
   def with_exclusive_out(%{out_inclusive?: false} = range), do: range
-  def with_exclusive_out(range), do: %__MODULE__{range | out: Timecode.sub(range.out, 1)}
+
+  def with_exclusive_out(range),
+    do: %__MODULE__{range | out: adjust_out_exclusive(range.out, true), out_inclusive?: false}
+
+  # Asdjusts an out TC to be an exclusive out.
+  @spec adjust_out_exclusive(Timecode.t(), out_inclusive? :: boolean()) :: Timecode.t()
+  defp adjust_out_exclusive(tc, false), do: tc
+  defp adjust_out_exclusive(tc, true), do: Timecode.add(tc.out, 1)
 
   @doc """
   Returns the duration in timecode of `range`.
@@ -139,7 +163,17 @@ defmodule Vtc.Range do
   Returns `true` if there is overlap between `a` and `b`.
   """
   @spec overlaps?(t(), t()) :: boolean()
-  def overlaps?(a, b) do
+  def overlaps?(%{out_inclusive?: true} = a, b) do
+    a = with_exclusive_out(a)
+    overlaps?(a, b)
+  end
+
+  def overlaps?(a, %{out_inclusive?: true} = b) do
+    b = with_exclusive_out(b)
+    overlaps?(a, b)
+  end
+
+  def overlaps?(%{out_inclusive?: false} = a, %{out_inclusive?: false} = b) do
     cond do
       Timecode.compare(a.in, b.out) in [:gt, :eq] -> false
       Timecode.compare(a.out, b.in) in [:lt, :eq] -> false
