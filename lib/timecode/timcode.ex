@@ -278,7 +278,7 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
-  def rebase(%__MODULE__{rate: rate} = timecode, rate), do: {:ok, timecode}
+  def rebase(%{rate: rate} = timecode, rate), do: {:ok, timecode}
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
 
   @doc """
@@ -314,7 +314,7 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec compare(a :: t(), b :: t() | Frames.t()) :: :lt | :eq | :gt
-  def compare(%__MODULE__{} = a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
+  def compare(a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
   def compare(a, b), do: compare(a, with_frames!(b, a.rate))
 
   @doc """
@@ -900,7 +900,7 @@ defmodule Vtc.Timecode do
   - Sound turnover change lists.
   """
   @spec feet_and_frames(t(), opts :: [round: round()]) :: String.t()
-  def feet_and_frames(%__MODULE__{} = timecode, opts \\ []) do
+  def feet_and_frames(timecode, opts \\ []) do
     total_frames = timecode |> frames(opts) |> Kernel.abs()
 
     feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()

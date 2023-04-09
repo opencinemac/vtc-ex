@@ -42,7 +42,7 @@ defmodule Vtc.Framerate do
   frames-per-second.
   """
   @spec timebase(t()) :: Rational.t()
-  def timebase(%__MODULE__{ntsc: nil} = framerate), do: framerate.playback
+  def timebase(%{ntsc: nil} = framerate), do: framerate.playback
   def timebase(framerate), do: Rational.round(framerate.playback)
 
   @typedoc """
@@ -176,7 +176,7 @@ defmodule Vtc.Framerate do
   on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
   """
   @spec ntsc?(t()) :: boolean()
-  def ntsc?(%__MODULE__{ntsc: nil}), do: false
+  def ntsc?(%{ntsc: nil}), do: false
   def ntsc?(_), do: true
 
   @doc """
