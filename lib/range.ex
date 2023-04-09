@@ -4,9 +4,9 @@ defmodule Vtc.Range do
 
   ## Struct Fields
 
-  - **in**: Start TC. Must be less than or equal to `out`.
-  - **out**: End TC. Must be greater than or equal to `in`.
-  - **inclusive** Default: `false`. See below for more information.
+  - `in`: Start TC. Must be less than or equal to `out`.
+  - `out`: End TC. Must be greater than or equal to `in`.
+  - `inclusive`: See below for more information. Default: `false`
 
   ## Inclusive vs. Exclusive Ranges.
 

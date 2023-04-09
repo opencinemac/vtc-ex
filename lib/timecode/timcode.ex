@@ -4,6 +4,14 @@ defmodule Vtc.Timecode do
 
   New Timecode values are created with the `with_seconds/3` and `with_frames/2`, and
   other function prefaced by `with_*`.
+
+  ## Struct Fields
+
+  - `seconds`: The real-world seconds elapsed since 01:00:00:00 as a rational value.
+    (Note: The Ratio module automatically will coerce itself to an integer whenever
+    possible, so this value may be an integer when exactly a whole-second value).
+
+  - `rate`: the Framerate of the timecode.
   """
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
@@ -14,6 +22,8 @@ defmodule Vtc.Timecode do
   alias Vtc.Source.Frames
   alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
+  alias Vtc.Timecode.ParseError
+  alias Vtc.Timecode.Sections
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
@@ -21,16 +31,8 @@ defmodule Vtc.Timecode do
 
   @typedoc """
   `Timecode` type.
-
-  ## Fields
-
-  - **seconds**: The real-world seconds elapsed since 01:00:00:00 as a rational value.
-    (Note: The Ratio module automatically will coerce itself to an integer whenever
-    possible, so this value may be an integer when exactly a whole-second value).
-
-  - **rate**: the Framerate of the timecode.
   """
-  @type t :: %__MODULE__{
+  @type t() :: %__MODULE__{
           seconds: Rational.t(),
           rate: Framerate.t()
         }
@@ -51,70 +53,6 @@ defmodule Vtc.Timecode do
   """
   @type maybe_round() :: round() | :off
 
-  defmodule Sections do
-    @moduledoc """
-    Holds the individual sections of a timecode for formatting / manipulation.
-    """
-
-    @enforce_keys [:negative?, :hours, :minutes, :seconds, :frames]
-    defstruct [:negative?, :hours, :minutes, :seconds, :frames]
-
-    @typedoc """
-    Holds the individual sections of a timecode for formatting / manipulation.
-
-    ## Fields
-
-    - **negative**: Whether the timecode is less than 0.
-
-    - **hours**: Hours place value.
-
-    - **minutes**: Minutes place value.
-
-    - **seconds**: Seconds place value.
-
-    - **frames**: Frames place value.
-    """
-    @type t :: %__MODULE__{
-            negative?: boolean(),
-            hours: integer(),
-            minutes: integer(),
-            seconds: integer(),
-            frames: integer()
-          }
-  end
-
-  defmodule ParseError do
-    @moduledoc """
-    Exception returned when there is an error parsing a Timecode value.
-    """
-    defexception [:reason]
-
-    @typedoc """
-    Type of `Timecode.ParseError`
-
-    ## Fields
-
-    - **reason**: The reason the error occurred must be one of the following:
-
-      - `:unrecognized_format`: Returned when a string value is not a recognized
-        timecode, runtime, etc. format.
-
-      - `:bad_drop_frames`: The field value cannot exist in properly formatted
-         drop-frame timecode.
-    """
-    @type t :: %ParseError{reason: :unrecognized_format | :bad_drop_frames}
-
-    @doc """
-    Returns a message for the error reason.
-    """
-    @spec message(t()) :: String.t()
-    def message(%__MODULE__{reason: :unrecognized_format}),
-      do: "string format not recognized"
-
-    def message(%__MODULE__{reason: :bad_drop_frames}),
-      do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
-  end
-
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
   """
@@ -126,14 +64,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **seconds**: A value which can be represented as a number of real-world seconds.
+  - `seconds`: A value which can be represented as a number of real-world seconds.
     Must implement the `Seconds` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -216,14 +154,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **frames**: A value which can be represented as a frame number / frame count. Must
+  - `frames`: A value which can be represented as a frame number / frame count. Must
     implement the `Frames` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -280,14 +218,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **ticks**: Any value that can represent the number of ticks for a given timecode.
+  - `ticks`: Any value that can represent the number of ticks for a given timecode.
     Must implement the `PremiereTicks` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -390,7 +328,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frames when mixing
+  - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
 
   ## Examples
@@ -440,7 +378,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frames when mixing
+  - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
 
   ## Examples
@@ -494,7 +432,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frame values. Defaults to
+  - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:closest`.
 
   ## Examples
@@ -518,7 +456,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frame values. Defaults to
+  - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:floor` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
 
@@ -553,10 +491,10 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round_frames**: How to round the frame count before doing the divrem operation.
+  - `round_frames`: How to round the frame count before doing the divrem operation.
     Default: `:closest`.
 
-  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+  - `round_remainder`: How to round the remainder frames when a non-whole frame would
     be the result. Default: `:closest`.
 
   ## Examples
@@ -595,10 +533,10 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round_frames**: How to round the frame count before doing the rem operation.
+  - `round_frames`: How to round the frame count before doing the rem operation.
     Default: `:closest`.
 
-  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+  - `round_remainder`: How to round the remainder frames when a non-whole frame would
     be the result.
 
   ## Examples
@@ -664,8 +602,8 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **values**: An enum of values that can be converted into a timecode value.
-  - **get_tc**: Function that takes in an element of `values` and returns a timecode
+  - `values`: An enum of values that can be converted into a timecode value.
+  - `get_tc`: Function that takes in an element of `values` and returns a timecode
     for it. Default: Returns element as-is, and throws on non-`%Timecode{}` value.
   """
   @spec max(Enum.t(), (element -> t())) :: element when element: term()
@@ -677,8 +615,8 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **values**: An enum of values that can be converted into a timecode value.
-  - **get_tc**: Function that takes in an element of `values` and returns a timecode
+  - `values`: An enum of values that can be converted into a timecode value.
+  - `get_tc`: Function that takes in an element of `values` and returns a timecode
     for it. Default: Returns element as-is, and throws on non-`%Timecode{}` value.
   """
   @spec min(Enum.t(), (element -> t())) :: element when element: term()
@@ -698,7 +636,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting frame number.
+  - `round`: How to round the resulting frame number.
 
   ## What it is
 
@@ -773,7 +711,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting frames field.
+  - `round`: How to round the resulting frames field.
 
   ## What it is
 
@@ -820,7 +758,7 @@ defmodule Vtc.Timecode do
 
   Arguments
 
-  - **precision**: The number of places to round to. Extra trailing 0's will still be
+  - `precision`: The number of places to round to. Extra trailing 0's will still be
     trimmed.
 
   ## What it is
@@ -899,7 +837,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting ticks.
+  - `round`: How to round the resulting ticks.
 
   ## What it is
 
@@ -939,7 +877,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the internal frame count before conversion.
+  - `round`: How to round the internal frame count before conversion.
 
   ## What it is
 

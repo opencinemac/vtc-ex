@@ -3,7 +3,15 @@ defmodule Vtc.Framerate do
   The rate at which a video file frames are played back.
 
   Framerate is measured in frames-per-second (24/1 = 24 frames-per-second).
+
+  ## Struct Fields
+
+  - **playback**: The rational representation of the real-world playback speed as a
+    fraction in frames-per-second.
+
+  - **ntsc**: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
+  alias Vtc.Framerate.ParseError
   alias Vtc.Utils.Rational
 
   @enforce_keys [:playback, :ntsc]
@@ -26,13 +34,6 @@ defmodule Vtc.Framerate do
 
   @typedoc """
   Type of `Framerate`
-
-  ## Fields
-
-  - **playback**: The rational representation of the real-world playback speed as a
-    fraction in frames-per-second.
-
-  - **ntsc**: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   @type t :: %__MODULE__{playback: Rational.t(), ntsc: ntsc()}
 
@@ -43,54 +44,6 @@ defmodule Vtc.Framerate do
   @spec timebase(t()) :: Rational.t()
   def timebase(%__MODULE__{ntsc: nil} = framerate), do: framerate.playback
   def timebase(framerate), do: Rational.round(framerate.playback)
-
-  defmodule ParseError do
-    @moduledoc """
-    Exception returned when a framerate cannot be parsed.
-    """
-    defexception [:reason]
-
-    @typedoc """
-    Type of `ParseError`
-
-    ## Fields
-
-    - **reason**: The reason the error occurred must be one of the following:
-
-      - `:bad_drop_rate`: Returned when the playback speed of a framerate with an ntsc
-        value of :drop is not divisible by 3000/1001 (29.97), for more on why drop-frame
-        framerates must be a multiple of 29.97, see:
-        https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
-
-      - `:invalid_ntsc`: Returned when the ntsc value is not one of the allowed atom
-        values.
-
-      - `:unrecognized_format`: Returned when a string value is not a recognized format.
-
-      - `:imprecise` - Returned when a float was passed with an NTSC value of nil.
-        Without the ability to round to the nearest valid NTSC value, floats are not
-        precise enough to build an arbitrary framerate.
-    """
-    @type t() :: %__MODULE__{
-            reason: :bad_drop_rate | :invalid_ntsc | :unrecognized_format | :imprecise
-          }
-
-    @doc """
-    Returns a message for the error reason.
-    """
-    @spec message(t()) :: String.t()
-    def message(%__MODULE__{reason: :bad_drop_rate}),
-      do: "drop-frame rates must be divisible by 30000/1001"
-
-    def message(%__MODULE__{reason: :invalid_ntsc}),
-      do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
-
-    def message(%__MODULE__{reason: :unrecognized_format}),
-      do: "framerate string format not recognized"
-
-    def message(%__MODULE__{reason: :imprecise}),
-      do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
-  end
 
   @typedoc """
   Type returned by `new/2`
