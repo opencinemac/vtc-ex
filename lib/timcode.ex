@@ -12,6 +12,38 @@ defmodule Vtc.Timecode do
     possible, so this value may be an integer when exactly a whole-second value).
 
   - `rate`: the Framerate of the timecode.
+
+  ## Sorting Support
+
+  `Timecode` implements `compare/2`, and as such, can be used wherever the standard
+  library calls for a `Sorter` module. Let's see it in action:
+
+  ```elixir
+  iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex>
+  iex>
+  iex> Enum.sort([tc_02, tc_01], Timecode) |> inspect()
+  "[<01:00:00:00 <23.98 NTSC NDF>>, <02:00:00:00 <23.98 NTSC NDF>>]"
+  iex>
+  iex>
+  iex> Enum.sort([tc_01, tc_02], {:desc, Timecode}) |> inspect()
+  "[<02:00:00:00 <23.98 NTSC NDF>>, <01:00:00:00 <23.98 NTSC NDF>>]"
+  iex>
+  iex>
+  iex> Enum.max([tc_02, tc_01], Timecode) |> inspect()
+  "<02:00:00:00 <23.98 NTSC NDF>>"
+  iex>
+  iex>
+  iex> Enum.min([tc_02, tc_01], Timecode) |> inspect()
+  "<01:00:00:00 <23.98 NTSC NDF>>"
+  iex>
+  iex>
+  iex> data_01 = %{id: 2, tc: tc_01}
+  iex> data_02 = %{id: 1, tc: tc_02}
+  iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+  ```
   """
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
@@ -294,6 +326,8 @@ defmodule Vtc.Timecode do
   `b` May be any value that implements the `Frames` protocol, such as a timecode string,
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
   scripting. This function will raise if there is an error parsing `b`.
+
+  This function can be used anyware the standard library expexts a `sorter`.
 
   ## Examples
 

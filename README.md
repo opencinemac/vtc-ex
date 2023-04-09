@@ -158,6 +158,14 @@ iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop)) |> insp
 # We can also rebase the frames using a new framerate!
 iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
 "<02:00:00:00 @ <23.98 NTSC>>"
+
+# Sorting is suported through the `compare/2` function:
+iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> data_01 = %{id: 2, tc: tc_01}
+iex> data_02 = %{id: 1, tc: tc_02}
+iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+"[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
 ```
 
 ## Features
@@ -195,10 +203,10 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
 - [X] Configurable rounding options.
-- [ ] Range type for working with and comparing frame ranges.
-    - [ ] Overlap between ranges
-    - [ ] Distance between ranges
-    - [ ] Order Ranges
+- [X] Support for standard library sorting behavior.
+- [X] Range type for working with and comparing frame ranges.
+    - [X] Overlap between ranges
+    - [X] Distance between ranges
 
 ## Installation
 
