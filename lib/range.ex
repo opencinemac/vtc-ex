@@ -256,6 +256,15 @@ defmodule Vtc.Range do
 
   @doc """
   Returns the duration in timecode of `range`.
+
+  ## Examples
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(tc_in, "01:30:00:00")
+  iex> Range.duration(range) |> inspect()
+  "<00:30:00:00 <23.98 NTSC NDF>>"
+  ```
   """
   @spec duration(t()) :: Timecode.t()
   def duration(range) do
