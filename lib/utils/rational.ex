@@ -1,5 +1,7 @@
 defmodule Vtc.Utils.Rational do
-  @moduledoc false
+  @moduledoc """
+  Utilities for working with `Ratio` vales.
+  """
 
   @typedoc """
   The Ratio module will often convert itself to an integer value if the result would be
