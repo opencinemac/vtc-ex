@@ -1,4 +1,4 @@
-defmodule Vtc.Private.DropFrame do
+defmodule Vtc.Utils.DropFrame do
   @moduledoc false
   alias Vtc.Framerate
   alias Vtc.Timecode

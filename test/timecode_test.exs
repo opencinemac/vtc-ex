@@ -62,9 +62,9 @@ defmodule Vtc.TimecodeTest do
 
   use ExUnit.Case, async: true
 
-  alias Vtc.Private.Consts
   alias Vtc.Rates
   alias Vtc.Timecode
+  alias Vtc.Utils.Consts
 
   alias Vtc.TimecodeTest.ParseHelpers
   alias Vtc.TimecodeTest.TcParseCase

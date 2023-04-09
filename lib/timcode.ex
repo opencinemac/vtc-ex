@@ -17,13 +17,13 @@ defmodule Vtc.Timecode do
   import Kernel, except: [div: 2, rem: 2, abs: 1]
 
   alias Vtc.Framerate
-  alias Vtc.Private.Consts
-  alias Vtc.Private.DropFrame
   alias Vtc.Source.Frames
   alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
   alias Vtc.Timecode.ParseError
   alias Vtc.Timecode.Sections
+  alias Vtc.Utils.Consts
+  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]

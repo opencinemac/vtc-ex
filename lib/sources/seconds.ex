@@ -44,8 +44,8 @@ end
 
 defimpl Vtc.Source.Seconds, for: [Ratio, Integer] do
   alias Vtc.Framerate
-  alias Vtc.Private.Parse
   alias Vtc.Source.Seconds
+  alias Vtc.Utils.Parse
   alias Vtc.Utils.Rational
 
   @spec seconds(Rational.t(), Framerate.t()) :: Seconds.result()
@@ -62,8 +62,8 @@ end
 
 defimpl Vtc.Source.Seconds, for: [String, BitString] do
   alias Vtc.Framerate
-  alias Vtc.Private.Parse
   alias Vtc.Source.Seconds
+  alias Vtc.Utils.Parse
 
   @spec seconds(String.t(), Framerate.t()) :: Seconds.result()
   def seconds(value, rate),

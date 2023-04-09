@@ -50,8 +50,8 @@ end
 
 defimpl Vtc.Source.Frames, for: [String, BitString] do
   alias Vtc.Framerate
-  alias Vtc.Private.Parse
   alias Vtc.Source.Frames
+  alias Vtc.Utils.Parse
 
   @spec frames(String.t(), Framerate.t()) :: Frames.result()
   def frames(value, rate), do: Parse.parse_frames_string(value, rate)
