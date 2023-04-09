@@ -699,7 +699,7 @@ defmodule Vtc.Timecode do
   def timecode(timecode, opts \\ []) do
     sections = sections(timecode, opts)
 
-    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
+    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
     frame_sep = if timecode.rate.ntsc == :drop, do: ";", else: ":"
 
     [
@@ -755,7 +755,7 @@ defmodule Vtc.Timecode do
   @spec runtime(t(), integer()) :: String.t()
   def runtime(timecode, precision \\ 9) do
     {seconds, negative?} =
-      if Ratio.compare(timecode.seconds, 0) == :lt,
+      if Ratio.lt?(timecode.seconds, 0),
         do: {Ratio.negate(timecode.seconds), true},
         else: {timecode.seconds, false}
 
@@ -878,7 +878,7 @@ defmodule Vtc.Timecode do
       |> Integer.to_string()
       |> String.pad_leading(2, "0")
 
-    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
+    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
 
     "#{sign}#{feet}+#{frames}"
   end
