@@ -21,6 +21,7 @@ defmodule Vtc.Range do
   `[in, out)`.
   """
 
+  alias Vtc.Source.Frames
   alias Vtc.Timecode
 
   @type out_type() :: :inclusive | :exclusive
@@ -40,22 +41,31 @@ defmodule Vtc.Range do
   @doc """
   Creates a new timecode.
 
-  Returns an error if `tc_out` is less than `tc_in` (when measured wuth an exclusive
-  out) or if `tc_in` and `tc_out` do not have the same `rate`.
+  `out_tc` may be a `Timecode` value for any value that implements the `Frames`
+  protocol.
+
+  Returns an error if the resulting range would not have a duration greater or eual to
+  0, or if `tc_in` and `tc_out` do not have the same `rate`.
   """
   @spec new(
           in_tc :: Timecode.t(),
-          out_tc :: Timecode.t(),
+          out_tc :: Timecode.t() | Frames.t(),
           opts :: [out_type: out_type()]
-        ) :: {:ok, t()} | {:error, Exception.t()}
+        ) :: {:ok, t()} | {:error, Exception.t() | Timecode.ParseError.t()}
   def new(tc_in, tc_out, opts \\ [])
 
-  def new(tc_in, tc_out, opts) do
+  def new(tc_in, %Timecode{} = tc_out, opts) do
     out_type = Keyword.get(opts, :out_type, :exclusive)
 
     with :ok <- validate_rates_equal(tc_in, tc_out, :tc_in, :tc_out),
          :ok <- validate_in_and_out(tc_in, tc_out, out_type) do
       {:ok, %__MODULE__{in: tc_in, out: tc_out, out_type: out_type}}
+    end
+  end
+
+  def new(tc_in, tc_out, opts) do
+    with {:ok, tc_out} <- Timecode.with_frames(tc_out, tc_in.rate) do
+      new(tc_in, tc_out, opts)
     end
   end
 
@@ -86,28 +96,36 @@ defmodule Vtc.Range do
 
   @doc """
   Returns a range with an `:in` value of `tc_in` and a duration of `duration`.
+  `duration` may be a `Timecode` value for any value that implements the `Frames`
+  protocol.
 
   Returns an error if `duration` is less than `0` seconds or if `tc_in` and `tc_out` do
   not have  the same `rate`.
   """
   @spec with_duration(
           tc_in :: Timecode.t(),
-          duration :: Timecode.t(),
+          duration :: Timecode.t() | Frames.t(),
           opts :: [out_type: out_type()]
-        ) :: {:ok, t()} | {:error, Exception.t()}
+        ) :: {:ok, t()} | {:error, Exception.t() | Timecode.ParseError.t()}
   def with_duration(tc_in, duration, opts \\ [])
 
-  def with_duration(tc_in, duration, out_type: :inclusive) do
+  def with_duration(tc_in, %Timecode{} = duration, out_type: :inclusive) do
     with {:ok, range} <- with_duration(tc_in, duration, []) do
       {:ok, with_inclusive_out(range)}
     end
   end
 
-  def with_duration(tc_in, duration, _) do
+  def with_duration(tc_in, %Timecode{} = duration, _) do
     with :ok <- validate_rates_equal(tc_in, duration, :tc_in, :duration),
          :ok <- with_duration_validate_duration(duration) do
       tc_out = Timecode.add(tc_in, duration)
       new(tc_in, tc_out, out_type: :exclusive)
+    end
+  end
+
+  def with_duration(tc_in, duration, opts) do
+    with {:ok, duration} <- Timecode.with_frames(duration, tc_in.rate) do
+      with_duration(tc_in, duration, opts)
     end
   end
 
@@ -203,8 +221,22 @@ defmodule Vtc.Range do
   `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
   will inherit `a`'s setting.
   """
-  @spec intersection(t(), t()) :: t() | nil
+  @spec intersection(t(), t()) :: {:ok, t()} | {:error, :none}
   def intersection(a, b), do: calc_overlap(a, b, &overlaps?(&1, &2))
+
+  @doc """
+  As `intersection`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
+  is no overlap.
+
+  This returned range inherets the framerate and `out_type` from `a`.
+  """
+  @spec intersection!(t(), t()) :: t()
+  def intersection!(a, b) do
+    case separation(a, b) do
+      {:ok, overlap} -> overlap
+      {:error, :none} -> create_zeroed_range(a)
+    end
+  end
 
   @doc """
   Returns `nil` if the two ranges do intersect, otherwise returns the Range of the space
@@ -213,31 +245,60 @@ defmodule Vtc.Range do
   `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
   will inherit `a`'s setting.
   """
-  @spec separation(t(), t()) :: t() | nil
+  @spec separation(t(), t()) :: {:ok, t()} | {:error, :none}
   def separation(a, b), do: calc_overlap(a, b, &(not overlaps?(&1, &2)))
+
+  @doc """
+  As `separation`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
+  is overlap.
+
+  This returned range inherets the framerate and `out_type` from `a`.
+  """
+  @spec separation!(t(), t()) :: t()
+  def separation!(a, b) do
+    case separation(a, b) do
+      {:ok, overlap} -> overlap
+      {:error, :none} -> create_zeroed_range(a)
+    end
+  end
+
+  # Creates a zero-duraiton range using the framerate and `:out_type` of `reference`.
+  @spec create_zeroed_range(t()) :: t()
+  defp create_zeroed_range(reference) do
+    zero_timecode = Timecode.with_frames!(0, reference.in.rate)
+    zero_range = with_duration!(zero_timecode, zero_timecode)
+
+    case reference do
+      %{out_type: :inclusive} -> with_inclusive_out(zero_range)
+      _ -> zero_range
+    end
+  end
 
   # Returns the amount of intersection or separation between `a` and `b`, or `nil` if
   # `return_nil?` returns `true`.
-  @spec calc_overlap(t(), t(), return_nil? :: (t(), t() -> nil)) :: t() | nil
+  @spec calc_overlap(t(), t(), return_nil? :: (t(), t() -> nil)) :: {:ok, t()} | {:error, :none}
   defp calc_overlap(a, %{out_type: :inclusive} = b, do_calc?) do
     b = with_exclusive_out(b)
     calc_overlap(a, b, do_calc?)
   end
 
   defp calc_overlap(%{out_type: :inclusive} = a, b, do_calc?) do
-    a
-    |> with_exclusive_out()
-    |> calc_overlap(b, do_calc?)
-    |> with_inclusive_out()
+    a = with_exclusive_out(a)
+
+    with {:ok, overlap} <- calc_overlap(a, b, do_calc?) do
+      {:ok, with_inclusive_out(overlap)}
+    end
   end
 
   defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, do_calc?) do
     if do_calc?.(a, b) do
       overlap_in = Timecode.max([a.in, b.in])
-      overlap_out = Timecode.min([a.out, b.out])
-      %__MODULE__{a | in: overlap_in, out: overlap_out}
+      overlap_out = [a.out, b.out] |> Timecode.min() |> Timecode.rebase!(a.in.rate)
+
+      overlap = %__MODULE__{a | in: overlap_in, out: overlap_out}
+      {:ok, overlap}
     else
-      nil
+      {:error, :none}
     end
   end
 end
@@ -248,7 +309,7 @@ defimpl Inspect, for: Vtc.Range do
 
   @spec inspect(Range.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(range, _opts) do
-    "<#{Timecode.timecode(range.in)} - #{Timecode.timecode(range.out)} #{inspect(range.in.rate)}>"
+    "<#{Timecode.timecode(range.in)} - #{Timecode.timecode(range.out)} :#{range.out_type} #{inspect(range.in.rate)}>"
   end
 end
 

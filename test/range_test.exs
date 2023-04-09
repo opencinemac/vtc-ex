@@ -6,17 +6,19 @@ defmodule Vtc.RangeTest do
   alias Vtc.Rates
   alias Vtc.Timecode
 
+  setup [:setup_test_case]
+
   @typedoc """
-  Shorthand way to specify a {timecode_in, timecode_out, out_type} in a test case for a
+  Shorthand way to specify a {timecode_in, timecode_out} in a test case for a
   setup function to build the timecodes and ranges.
 
   Timecodes should be specified in strings and the setup will choose a framerate to
   apply.
   """
-  @type range_shorthand() :: {String.t(), String.t(), Range.out_type()}
+  @type range_shorthand() :: {String.t(), String.t()}
 
   describe "new/3" do
-    test "successfully created a new range" do
+    test "successfully creates a new range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 
@@ -26,7 +28,7 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :exclusive
     end
 
-    test "successfully created a new range with inclusive out" do
+    test "successfully creates a new range with inclusive out" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 
@@ -36,7 +38,7 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :inclusive
     end
 
-    test "successfully created a zero-length range" do
+    test "successfully creates a zero-length range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 
@@ -46,13 +48,43 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :exclusive
     end
 
-    test "successfully created a zero-length inclusive range" do
+    test "successfully creates a zero-length inclusive range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
 
       assert {:ok, range} = Range.new(tc_in, tc_out, out_type: :inclusive)
       assert range.in == tc_in
       assert range.out == tc_out
+      assert range.out_type == :inclusive
+    end
+
+    test "successfully creates a range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert {:ok, range} = Range.new(tc_in, "02:00:00:00")
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert {:ok, range} = Range.new(tc_in, "02:00:00:00", out_type: :exclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert {:ok, range} = Range.new(tc_in, "02:00:00:00", out_type: :inclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
       assert range.out_type == :inclusive
     end
 
@@ -70,11 +102,16 @@ defmodule Vtc.RangeTest do
 
       assert {:error, error} = Range.new(tc_in, tc_out)
       assert Exception.message(error) == "`tc_in` and `tc_out` must have same `rate`"
+    end
+
+    test "fails with timecode parse error for bad `Frames` string" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      assert {:error, %Timecode.ParseError{}} = Range.new(tc_in, "not a timecode")
     end
   end
 
   describe "new!/3" do
-    test "successfully created a new range" do
+    test "successfully creates a new range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 
@@ -84,7 +121,7 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :exclusive
     end
 
-    test "successfully created a new range with inclusive out" do
+    test "successfully creates a new range with inclusive out" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 
@@ -94,7 +131,7 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :inclusive
     end
 
-    test "successfully created a zero-length range" do
+    test "successfully creates a zero-length range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 
@@ -104,7 +141,7 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :exclusive
     end
 
-    test "successfully created a zero-length inclusive range" do
+    test "successfully creates a zero-length inclusive range" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
 
@@ -114,7 +151,37 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :inclusive
     end
 
-    test "fails when out is less than in" do
+    test "successfully creates a range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert range = Range.new!(tc_in, "02:00:00:00")
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert range = Range.new!(tc_in, "02:00:00:00", out_type: :exclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert range = Range.new!(tc_in, "02:00:00:00", out_type: :inclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :inclusive
+    end
+
+    test "raises when out is less than in" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
 
@@ -122,12 +189,17 @@ defmodule Vtc.RangeTest do
       assert Exception.message(error) == "`tc_out` must be greater than or equal to `tc_in`"
     end
 
-    test "fails when rates are not the same" do
+    test "raises when rates are not the same" do
       tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       tc_out = Timecode.with_frames!("02:00:00:00", Rates.f24())
 
       error = assert_raise(ArgumentError, fn -> Range.new!(tc_in, tc_out) end)
       assert Exception.message(error) == "`tc_in` and `tc_out` must have same `rate`"
+    end
+
+    test "raises with timecode parse error for bad `Frames` string" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      assert_raise Timecode.ParseError, fn -> Range.new!(tc_in, "not a timecode") end
     end
   end
 
@@ -162,7 +234,37 @@ defmodule Vtc.RangeTest do
       assert range.out_type == :inclusive
     end
 
-    test "errors on different rates" do
+    test "successfully creates a range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00")
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+
+      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00", out_type: :exclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :exclusive
+    end
+
+    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Timecode.with_frames!("01:59:59:23", Rates.f23_98())
+
+      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00", out_type: :inclusive)
+      assert range.in == tc_in
+      assert range.out == expected_out
+      assert range.out_type == :inclusive
+    end
+
+    test "fails on different rates" do
       start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       duration = Timecode.with_frames!("00:30:00:00", Rates.f24())
 
@@ -170,7 +272,7 @@ defmodule Vtc.RangeTest do
       assert Exception.message(error) == "`tc_in` and `duration` must have same `rate`"
     end
 
-    test "errors on negative duration" do
+    test "fails on negative duration" do
       start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
 
@@ -178,12 +280,17 @@ defmodule Vtc.RangeTest do
       assert Exception.message(error) == "`duration` must be greater than `0`"
     end
 
-    test "errors on negative duration when out_type: :inclusive" do
+    test "fails on negative duration when out_type: :inclusive" do
       start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
       duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
 
       assert {:error, error} = Range.with_duration(start_tc, duration, out_type: :inclusive)
       assert Exception.message(error) == "`duration` must be greater than `0`"
+    end
+
+    test "fails with timecode parse error for bad `Frames` string" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      assert {:error, %Timecode.ParseError{}} = Range.with_duration(tc_in, "not a timecode")
     end
   end
 
@@ -244,6 +351,11 @@ defmodule Vtc.RangeTest do
         end)
 
       assert Exception.message(error) == "`duration` must be greater than `0`"
+    end
+
+    test "raises with timecode parse error for bad `Frames` string" do
+      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      assert_raise Timecode.ParseError, fn -> Range.with_duration!(tc_in, "not a timecode") end
     end
   end
 
@@ -378,122 +490,156 @@ defmodule Vtc.RangeTest do
 
     @overlap_cases [
       %{
-        name: "1.a == 2.a and 1.b == 2.b | :exclusive",
-        a: {"01:00:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a == 2.a and 1.b == 2.b",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a == 2.a and 1.b < 2.b | :exclusive",
-        a: {"01:00:00:00", "01:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a == 2.a and 1.b < 2.b",
+        a: {"01:00:00:00", "01:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a == 2.a and 1.b > 2.b | :exclusive",
-        a: {"01:00:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a == 2.a and 1.b > 2.b",
+        a: {"01:00:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b == 2.b | :exclusive",
-        a: {"00:30:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a < 2.a and 1.b == 2.b",
+        a: {"00:30:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b < 2.b | :exclusive",
-        a: {"00:30:00:00", "01:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a < 2.a and 1.b < 2.b",
+        a: {"00:30:00:00", "01:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b > 2.b | :exclusive",
-        a: {"00:30:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a < 2.a and 1.b > 2.b",
+        a: {"00:30:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b == 2.b | :exclusive",
-        a: {"01:30:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a > 2.a and 1.b == 2.b",
+        a: {"01:30:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b < 2.b | :exclusive",
-        a: {"01:15:00:00", "01:45:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a > 2.a and 1.b < 2.b",
+        a: {"01:15:00:00", "01:45:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b > 2.b | :exclusive",
-        a: {"01:30:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "1.a > 2.a and 1.b > 2.b",
+        a: {"01:30:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "a < b | :exclusive",
-        a: {"00:00:00:00", "00:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "a < b",
+        a: {"00:00:00:00", "00:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: false
       },
       %{
-        name: "a > b | :exclusive",
-        a: {"02:30:00:00", "03:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
+        name: "a > b",
+        a: {"02:30:00:00", "03:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
         expected: false
       },
       %{
-        name: "1.b & 1.a at boundary | :exclusive",
-        a: {"01:00:00:00", "02:00:00:00", :exclusive},
-        b: {"02:00:00:00", "03:00:00:00", :exclusive},
+        name: "1.b & 1.a at boundary",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"02:00:00:00", "03:00:00:00"},
         expected: false
       },
       %{
-        name: "1.a & 1.b at boundary | :exclusive",
-        a: {"03:00:00:00", "04:00:00:00", :exclusive},
-        b: {"02:00:00:00", "03:00:00:00", :exclusive},
-        expected: false
-      },
-      %{
-        name: "1.b & 1.a at boundary | :inclusive",
-        a: {"00:00:00:00", "00:59:59:23", :inclusive},
-        b: {"01:00:00:00", "02:00:00:00", :inclusive},
-        expected: false
-      },
-      %{
-        name: "1.a & 1.b at boundary | :inclusive",
-        a: {"02:00:00:01", "03:00:00:00", :inclusive},
-        b: {"01:00:00:00", "02:00:00:00", :inclusive},
+        name: "1.a & 1.b at boundary",
+        a: {"03:00:00:00", "04:00:00:00"},
+        b: {"02:00:00:00", "03:00:00:00"},
         expected: false
       }
     ]
 
     for test_case <- @overlap_cases do
       @tag test_case: test_case
-      test test_case.name, context do
+      test "#{test_case.name} | :exclusive", context do
         %{a: a, b: b, test_case: %{expected: expected}} = context
         assert Range.overlaps?(a, b) == expected
       end
 
       @tag test_case: test_case
-      @tag negate: [:a, :b]
-      test "#{test_case.name} | negative", context do
+      @tag out_type: :inclusive
+      test "#{test_case.name} | :inclusive", context do
         %{a: a, b: b, test_case: %{expected: expected}} = context
+
+        a = Range.with_inclusive_out(a)
+        b = Range.with_inclusive_out(b)
+
+        assert Range.overlaps?(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag negate: [:a, :b]
+      test "#{test_case.name} | :exclusive | negative", context do
+        %{a: a, b: b, test_case: %{expected: expected}} = context
+        assert Range.overlaps?(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag out_type: :inclusive
+      @tag negate: [:a, :b]
+      test "#{test_case.name} | :inclusive | negative", context do
+        %{a: a, b: b, test_case: %{expected: expected}} = context
+
+        a = Range.with_inclusive_out(a)
+        b = Range.with_inclusive_out(b)
+
         assert Range.overlaps?(a, b) == expected
       end
 
       if test_case.a != test_case.b do
         @tag test_case: test_case
-        test "#{test_case.name} | flipped", context do
+        test "#{test_case.name} | :exclusive | flipped", context do
           %{a: a, b: b, test_case: %{expected: expected}} = context
           assert Range.overlaps?(b, a) == expected
         end
 
         @tag test_case: test_case
-        @tag negate: [:a, :b]
-        test "#{test_case.name} | flipped | negative", context do
+        @tag out_type: :inclusive
+        test "#{test_case.name} | :inclusive | flipped", context do
           %{a: a, b: b, test_case: %{expected: expected}} = context
+
+          a = Range.with_inclusive_out(a)
+          b = Range.with_inclusive_out(b)
+
+          assert Range.overlaps?(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag negate: [:a, :b]
+        test "#{test_case.name} | :exclusive | flipped | negative", context do
+          %{a: a, b: b, test_case: %{expected: expected}} = context
+          assert Range.overlaps?(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag out_type: :inclusive
+        @tag negate: [:a, :b]
+        test "#{test_case.name} | :inclusive | flipped | negative", context do
+          %{a: a, b: b, test_case: %{expected: expected}} = context
+
+          a = Range.with_inclusive_out(a)
+          b = Range.with_inclusive_out(b)
+
           assert Range.overlaps?(b, a) == expected
         end
       end
@@ -501,77 +647,127 @@ defmodule Vtc.RangeTest do
   end
 
   describe "intersection/2" do
-    setup [:setup_ranges]
+    setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
 
     @describetag ranges: [:a, :b, :expected]
 
     @intersection_cases [
       %{
         name: "1.a == 2.a and 1.b == 2.b",
-        a: {"01:00:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "02:00:00:00", :exclusive}
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
         name: "1.a == 2.a and 1.b < 2.b",
-        a: {"01:00:00:00", "01:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "01:30:00:00", :exclusive}
+        a: {"01:00:00:00", "01:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "01:30:00:00"}
       },
       %{
         name: "1.a == 2.a and 1.b > 2.b",
-        a: {"01:00:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "02:00:00:00", :exclusive}
+        a: {"01:00:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
         name: "1.a < 2.a and 1.b == 2.b",
-        a: {"00:30:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "02:00:00:00", :exclusive}
+        a: {"00:30:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
         name: "1.a < 2.a and 1.b < 2.b",
-        a: {"00:30:00:00", "01:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "01:30:00:00", :exclusive}
+        a: {"00:30:00:00", "01:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "01:30:00:00"}
       },
       %{
         name: "1.a < 2.a and 1.b > 2.b",
-        a: {"00:30:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:00:00:00", "02:00:00:00", :exclusive}
+        a: {"00:30:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
         name: "1.a > 2.a and 1.b == 2.b",
-        a: {"01:30:00:00", "02:00:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:30:00:00", "02:00:00:00", :exclusive}
+        a: {"01:30:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:30:00:00", "02:00:00:00"}
       },
       %{
         name: "1.a > 2.a and 1.b < 2.b",
-        a: {"01:15:00:00", "01:45:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:15:00:00", "01:45:00:00", :exclusive}
+        a: {"01:15:00:00", "01:45:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:15:00:00", "01:45:00:00"}
       },
       %{
         name: "1.a > 2.a and 1.b > 2.b",
-        a: {"01:30:00:00", "02:30:00:00", :exclusive},
-        b: {"01:00:00:00", "02:00:00:00", :exclusive},
-        expected: {"01:30:00:00", "02:00:00:00", :exclusive}
+        a: {"01:30:00:00", "02:30:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {"01:30:00:00", "02:00:00:00"}
+      },
+      %{
+        name: "a < b",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"03:00:00:00", "04:00:00:00"},
+        expected: {:error, :none}
       }
     ]
 
     for test_case <- @intersection_cases do
       @tag test_case: test_case
-      test test_case.name, context do
+      test "#{test_case.name} | :exclusive", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.intersection(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag negate: [:a, :b, :expected]
+      test "#{test_case.name} | :exclusive | negated", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.intersection(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag inclusive: [:a, :b, :expected]
+      test "#{test_case.name} | :inclusive", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.intersection(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag inclusive: [:a, :b, :expected]
+      @tag negate: [:a, :b, :expected]
+      test "#{test_case.name} | :inclusive | negated", context do
         %{a: a, b: b, expected: expected} = context
         assert Range.intersection(a, b) == expected
       end
 
       if test_case.a != test_case.b do
         @tag test_case: test_case
-        test "#{test_case.name} | flipped", context do
+        test "#{test_case.name} | :exclusive | flipped", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.intersection(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag negate: [:a, :b, :expected]
+        test "#{test_case.name} | :exclusive | negated | flipped", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.intersection(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag inclusive: [:a, :b, :expected]
+        test "#{test_case.name} | :inclusive | flipped", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.intersection(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag inclusive: [:a, :b, :expected]
+        @tag negate: [:a, :b, :expected]
+        test "#{test_case.name} | :inclusive | negated | flipped", context do
           %{a: a, b: b, expected: expected} = context
           assert Range.intersection(b, a) == expected
         end
@@ -579,10 +775,15 @@ defmodule Vtc.RangeTest do
     end
   end
 
+  # Extracts a map in `:test_case` and merges it into the top-level context.
+  @spec setup_test_case(%{optional(:test_case) => map()}) :: map()
+  defp setup_test_case(%{test_case: test_case} = context), do: Map.merge(context, test_case)
+  defp setup_test_case(context), do: context
+
   # Turns specified test case range shorthands into full blown ranges.
-  @spec setup_ranges(%{optional(:ranges) => [Map.key()], :test_case => map()}) :: Keyword.t()
-  defp setup_ranges(%{ranges: attrs, test_case: test_case}) do
-    test_case
+  @spec setup_ranges(%{optional(:ranges) => [Map.key()]}) :: Keyword.t()
+  defp setup_ranges(%{ranges: attrs} = context) do
+    context
     |> Map.take(attrs)
     |> Enum.into([])
     |> Enum.map(fn {name, values} -> {name, setup_range(values)} end)
@@ -590,19 +791,35 @@ defmodule Vtc.RangeTest do
 
   defp setup_ranges(context), do: context
 
-  @spec setup_range(range_shorthand()) :: Range.t()
-  defp setup_range(values) do
-    {in_tc, out_tc, out_type} = values
-
+  # Allow `:none` for `intersection/2` and `separation/2` function tests.
+  @spec setup_range(range_shorthand() | {:error, any()}) :: Range.t() | {:error, any()}
+  defp setup_range({in_tc, out_tc}) when is_binary(in_tc) and is_binary(out_tc) do
     in_tc = Timecode.with_frames!(in_tc, Rates.f23_98())
     out_tc = Timecode.with_frames!(out_tc, Rates.f23_98())
-    range = %Range{in: in_tc, out: out_tc, out_type: out_type}
+    range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
 
     range
   end
 
+  defp setup_range(value), do: value
+
+  # Males secified ranges built by setup_ranges out-inclusive.
+  @spec setup_inclusives(%{optional(:inclusive) => [Map.key()]}) :: Keyword.t()
+  defp setup_inclusives(%{inclusive: attrs} = context) do
+    context
+    |> Map.take(attrs)
+    |> Enum.into([])
+    |> Enum.map(fn {name, values} -> {name, setup_inclusive(values)} end)
+  end
+
+  defp setup_inclusives(context), do: context
+
+  @spec setup_inclusive(Range.t() | {:error, any()}) :: Range.t() | {:error, any()}
+  defp setup_inclusive(%Range{} = range), do: Range.with_inclusive_out(range)
+  defp setup_inclusive(value), do: value
+
   # Negates secified ranges built by setup_ranges.
-  @spec setup_negates(%{optional(:negate) => [Map.key()], :test_case => map()}) :: Keyword.t()
+  @spec setup_negates(%{optional(:negate) => [Map.key()]}) :: Keyword.t()
   defp setup_negates(%{negate: attrs} = context) do
     context
     |> Map.take(attrs)
@@ -612,9 +829,17 @@ defmodule Vtc.RangeTest do
 
   defp setup_negates(context), do: context
 
-  @spec setup_negate(Range.t()) :: Range.t()
-  defp setup_negate(range) do
+  @spec setup_negate(Range.t() | {:error, any()}) :: Range.t() | {:error, any()}
+  defp setup_negate(%Range{} = range) do
     %Range{in: in_tc, out: out_tc} = range
     %Range{range | in: Timecode.negate(out_tc), out: Timecode.negate(in_tc)}
   end
+
+  defp setup_negate(value), do: value
+
+  @spec setup_overlap_expected(%{optional(:expected) => Range.t() | {:error, any()}}) :: map()
+  defp setup_overlap_expected(%{expected: %Range{} = expected}),
+    do: [expected: {:ok, expected}]
+
+  defp setup_overlap_expected(context), do: context
 end
