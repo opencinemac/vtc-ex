@@ -6,10 +6,10 @@ defmodule Vtc.Framerate do
 
   ## Struct Fields
 
-  - **playback**: The rational representation of the real-world playback speed as a
+  - `playback`: The rational representation of the real-world playback speed as a
     fraction in frames-per-second.
 
-  - **ntsc**: Atom representing which, if any, NTSC convention this framerate adheres to.
+  - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   alias Vtc.Framerate.ParseError
   alias Vtc.Utils.Rational
@@ -55,12 +55,12 @@ defmodule Vtc.Framerate do
 
   ## Arguments
 
-  - **rate**: Either the playback rate or timebase. For NTSC framerates, the value will
+  - `rate`: Either the playback rate or timebase. For NTSC framerates, the value will
     be rounded to the nearest correct value.
 
-  - **ntsc**: Atom representing the which (or whether an) NTSC standard is being used.
+  - `ntsc`: Atom representing the which (or whether an) NTSC standard is being used.
 
-  - **coerce_seconds_per_frame?**: If `true`, then values such as `1/24` are assumed to be
+  - `coerce_seconds_per_frame?`: If `true`, then values such as `1/24` are assumed to be
     in seconds-per-frame format and automatically converted to `24/1`. Useful when you want
     to convert strings from multiple sources when some are seconds-per-frame and others are
     frames-per-second. NOTE: if you expect to be dealing with record-rate values for timelapse
