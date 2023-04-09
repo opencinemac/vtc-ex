@@ -609,7 +609,7 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec negate(t()) :: t()
-  def negate(tc), do: %{tc | seconds: Ratio.negate(tc.seconds)}
+  def negate(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
 
   @doc """
   Returns the absolute value of `tc`.
@@ -790,7 +790,7 @@ defmodule Vtc.Timecode do
   def runtime(timecode, precision \\ 9) do
     {seconds, negative?} =
       if Ratio.lt?(timecode.seconds, 0),
-        do: {Ratio.negate(timecode.seconds), true},
+        do: {Ratio.minus(timecode.seconds), true},
         else: {timecode.seconds, false}
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))

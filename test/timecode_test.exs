@@ -12,7 +12,7 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
   def make_negative_case(test_case) do
     %{
       test_case
-      | seconds: Ratio.negate(test_case.seconds),
+      | seconds: Ratio.minus(test_case.seconds),
         frames: -test_case.frames,
         timecode: "-" <> test_case.timecode,
         runtime: "-" <> test_case.runtime,
@@ -23,7 +23,7 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
 
   @spec make_negative_input(input) :: input when [input: String.t() | Rational.t()]
   def make_negative_input(input) when is_binary(input), do: "-" <> input
-  def make_negative_input(input), do: Ratio.negate(input)
+  def make_negative_input(input), do: Ratio.minus(input)
 end
 
 defmodule Vtc.TimecodeTest do
