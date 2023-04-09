@@ -301,8 +301,8 @@ defmodule Vtc.Range do
 
   defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, do_calc?) do
     if do_calc?.(a, b) do
-      overlap_in = Enum.max_by([a.in, b.in], & &1, Timecode)
-      overlap_out = [a.out, b.out] |> Enum.min_by(& &1, Timecode) |> Timecode.rebase!(a.in.rate)
+      overlap_in = Enum.max([a.in, b.in], Timecode)
+      overlap_out = [a.out, b.out] |> Enum.min(Timecode) |> Timecode.rebase!(a.in.rate)
 
       overlap = %__MODULE__{a | in: overlap_in, out: overlap_out}
       {:ok, overlap}
