@@ -320,8 +320,8 @@ defmodule Vtc.Range do
   Returns `nil` if the two ranges do not intersect, otherwise returns the Range
   of the intersection of the two Ranges.
 
-  `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
-  will inherit `a`'s setting.
+  `a` and `b` do not have to have matching `:out_type` settings, but the result will
+  inherit `a`'s setting.
 
   ## Examples
 
@@ -378,8 +378,8 @@ defmodule Vtc.Range do
   Returns `nil` if the two ranges do intersect, otherwise returns the Range of the space
   between the intersections of the two Ranges.
 
-  `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
-  will inherit `a`'s setting.
+  `a` and `b` do not have to have matching `:out_type` settings, but the result will
+  inherit `a`'s setting.
 
   ## Examples
 
