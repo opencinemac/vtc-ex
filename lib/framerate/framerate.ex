@@ -22,9 +22,9 @@ defmodule Vtc.Framerate do
 
   ## Values
 
-  - `nil`: Not an NTSC value
   - `:non_drop` A non-drop NTSC value.
   - `:drop` A drop-frame ntsc value.
+  - `nil`: Not an NTSC value
 
   For more information on NTSC standards and framerate conventions, see
   [Frame.io's](frame.io)
