@@ -1,7 +1,5 @@
 defmodule Vtc.Utils.Rational do
-  @moduledoc """
-  Helper functions and types for working with the Ratio module.
-  """
+  @moduledoc false
 
   @typedoc """
   The Ratio module will often convert itself to an integer value if the result would be
@@ -16,9 +14,9 @@ defmodule Vtc.Utils.Rational do
 
   ## Arguments
 
-  - **x**: The Rational value to round.
+  - `x`: The Rational value to round.
 
-  - **method**: Rounding strategy. Defaults to `:closest`.
+  - `method`: Rounding strategy. Defaults to `:closest`.
 
     - `:closest`: Round the to the closet whole frame, rounding up when fractional
       remainder is equal to `1/2`.
