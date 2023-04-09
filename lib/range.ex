@@ -24,7 +24,7 @@ defmodule Vtc.Range do
   alias Vtc.Timecode
 
   @typedoc """
-  Whether the end point should be treated as the Range's boundry (:exclusive), or its
+  Whether the end point should be treated as the Range's boundary (:exclusive), or its
   last element (:inclusive).
   """
   @type out_type() :: :inclusive | :exclusive
