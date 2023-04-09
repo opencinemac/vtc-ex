@@ -255,7 +255,7 @@ defmodule Vtc.Range do
   defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1, round: :off)
 
   @doc """
-  Returns the duration in timecode of `range`.
+  Returns the duration in `Timecode` of `range`.
 
   ## Examples
 
