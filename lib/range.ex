@@ -144,8 +144,10 @@ defmodule Vtc.Range do
   @spec with_inclusive_out(t()) :: t()
   def with_inclusive_out(%{out_type: :inclusive} = range), do: range
 
-  def with_inclusive_out(range),
-    do: %__MODULE__{range | out: Timecode.sub(range.out, 1), out_type: :inclusive}
+  def with_inclusive_out(range) do
+    new_out = Timecode.sub(range.out, 1, round: :off)
+    %__MODULE__{range | out: new_out, out_type: :inclusive}
+  end
 
   @doc """
   Adjusts range to have an exclusive out timecode.
@@ -161,7 +163,7 @@ defmodule Vtc.Range do
   # Asdjusts an out TC to be an exclusive out.
   @spec adjust_out_exclusive(Timecode.t(), out_type()) :: Timecode.t()
   defp adjust_out_exclusive(tc, :exclusive), do: tc
-  defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1)
+  defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1, round: :off)
 
   @doc """
   Returns the duration in timecode of `range`.
@@ -202,7 +204,7 @@ defmodule Vtc.Range do
   will inherit `a`'s setting.
   """
   @spec intersection(t(), t()) :: t() | nil
-  def intersection(a, b), do: calc_overlap(a, b, &(not overlaps?(&1, &2)))
+  def intersection(a, b), do: calc_overlap(a, b, &overlaps?(&1, &2))
 
   @doc """
   Returns `nil` if the two ranges do intersect, otherwise returns the Range of the space
@@ -217,20 +219,20 @@ defmodule Vtc.Range do
   # Returns the amount of intersection or separation between `a` and `b`, or `nil` if
   # `return_nil?` returns `true`.
   @spec calc_overlap(t(), t(), return_nil? :: (t(), t() -> nil)) :: t() | nil
-  defp calc_overlap(a, %{out_type: :inclusive} = b, return_nil?) do
+  defp calc_overlap(a, %{out_type: :inclusive} = b, do_calc?) do
     b = with_exclusive_out(b)
-    calc_overlap(a, b, return_nil?)
+    calc_overlap(a, b, do_calc?)
   end
 
-  defp calc_overlap(%{out_type: :inclusive} = a, b, return_nil?) do
+  defp calc_overlap(%{out_type: :inclusive} = a, b, do_calc?) do
     a
     |> with_exclusive_out()
-    |> calc_overlap(b, return_nil?)
+    |> calc_overlap(b, do_calc?)
     |> with_inclusive_out()
   end
 
-  defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, return_nil?) do
-    if return_nil?.(a, b) do
+  defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, do_calc?) do
+    if do_calc?.(a, b) do
       overlap_in = Timecode.max([a.in, b.in])
       overlap_out = Timecode.min([a.out, b.out])
       %__MODULE__{a | in: overlap_in, out: overlap_out}
@@ -238,4 +240,21 @@ defmodule Vtc.Range do
       nil
     end
   end
+end
+
+defimpl Inspect, for: Vtc.Range do
+  alias Vtc.Range
+  alias Vtc.Timecode
+
+  @spec inspect(Range.t(), Elixir.Inspect.Opts.t()) :: String.t()
+  def inspect(range, _opts) do
+    "<#{Timecode.timecode(range.in)} - #{Timecode.timecode(range.out)} #{inspect(range.in.rate)}>"
+  end
+end
+
+defimpl String.Chars, for: Vtc.Range do
+  alias Vtc.Range
+
+  @spec to_string(Range.t()) :: String.t()
+  def to_string(range), do: inspect(range)
 end
