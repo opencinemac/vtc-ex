@@ -42,13 +42,38 @@ defmodule Vtc.Range do
   defstruct [:in, :out, :out_type]
 
   @doc """
-  Creates a new timecode.
+  Creates a new `Range`.
 
   `out_tc` may be a `Timecode` value for any value that implements the `Frames`
   protocol.
 
   Returns an error if the resulting range would not have a duration greater or eual to
   0, or if `tc_in` and `tc_out` do not have the same `rate`.
+
+  ## Examples
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex> Range.new(tc_in, tc_out) |> inspect()
+  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>}"
+  ```
+
+  Using a timecode string as `b`:
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Range.new(tc_in, "02:00:00:00") |> inspect()
+  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>}"
+  ```
+
+  Making a range with an inclusive out:
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Range.new(tc_in, "02:00:00:00", out_type: :inclusive) |> inspect()
+  "{:ok, <01:00:00:00 - 02:00:00:00 :inclusive <23.98 NTSC NDF>>}"
+  ```
   """
   @spec new(
           in_tc :: Timecode.t(),
@@ -104,6 +129,31 @@ defmodule Vtc.Range do
 
   Returns an error if `duration` is less than `0` seconds or if `tc_in` and `tc_out` do
   not have  the same `rate`.
+
+  ## Examples
+
+  ```elixir
+  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+  iex> Range.with_duration(start_tc, duration) |> inspect()
+  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC NDF>>}"
+  ```
+
+  Using a timecode string as `b`:
+
+  ```elixir
+  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Range.with_duration(start_tc, "00:30:00:00") |> inspect()
+  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC NDF>>}"
+  ```
+
+  Making a range with an inclusive out:
+
+  ```elixir
+  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Range.with_duration(start_tc, "00:30:00:00", out_type: :inclusive) |> inspect()
+  "{:ok, <01:00:00:00 - 01:29:59:23 :inclusive <23.98 NTSC NDF>>}"
+  ```
   """
   @spec with_duration(
           tc_in :: Timecode.t(),
@@ -161,6 +211,15 @@ defmodule Vtc.Range do
 
   @doc """
   Adjusts range to have an inclusive out timecode.
+
+  ## Examples
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(tc_in, "02:00:00:00")
+  iex> Range.with_inclusive_out(range) |> inspect()
+  "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC NDF>>"
+  ```
   """
   @spec with_inclusive_out(t()) :: t()
   def with_inclusive_out(%{out_type: :inclusive} = range), do: range
@@ -172,6 +231,15 @@ defmodule Vtc.Range do
 
   @doc """
   Adjusts range to have an exclusive out timecode.
+
+  ## Examples
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(tc_in, "02:00:00:00", out_type: :inclusive)
+  iex> Range.with_exclusive_out(range) |> inspect()
+  "<01:00:00:00 - 02:00:00:01 :exclusive <23.98 NTSC NDF>>"
+  ```
   """
   @spec with_exclusive_out(t()) :: t()
   def with_exclusive_out(%{out_type: :exclusive} = range), do: range
@@ -197,6 +265,28 @@ defmodule Vtc.Range do
 
   @doc """
   Returns `true` if there is overlap between `a` and `b`.
+
+  ## Examples
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
+  iex> Range.overlaps?(a, b)
+  true
+  ```
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
+  iex> Range.overlaps?(a, b)
+  false
+  ```
   """
   @spec overlaps?(t(), t()) :: boolean()
   def overlaps?(%{out_type: :inclusive} = a, b) do
@@ -223,6 +313,28 @@ defmodule Vtc.Range do
 
   `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
   will inherit `a`'s setting.
+
+  ## Examples
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
+  iex> Range.intersection(a, b) |> inspect()
+  "{:ok, <01:50:00:00 - 02:00:00:00 :inclusive <23.98 NTSC NDF>>}"
+  ```
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
+  iex> Range.intersection(a, b)
+  {:error, :none}
+  ```
   """
   @spec intersection(t(), t()) :: {:ok, t()} | {:error, :none}
   def intersection(a, b), do: calc_overlap(a, b, &overlaps?(&1, &2))
@@ -232,10 +344,22 @@ defmodule Vtc.Range do
   is no overlap.
 
   This returned range inherets the framerate and `out_type` from `a`.
+
+  ## Examples
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
+  iex> Range.intersection!(a, b) |> inspect()
+  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC NDF>>"
+  ```
   """
   @spec intersection!(t(), t()) :: t()
   def intersection!(a, b) do
-    case separation(a, b) do
+    case intersection(a, b) do
       {:ok, overlap} -> overlap
       {:error, :none} -> create_zeroed_range(a)
     end
@@ -247,6 +371,28 @@ defmodule Vtc.Range do
 
   `a` and `b` do not have to have matching `out_inclusive?` settings, but the result
   will inherit `a`'s setting.
+
+  ## Examples
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
+  iex> Range.separation(a, b) |> inspect()
+  "{:ok, <02:00:00:01 - 02:09:59:23 :inclusive <23.98 NTSC NDF>>}"
+  ```
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
+  iex> Range.separation(a, b)
+  {:error, :none}
+  ```
   """
   @spec separation(t(), t()) :: {:ok, t()} | {:error, :none}
   def separation(a, b), do: calc_overlap(a, b, &(not overlaps?(&1, &2)))
@@ -256,6 +402,18 @@ defmodule Vtc.Range do
   is overlap.
 
   This returned range inherets the framerate and `out_type` from `a`.
+
+  ## Examples
+
+  ```elixir
+  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
+  iex>
+  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
+  iex> Range.separation!(a, b) |> inspect()
+  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC NDF>>"
+  ```
   """
   @spec separation!(t(), t()) :: t()
   def separation!(a, b) do
@@ -295,9 +453,17 @@ defmodule Vtc.Range do
 
   defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, do_calc?) do
     if do_calc?.(a, b) do
-      overlap_in = Enum.max([a.in, b.in], Timecode)
-      overlap_out = [a.out, b.out] |> Enum.min(Timecode) |> Timecode.rebase!(a.in.rate)
+      result_rate = a.in.rate
 
+      overlap_in = Enum.max([a.in, b.in], Timecode)
+      overlap_in = Timecode.with_seconds!(overlap_in.seconds, result_rate)
+
+      overlap_out = Enum.min([a.out, b.out], Timecode)
+      overlap_out = Timecode.with_seconds!(overlap_out.seconds, result_rate)
+
+      # These values will be flipped when calulcating separation range, so we need to
+      # sort them.
+      [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Timecode)
       overlap = %__MODULE__{a | in: overlap_in, out: overlap_out}
       {:ok, overlap}
     else

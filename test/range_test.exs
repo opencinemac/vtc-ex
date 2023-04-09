@@ -2,6 +2,7 @@ defmodule Vtc.RangeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Vtc.Framerate
   alias Vtc.Range
   alias Vtc.Rates
   alias Vtc.Timecode
@@ -556,13 +557,13 @@ defmodule Vtc.RangeTest do
         expected: false
       },
       %{
-        name: "1.b & 1.a at boundary",
+        name: "1.b & 2.a at boundary",
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: false
       },
       %{
-        name: "1.a & 1.b at boundary",
+        name: "1.a & 2.b at boundary",
         a: {"03:00:00:00", "04:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: false
@@ -648,10 +649,9 @@ defmodule Vtc.RangeTest do
 
   describe "intersection/2" do
     setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
-
     @describetag ranges: [:a, :b, :expected]
 
-    @intersection_cases [
+    @test_cases [
       %{
         name: "1.a == 2.a and 1.b == 2.b",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -711,10 +711,28 @@ defmodule Vtc.RangeTest do
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"03:00:00:00", "04:00:00:00"},
         expected: {:error, :none}
+      },
+      %{
+        name: "a > b",
+        a: {"03:00:00:00", "04:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {:error, :none}
+      },
+      %{
+        name: "1.b & 2.a at boundary",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"02:00:00:00", "03:00:00:00"},
+        expected: {:error, :none}
+      },
+      %{
+        name: "1.a & 2.b at boundary",
+        a: {"03:00:00:00", "04:00:00:00"},
+        b: {"02:00:00:00", "03:00:00:00"},
+        expected: {:error, :none}
       }
     ]
 
-    for test_case <- @intersection_cases do
+    for test_case <- @test_cases do
       @tag test_case: test_case
       test "#{test_case.name} | :exclusive", context do
         %{a: a, b: b, expected: expected} = context
@@ -723,7 +741,7 @@ defmodule Vtc.RangeTest do
 
       @tag test_case: test_case
       @tag negate: [:a, :b, :expected]
-      test "#{test_case.name} | :exclusive | negated", context do
+      test "#{test_case.name} | :exclusive | negative", context do
         %{a: a, b: b, expected: expected} = context
         assert Range.intersection(a, b) == expected
       end
@@ -738,7 +756,7 @@ defmodule Vtc.RangeTest do
       @tag test_case: test_case
       @tag inclusive: [:a, :b, :expected]
       @tag negate: [:a, :b, :expected]
-      test "#{test_case.name} | :inclusive | negated", context do
+      test "#{test_case.name} | :inclusive | negative", context do
         %{a: a, b: b, expected: expected} = context
         assert Range.intersection(a, b) == expected
       end
@@ -752,7 +770,7 @@ defmodule Vtc.RangeTest do
 
         @tag test_case: test_case
         @tag negate: [:a, :b, :expected]
-        test "#{test_case.name} | :exclusive | negated | flipped", context do
+        test "#{test_case.name} | :exclusive | negative | flipped", context do
           %{a: a, b: b, expected: expected} = context
           assert Range.intersection(b, a) == expected
         end
@@ -767,11 +785,213 @@ defmodule Vtc.RangeTest do
         @tag test_case: test_case
         @tag inclusive: [:a, :b, :expected]
         @tag negate: [:a, :b, :expected]
-        test "#{test_case.name} | :inclusive | negated | flipped", context do
+        test "#{test_case.name} | :inclusive | negative | flipped", context do
           %{a: a, b: b, expected: expected} = context
           assert Range.intersection(b, a) == expected
         end
       end
+    end
+
+    test "inherets a's rate in mixed rate operations" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f23_98())
+      b = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f47_95())
+      expected = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f23_98())
+
+      assert {:ok, result} = Range.intersection(a, b)
+      assert result == expected
+    end
+
+    test "inherets a's out_type in mixed type operations" do
+      a = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      b = setup_range({"01:00:00:00", "02:00:00:00"})
+      expected = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+
+      assert {:ok, result} = Range.intersection(a, b)
+      assert result == expected
+    end
+
+    test "successfully returns mixed rate" do
+      a = setup_range({"01:00:00:03", "01:59:59:47"}, Rates.f47_95())
+      b = setup_range({"01:00:00:01", "01:59:59:23"}, Rates.f23_98())
+      expected = setup_range({"01:00:00:03", "01:59:59:46"}, Rates.f47_95())
+
+      assert {:ok, result} = Range.intersection(a, b)
+      assert result == expected
+    end
+  end
+
+  describe "#intersection!/2" do
+    test "returns bare range on success" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"})
+      b = setup_range({"01:00:00:00", "02:00:00:00"})
+
+      expected = setup_range({"01:00:00:00", "02:00:00:00"})
+      assert Range.intersection!(a, b) == expected
+    end
+
+    test "returns zero-length range when no overlap" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"})
+      b = setup_range({"03:00:00:00", "04:00:00:00"})
+
+      expected = setup_range({"00:00:00:00", "00:00:00:00"})
+      assert Range.intersection!(a, b) == expected
+    end
+
+    test "zero-length inherets a's rate in mixed rate operations" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f47_95())
+      b = setup_range({"03:00:00:00", "04:00:00:00"}, Rates.f23_98())
+
+      expected = setup_range({"00:00:00:00", "00:00:00:00"}, Rates.f47_95())
+      assert Range.intersection!(a, b) == expected
+    end
+
+    test "zero-length inherets a's out_type" do
+      a = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      b = setup_range({"03:00:00:00", "04:00:00:00"})
+
+      expected = {"00:00:00:00", "00:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      assert Range.intersection!(a, b) == expected
+    end
+  end
+
+  describe "separation/2" do
+    setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
+    @describetag ranges: [:a, :b, :expected]
+
+    @test_cases [
+      %{
+        name: "a < b",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"03:00:00:00", "04:00:00:00"},
+        expected: {"02:00:00:00", "03:00:00:00"}
+      },
+      %{
+        name: "error on overlap",
+        a: {"01:00:00:00", "02:00:00:00"},
+        b: {"01:00:00:00", "02:00:00:00"},
+        expected: {:error, :none}
+      }
+    ]
+
+    for test_case <- @test_cases do
+      @tag test_case: test_case
+      test "#{test_case.name} | :exclusive", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.separation(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag negate: [:a, :b, :expected]
+      test "#{test_case.name} | :exclusive | negative", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.separation(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag inclusive: [:a, :b, :expected]
+      test "#{test_case.name} | :inclusive", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.separation(a, b) == expected
+      end
+
+      @tag test_case: test_case
+      @tag inclusive: [:a, :b, :expected]
+      @tag negate: [:a, :b, :expected]
+      test "#{test_case.name} | :inclusive | negative", context do
+        %{a: a, b: b, expected: expected} = context
+        assert Range.separation(a, b) == expected
+      end
+
+      if test_case.a != test_case.b do
+        @tag test_case: test_case
+        test "#{test_case.name} | :exclusive  | flipped", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.separation(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag negate: [:a, :b, :expected]
+        test "#{test_case.name} | :exclusive | flipped | negative", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.separation(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag inclusive: [:a, :b, :expected]
+        test "#{test_case.name} | :inclusive  | flipped", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.separation(b, a) == expected
+        end
+
+        @tag test_case: test_case
+        @tag inclusive: [:a, :b, :expected]
+        @tag negate: [:a, :b, :expected]
+        test "#{test_case.name} | :inclusive  | flipped | negative", context do
+          %{a: a, b: b, expected: expected} = context
+          assert Range.separation(b, a) == expected
+        end
+      end
+    end
+
+    test "inherets a's rate in mixed rate operations" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f23_98())
+      b = setup_range({"03:00:00:00", "04:00:00:00"}, Rates.f47_95())
+      expected = setup_range({"02:00:00:00", "03:00:00:00"}, Rates.f23_98())
+
+      assert {:ok, result} = Range.separation(a, b)
+      assert result == expected
+    end
+
+    test "inherets a's out_type in mixed type operations" do
+      a = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      b = setup_range({"03:00:00:00", "04:00:00:00"})
+      expected = {"02:00:00:00", "03:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+
+      assert {:ok, result} = Range.separation(a, b)
+      assert result == expected
+    end
+
+    test "successfully returns mixed rate" do
+      a = setup_range({"01:00:00:03", "01:59:59:47"}, Rates.f47_95())
+      b = setup_range({"03:00:00:23", "03:00:00:00"}, Rates.f23_98())
+      expected = setup_range({"01:59:59:47", "03:00:00:46"}, Rates.f47_95())
+
+      assert {:ok, result} = Range.separation(a, b)
+      assert result == expected
+    end
+  end
+
+  describe "#separation!/2" do
+    test "returns bare range on success" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"})
+      b = setup_range({"03:00:00:00", "04:00:00:00"})
+
+      expected = setup_range({"02:00:00:00", "03:00:00:00"})
+      assert Range.separation!(a, b) == expected
+    end
+
+    test "returns zero-length range when overlap" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"})
+      b = setup_range({"01:00:00:00", "02:00:00:00"})
+
+      expected = setup_range({"00:00:00:00", "00:00:00:00"})
+      assert Range.separation!(a, b) == expected
+    end
+
+    test "zero-length inherets a's rate in mixed rate operations" do
+      a = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f47_95())
+      b = setup_range({"01:00:00:00", "02:00:00:00"}, Rates.f23_98())
+
+      expected = setup_range({"00:00:00:00", "00:00:00:00"}, Rates.f47_95())
+      assert Range.separation!(a, b) == expected
+    end
+
+    test "zero-length inherets a's out_type" do
+      a = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      b = setup_range({"01:00:00:00", "02:00:00:00"})
+
+      expected = {"00:00:00:00", "00:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+      assert Range.separation!(a, b) == expected
     end
   end
 
@@ -792,16 +1012,20 @@ defmodule Vtc.RangeTest do
   defp setup_ranges(context), do: context
 
   # Allow `:none` for `intersection/2` and `separation/2` function tests.
-  @spec setup_range(range_shorthand() | {:error, any()}) :: Range.t() | {:error, any()}
-  defp setup_range({in_tc, out_tc}) when is_binary(in_tc) and is_binary(out_tc) do
-    in_tc = Timecode.with_frames!(in_tc, Rates.f23_98())
-    out_tc = Timecode.with_frames!(out_tc, Rates.f23_98())
+  @spec setup_range(range_shorthand() | {:error, any()}, Framerate.t()) ::
+          Range.t() | {:error, any()}
+  defp setup_range(values, rate \\ Rates.f23_98())
+
+  defp setup_range({in_tc, out_tc}, rate)
+       when is_binary(in_tc) and is_binary(out_tc) do
+    in_tc = Timecode.with_frames!(in_tc, rate)
+    out_tc = Timecode.with_frames!(out_tc, rate)
     range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
 
     range
   end
 
-  defp setup_range(value), do: value
+  defp setup_range(value, _), do: value
 
   # Males secified ranges built by setup_ranges out-inclusive.
   @spec setup_inclusives(%{optional(:inclusive) => [Map.key()]}) :: Keyword.t()
