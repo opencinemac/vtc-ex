@@ -10,12 +10,11 @@ defmodule Vtc.Range do
 
   ## Inclusive vs. Exclusive Ranges.
 
-  Inclusive ranges include the `out` timecode value as a frame that is part of the
-  range. This style of tc range is most often associated with AVID.
+  Inclusive ranges treat the `out` timecode as the last visible frame of a piece of
+  footage. This style of tc range is most often associated with AVID.
 
-  Exclusive timecode ranges treat the `out` timecde value as the *boundary* where the
-  range ends. This style of tc range is most often associated with Final Cut and
-  Premiere.
+  Exclusive timecode ranges treat the `out` timecode as the *boundary* where the range
+  ends. This style of tc range is most often associated with Final Cut and Premiere.
 
   In mathematical notation, inclusive ranges are `[in, out]`, while exclusive ranges are
   `[in, out)`.
@@ -24,6 +23,10 @@ defmodule Vtc.Range do
   alias Vtc.Source.Frames
   alias Vtc.Timecode
 
+  @typedoc """
+  Whether the end point should be treated as the Range's boundry (:exclusive), or its
+  last element (:inclusive).
+  """
   @type out_type() :: :inclusive | :exclusive
 
   @typedoc """
