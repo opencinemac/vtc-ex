@@ -180,6 +180,12 @@ iex> b = Range.new!(b_in, "02:30:00:00")
 iex> inspect(b)
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC NDF>>"
 
+iex> Range.duration(b) |> inspect()
+iex> "<00:45:00:00 <23.98 NTSC NDF>>"
+
+iex> Range.overlaps?(a, b) |> inspect()
+iex> true
+
 iex> Range.intersection!(a, b) |> inspect()
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
 ```
