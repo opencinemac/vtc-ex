@@ -1,8 +1,6 @@
 defmodule Vtc.Utils.Parse do
   @moduledoc false
 
-  use Ratio
-
   alias Vtc.Framerate
   alias Vtc.Source.Frames
   alias Vtc.Source.Seconds
@@ -148,6 +146,6 @@ defmodule Vtc.Utils.Parse do
     |> Ratio.new(1)
     |> Ratio.add(hours * Consts.seconds_per_hour())
     |> Ratio.add(minutes * Consts.seconds_per_minute())
-    |> then(fn seconds -> if negative?, do: -seconds, else: seconds end)
+    |> then(fn seconds -> if negative?, do: Ratio.minus(seconds), else: seconds end)
   end
 end
