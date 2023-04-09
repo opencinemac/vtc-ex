@@ -193,6 +193,12 @@ defmodule Vtc.Range do
   end
 
   @doc """
+  Compares ranges by in point, Compatible with `Enum.sort/2`.
+  """
+  @spec compare(t(), t()) :: :lt | :eq | :gt
+  def compare(a, b), do: Timecode.compare(a.in, b.in)
+
+  @doc """
   Returns `true` if there is overlap between `a` and `b`.
   """
   @spec overlaps?(t(), t()) :: boolean()
