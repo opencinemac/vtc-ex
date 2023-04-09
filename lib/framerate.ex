@@ -178,22 +178,19 @@ defmodule Vtc.Framerate do
   @spec ntsc?(t()) :: boolean()
   def ntsc?(%{ntsc: nil}), do: false
   def ntsc?(_), do: true
+end
 
-  @doc """
-  Example returns:
+defimpl Inspect, for: Vtc.Framerate do
+  alias Vtc.Framerate
 
-  - 23.98 NTSC DF
-  - 23.98 NTSC NDF
-  - 23.98 fps
-  """
-  @spec to_string(t()) :: String.t()
-  def to_string(rate) do
+  @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
+  def inspect(rate, _opts) do
     float_str =
       Ratio.to_float(rate.playback)
       |> Float.round(2)
       |> Float.to_string()
 
-    ntsc_string = if ntsc?(rate), do: " NTSC", else: " fps"
+    ntsc_string = if Framerate.ntsc?(rate), do: " NTSC", else: " fps"
 
     drop_string =
       case rate.ntsc do
@@ -206,16 +203,9 @@ defmodule Vtc.Framerate do
   end
 end
 
-defimpl Inspect, for: Vtc.Framerate do
-  alias Vtc.Framerate
-
-  @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(rate, _opts), do: Framerate.to_string(rate)
-end
-
 defimpl String.Chars, for: Vtc.Framerate do
   alias Vtc.Framerate
 
   @spec to_string(Framerate.t()) :: String.t()
-  def to_string(term), do: Framerate.to_string(term)
+  def to_string(term), do: inspect(term)
 end
