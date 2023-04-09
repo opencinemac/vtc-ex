@@ -3,7 +3,15 @@ defmodule Vtc.Framerate do
   The rate at which a video file frames are played back.
 
   Framerate is measured in frames-per-second (24/1 = 24 frames-per-second).
+
+  ## Struct Fields
+
+  - `playback`: The rational representation of the real-world playback speed as a
+    fraction in frames-per-second.
+
+  - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
+  alias Vtc.Framerate.ParseError
   alias Vtc.Utils.Rational
 
   @enforce_keys [:playback, :ntsc]
@@ -14,9 +22,9 @@ defmodule Vtc.Framerate do
 
   ## Values
 
-  - `nil`: Not an NTSC value
   - `:non_drop` A non-drop NTSC value.
   - `:drop` A drop-frame ntsc value.
+  - `nil`: Not an NTSC value
 
   For more information on NTSC standards and framerate conventions, see
   [Frame.io's](frame.io)
@@ -26,13 +34,6 @@ defmodule Vtc.Framerate do
 
   @typedoc """
   Type of `Framerate`
-
-  ## Fields
-
-  - **playback**: The rational representation of the real-world playback speed as a
-    fraction in frames-per-second.
-
-  - **ntsc**: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   @type t :: %__MODULE__{playback: Rational.t(), ntsc: ntsc()}
 
@@ -41,56 +42,8 @@ defmodule Vtc.Framerate do
   frames-per-second.
   """
   @spec timebase(t()) :: Rational.t()
-  def timebase(%__MODULE__{ntsc: nil} = framerate), do: framerate.playback
+  def timebase(%{ntsc: nil} = framerate), do: framerate.playback
   def timebase(framerate), do: Rational.round(framerate.playback)
-
-  defmodule ParseError do
-    @moduledoc """
-    Exception returned when a framerate cannot be parsed.
-    """
-    defexception [:reason]
-
-    @typedoc """
-    Type of `ParseError`
-
-    ## Fields
-
-    - **reason**: The reason the error occurred must be one of the following:
-
-      - `:bad_drop_rate`: Returned when the playback speed of a framerate with an ntsc
-        value of :drop is not divisible by 3000/1001 (29.97), for more on why drop-frame
-        framerates must be a multiple of 29.97, see:
-        https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
-
-      - `:invalid_ntsc`: Returned when the ntsc value is not one of the allowed atom
-        values.
-
-      - `:unrecognized_format`: Returned when a string value is not a recognized format.
-
-      - `:imprecise` - Returned when a float was passed with an NTSC value of nil.
-        Without the ability to round to the nearest valid NTSC value, floats are not
-        precise enough to build an arbitrary framerate.
-    """
-    @type t() :: %__MODULE__{
-            reason: :bad_drop_rate | :invalid_ntsc | :unrecognized_format | :imprecise
-          }
-
-    @doc """
-    Returns a message for the error reason.
-    """
-    @spec message(t()) :: String.t()
-    def message(%__MODULE__{reason: :bad_drop_rate}),
-      do: "drop-frame rates must be divisible by 30000/1001"
-
-    def message(%__MODULE__{reason: :invalid_ntsc}),
-      do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
-
-    def message(%__MODULE__{reason: :unrecognized_format}),
-      do: "framerate string format not recognized"
-
-    def message(%__MODULE__{reason: :imprecise}),
-      do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
-  end
 
   @typedoc """
   Type returned by `new/2`
@@ -102,12 +55,12 @@ defmodule Vtc.Framerate do
 
   ## Arguments
 
-  - **rate**: Either the playback rate or timebase. For NTSC framerates, the value will
+  - `rate`: Either the playback rate or timebase. For NTSC framerates, the value will
     be rounded to the nearest correct value.
 
-  - **ntsc**: Atom representing the which (or whether an) NTSC standard is being used.
+  - `ntsc`: Atom representing the which (or whether an) NTSC standard is being used.
 
-  - **coerce_seconds_per_frame?**: If `true`, then values such as `1/24` are assumed to be
+  - `coerce_seconds_per_frame?`: If `true`, then values such as `1/24` are assumed to be
     in seconds-per-frame format and automatically converted to `24/1`. Useful when you want
     to convert strings from multiple sources when some are seconds-per-frame and others are
     frames-per-second. NOTE: if you expect to be dealing with record-rate values for timelapse
@@ -223,24 +176,21 @@ defmodule Vtc.Framerate do
   on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
   """
   @spec ntsc?(t()) :: boolean()
-  def ntsc?(%__MODULE__{ntsc: nil}), do: false
+  def ntsc?(%{ntsc: nil}), do: false
   def ntsc?(_), do: true
+end
 
-  @doc """
-  Example returns:
+defimpl Inspect, for: Vtc.Framerate do
+  alias Vtc.Framerate
 
-  - 23.98 NTSC DF
-  - 23.98 NTSC NDF
-  - 23.98 fps
-  """
-  @spec to_string(t()) :: String.t()
-  def to_string(rate) do
+  @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
+  def inspect(rate, _opts) do
     float_str =
       Ratio.to_float(rate.playback)
       |> Float.round(2)
       |> Float.to_string()
 
-    ntsc_string = if ntsc?(rate), do: " NTSC", else: " fps"
+    ntsc_string = if Framerate.ntsc?(rate), do: " NTSC", else: " fps"
 
     drop_string =
       case rate.ntsc do
@@ -253,16 +203,9 @@ defmodule Vtc.Framerate do
   end
 end
 
-defimpl Inspect, for: Vtc.Framerate do
-  alias Vtc.Framerate
-
-  @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(rate, _opts), do: Framerate.to_string(rate)
-end
-
 defimpl String.Chars, for: Vtc.Framerate do
   alias Vtc.Framerate
 
   @spec to_string(Framerate.t()) :: String.t()
-  def to_string(term), do: Framerate.to_string(term)
+  def to_string(term), do: inspect(term)
 end

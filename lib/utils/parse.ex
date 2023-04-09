@@ -1,14 +1,14 @@
-defmodule Vtc.Private.Parse do
+defmodule Vtc.Utils.Parse do
   @moduledoc false
 
   use Ratio
 
   alias Vtc.Framerate
-  alias Vtc.Private.Consts
-  alias Vtc.Private.DropFrame
   alias Vtc.Source.Frames
   alias Vtc.Source.Seconds
   alias Vtc.Timecode
+  alias Vtc.Utils.Consts
+  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @spec parse_frames_string(String.t(), Framerate.t()) :: Frames.result()

@@ -158,6 +158,36 @@ iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop)) |> insp
 # We can also rebase the frames using a new framerate!
 iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
 "<02:00:00:00 @ <23.98 NTSC>>"
+
+# Sorting is suported through the `compare/2` function:
+iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> data_01 = %{id: 2, tc: tc_01}
+iex> data_02 = %{id: 1, tc: tc_02}
+iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+"[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+
+# Timecode Ranges help common operations with in/out points:
+iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> a_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> a = Range.new!(a_in, a_out)
+iex> inspect(a)
+"<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
+
+iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
+iex> b_out = Timecode.with_frames!("02:30:00:00", Rates.f23_98())
+iex> b = Range.new!(b_in, "02:30:00:00")
+iex> inspect(b)
+"<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC NDF>>"
+
+iex> Range.duration(b) |> inspect()
+iex> "<00:45:00:00 <23.98 NTSC NDF>>"
+
+iex> Range.overlaps?(a, b) |> inspect()
+iex> true
+
+iex> Range.intersection!(a, b) |> inspect()
+"<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
 ```
 
 ## Features
@@ -188,7 +218,6 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Negative
     - [X] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
-    - [ ] Sort Helper
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'
@@ -196,10 +225,11 @@ iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
     - [X] Poorly formatted tc    | '1:13:4'
 - [X] Built-in consts for common framerates.
 - [X] Configurable rounding options.
-- [ ] Range type for working with and comparing frame ranges.
-    - [ ] Overlap between ranges
-    - [ ] Distance between ranges
-    - [ ] Order Ranfes
+- [X] Support for standard library sorting behavior.
+- [X] Range type for working with and comparing frame ranges.
+    - [X] Overlap between ranges
+    - [X] Distance between ranges
+    - [X] Inclusive and exclusive ranges
 
 ## Installation
 

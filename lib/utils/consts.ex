@@ -1,4 +1,4 @@
-defmodule Vtc.Private.Consts do
+defmodule Vtc.Utils.Consts do
   @moduledoc false
 
   @spec seconds_per_minute() :: integer()

@@ -1,4 +1,4 @@
-defmodule Vtc.Private.DropFrame do
+defmodule Vtc.Utils.DropFrame do
   @moduledoc false
   alias Vtc.Framerate
   alias Vtc.Timecode
@@ -10,7 +10,7 @@ defmodule Vtc.Private.DropFrame do
   # https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
   @spec parse_adjustment(Timecode.Sections.t(), Framerate.t()) ::
           {:ok, integer()} | {:error, Timecode.ParseError.t()}
-  def parse_adjustment(sections, %Framerate{ntsc: :drop} = rate) do
+  def parse_adjustment(sections, %{ntsc: :drop} = rate) do
     drop_rate = frames_dropped_per_minute(rate)
 
     with :ok <- parse_adjustment_validate(sections, drop_rate) do
@@ -42,7 +42,7 @@ defmodule Vtc.Private.DropFrame do
   # Algorithm adapted from:
   # https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
   @spec frame_num_adjustment(integer(), Framerate.t()) :: integer()
-  def frame_num_adjustment(frame_number, %Framerate{ntsc: :drop} = rate) do
+  def frame_num_adjustment(frame_number, %{ntsc: :drop} = rate) do
     framerate = Ratio.to_float(rate.playback)
 
     dropped_per_min = round(framerate * 0.066666)

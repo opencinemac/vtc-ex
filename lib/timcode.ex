@@ -4,16 +4,58 @@ defmodule Vtc.Timecode do
 
   New Timecode values are created with the `with_seconds/3` and `with_frames/2`, and
   other function prefaced by `with_*`.
+
+  ## Struct Fields
+
+  - `seconds`: The real-world seconds elapsed since 01:00:00:00 as a rational value.
+    (Note: The Ratio module automatically will coerce itself to an integer whenever
+    possible, so this value may be an integer when exactly a whole-second value).
+
+  - `rate`: the Framerate of the timecode.
+
+  ## Sorting Support
+
+  `Timecode` implements `compare/2`, and as such, can be used wherever the standard
+  library calls for a `Sorter` module. Let's see it in action:
+
+  ```elixir
+  iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex>
+  iex>
+  iex> Enum.sort([tc_02, tc_01], Timecode) |> inspect()
+  "[<01:00:00:00 <23.98 NTSC NDF>>, <02:00:00:00 <23.98 NTSC NDF>>]"
+  iex>
+  iex>
+  iex> Enum.sort([tc_01, tc_02], {:desc, Timecode}) |> inspect()
+  "[<02:00:00:00 <23.98 NTSC NDF>>, <01:00:00:00 <23.98 NTSC NDF>>]"
+  iex>
+  iex>
+  iex> Enum.max([tc_02, tc_01], Timecode) |> inspect()
+  "<02:00:00:00 <23.98 NTSC NDF>>"
+  iex>
+  iex>
+  iex> Enum.min([tc_02, tc_01], Timecode) |> inspect()
+  "<01:00:00:00 <23.98 NTSC NDF>>"
+  iex>
+  iex>
+  iex> data_01 = %{id: 2, tc: tc_01}
+  iex> data_02 = %{id: 1, tc: tc_02}
+  iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+  ```
   """
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
 
   alias Vtc.Framerate
-  alias Vtc.Private.Consts
-  alias Vtc.Private.DropFrame
   alias Vtc.Source.Frames
   alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
+  alias Vtc.Timecode.ParseError
+  alias Vtc.Timecode.Sections
+  alias Vtc.Utils.Consts
+  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
@@ -21,16 +63,8 @@ defmodule Vtc.Timecode do
 
   @typedoc """
   `Timecode` type.
-
-  ## Fields
-
-  - **seconds**: The real-world seconds elapsed since 01:00:00:00 as a rational value.
-    (Note: The Ratio module automatically will coerce itself to an integer whenever
-    possible, so this value may be an integer when exactly a whole-second value).
-
-  - **rate**: the Framerate of the timecode.
   """
-  @type t :: %__MODULE__{
+  @type t() :: %__MODULE__{
           seconds: Rational.t(),
           rate: Framerate.t()
         }
@@ -51,70 +85,6 @@ defmodule Vtc.Timecode do
   """
   @type maybe_round() :: round() | :off
 
-  defmodule Sections do
-    @moduledoc """
-    Holds the individual sections of a timecode for formatting / manipulation.
-    """
-
-    @enforce_keys [:negative?, :hours, :minutes, :seconds, :frames]
-    defstruct [:negative?, :hours, :minutes, :seconds, :frames]
-
-    @typedoc """
-    Holds the individual sections of a timecode for formatting / manipulation.
-
-    ## Fields
-
-    - **negative**: Whether the timecode is less than 0.
-
-    - **hours**: Hours place value.
-
-    - **minutes**: Minutes place value.
-
-    - **seconds**: Seconds place value.
-
-    - **frames**: Frames place value.
-    """
-    @type t :: %__MODULE__{
-            negative?: boolean(),
-            hours: integer(),
-            minutes: integer(),
-            seconds: integer(),
-            frames: integer()
-          }
-  end
-
-  defmodule ParseError do
-    @moduledoc """
-    Exception returned when there is an error parsing a Timecode value.
-    """
-    defexception [:reason]
-
-    @typedoc """
-    Type of `Timecode.ParseError`
-
-    ## Fields
-
-    - **reason**: The reason the error occurred must be one of the following:
-
-      - `:unrecognized_format`: Returned when a string value is not a recognized
-        timecode, runtime, etc. format.
-
-      - `:bad_drop_frames`: The field value cannot exist in properly formatted
-         drop-frame timecode.
-    """
-    @type t :: %ParseError{reason: :unrecognized_format | :bad_drop_frames}
-
-    @doc """
-    Returns a message for the error reason.
-    """
-    @spec message(t()) :: String.t()
-    def message(%__MODULE__{reason: :unrecognized_format}),
-      do: "string format not recognized"
-
-    def message(%__MODULE__{reason: :bad_drop_frames}),
-      do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
-  end
-
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
   """
@@ -126,14 +96,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **seconds**: A value which can be represented as a number of real-world seconds.
+  - `seconds`: A value which can be represented as a number of real-world seconds.
     Must implement the `Seconds` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -141,35 +111,35 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_seconds("01:00:00.5", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
   ```
 
   ... floats...
 
   ```elixir
   iex> Timecode.with_seconds(3600.5, Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
   ```
 
   ... integers...
 
   ```elixir
   iex> Timecode.with_seconds(3600, Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:10 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:10 <23.98 NTSC NDF>>}"
   ```
 
   ... integer Strings...
 
   ```elixir
   iex> Timecode.with_seconds("3600", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:10 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:10 <23.98 NTSC NDF>>}"
   ```
 
   ... and float strings.
 
   ```elixir
   iex> Timecode.with_seconds("3600.5", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
   ```
   """
   @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
@@ -216,14 +186,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **frames**: A value which can be represented as a frame number / frame count. Must
+  - `frames`: A value which can be represented as a frame number / frame count. Must
     implement the `Frames` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -231,28 +201,28 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_frames("01:00:00:00", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
   ```
 
   ... feet+frames strings...
 
   ```elixir
   iex> Timecode.with_frames("5400+00", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
   ```
 
   ... integers...
 
   ```elixir
   iex> Timecode.with_frames(86400, Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
   ```
 
   ... and integer strings.
 
   ```elixir
   iex> Timecode.with_frames("86400", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 @ <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
   ```
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
@@ -280,14 +250,14 @@ defmodule Vtc.Timecode do
 
   ## Arguments
 
-  - **ticks**: Any value that can represent the number of ticks for a given timecode.
+  - `ticks`: Any value that can represent the number of ticks for a given timecode.
     Must implement the `PremiereTicks` protocol.
 
-  - **rate**: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the timecode.
 
   ## Options
 
-  - **round**: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames.
 
   ## Examples
 
@@ -295,7 +265,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_premiere_ticks(254_016_000_000, Rates.f23_98) |> inspect()
-  "{:ok, <00:00:01:00 @ <23.98 NTSC NDF>>}"
+  "{:ok, <00:00:01:00 <23.98 NTSC NDF>>}"
   ```
   """
   @spec with_premiere_ticks(
@@ -335,12 +305,12 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> {:ok, rebased} = Timecode.rebase(timecode, Rates.f47_95())
-  iex> Timecode.to_string(rebased)
-  "<00:30:00:00 @ <47.95 NTSC NDF>>"
+  iex> inspect(rebased)
+  "<00:30:00:00 <47.95 NTSC NDF>>"
   ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
-  def rebase(%__MODULE__{rate: rate} = timecode, rate), do: {:ok, timecode}
+  def rebase(%{rate: rate} = timecode, rate), do: {:ok, timecode}
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
 
   @doc """
@@ -351,11 +321,13 @@ defmodule Vtc.Timecode do
 
   @doc """
   Returns whether `a` is greater than, equal to, or less than `b` in terms of real-world
-  seconds.
+  seconds. Compatible with `Enum.sort/2`.
 
   `b` May be any value that implements the `Frames` protocol, such as a timecode string,
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
   scripting. This function will raise if there is an error parsing `b`.
+
+  This function can be used anyware the standard library expexts a `sorter`.
 
   ## Examples
 
@@ -376,7 +348,7 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec compare(a :: t(), b :: t() | Frames.t()) :: :lt | :eq | :gt
-  def compare(%__MODULE__{} = a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
+  def compare(a, %__MODULE__{} = b), do: Ratio.compare(a.seconds, b.seconds)
   def compare(a, b), do: compare(a, with_frames!(b, a.rate))
 
   @doc """
@@ -390,7 +362,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frames when mixing
+  - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
 
   ## Examples
@@ -401,7 +373,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> Timecode.add(a, b) |> inspect()
-  "<02:30:21:17 @ <23.98 NTSC NDF>>"
+  "<02:30:21:17 <23.98 NTSC NDF>>"
   ```
 
   Two timecodes running at different rates:
@@ -410,7 +382,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Timecode.add(a, b) |> inspect()
-  "<01:00:00:01 @ <23.98 NTSC NDF>>"
+  "<01:00:00:01 <23.98 NTSC NDF>>"
   ```
 
   Using a timcode and a bare string:
@@ -418,7 +390,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.add(a, "01:30:21:17") |> inspect()
-  "<02:30:21:17 @ <23.98 NTSC NDF>>"
+  "<02:30:21:17 <23.98 NTSC NDF>>"
   ```
   """
   @spec add(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
@@ -440,7 +412,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frames when mixing
+  - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
 
   ## Examples
@@ -451,7 +423,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.sub(a, b) |> inspect()
-  "<00:30:21:17 @ <23.98 NTSC NDF>>"
+  "<00:30:21:17 <23.98 NTSC NDF>>"
   ```
 
   When `b` is greater than `a`, the result is negative:
@@ -460,7 +432,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
   iex> Timecode.sub(a, b) |> inspect()
-  "<-01:00:00:00 @ <23.98 NTSC NDF>>"
+  "<-01:00:00:00 <23.98 NTSC NDF>>"
   ```
 
   Two timecodes running at different rates:
@@ -469,7 +441,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Timecode.sub(a, b) |> inspect()
-  "<01:00:00:01 @ <23.98 NTSC NDF>>"
+  "<01:00:00:01 <23.98 NTSC NDF>>"
   ```
 
   Using a timcode and a bare string:
@@ -477,7 +449,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> Timecode.sub(a, "01:00:00:00") |> inspect()
-  "<00:30:21:17 @ <23.98 NTSC NDF>>"
+  "<00:30:21:17 <23.98 NTSC NDF>>"
   ```
   """
   @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
@@ -494,7 +466,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frame values. Defaults to
+  - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:closest`.
 
   ## Examples
@@ -502,11 +474,11 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.mult(a, 2) |> inspect()
-  "<02:00:00:00 @ <23.98 NTSC NDF>>"
+  "<02:00:00:00 <23.98 NTSC NDF>>"
 
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.mult(a, 0.5) |> inspect()
-  "<00:30:00:00 @ <23.98 NTSC NDF>>"
+  "<00:30:00:00 <23.98 NTSC NDF>>"
   ```
   """
   @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
@@ -518,7 +490,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the result with respect to whole-frame values. Defaults to
+  - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:floor` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
 
@@ -527,11 +499,11 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.div(dividend, 2) |> inspect()
-  "<00:30:00:00 @ <23.98 NTSC NDF>>"
+  "<00:30:00:00 <23.98 NTSC NDF>>"
 
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.div(dividend, 0.5) |> inspect()
-  "<02:00:00:00 @ <23.98 NTSC NDF>>"
+  "<02:00:00:00 <23.98 NTSC NDF>>"
   ```
   """
   @spec div(
@@ -553,10 +525,10 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round_frames**: How to round the frame count before doing the divrem operation.
+  - `round_frames`: How to round the frame count before doing the divrem operation.
     Default: `:closest`.
 
-  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+  - `round_remainder`: How to round the remainder frames when a non-whole frame would
     be the result. Default: `:closest`.
 
   ## Examples
@@ -564,7 +536,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
   iex> Timecode.divrem(dividend, 4) |> inspect()
-  "{<00:15:00:00 @ <23.98 NTSC NDF>>, <00:00:00:01 @ <23.98 NTSC NDF>>}"
+  "{<00:15:00:00 <23.98 NTSC NDF>>, <00:00:00:01 <23.98 NTSC NDF>>}"
   ```
   """
   @spec divrem(
@@ -595,10 +567,10 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round_frames**: How to round the frame count before doing the rem operation.
+  - `round_frames`: How to round the frame count before doing the rem operation.
     Default: `:closest`.
 
-  - **round_remainder**: How to round the remainder frames when a non-whole frame would
+  - `round_remainder`: How to round the remainder frames when a non-whole frame would
     be the result.
 
   ## Examples
@@ -606,7 +578,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
   iex> Timecode.rem(dividend, 4) |> inspect()
-  "<00:00:00:01 @ <23.98 NTSC NDF>>"
+  "<00:00:00:01 <23.98 NTSC NDF>>"
   ```
   """
   @spec rem(
@@ -627,13 +599,13 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.negate(tc) |> inspect()
-  "<-01:00:00:00 @ <23.98 NTSC NDF>>"
+  "<-01:00:00:00 <23.98 NTSC NDF>>"
   ```
 
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> Timecode.negate(tc) |> inspect()
-  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC NDF>>"
   ```
   """
   @spec negate(t()) :: t()
@@ -647,13 +619,13 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> Timecode.abs(tc) |> inspect()
-  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC NDF>>"
   ```
 
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.abs(tc) |> inspect()
-  "<01:00:00:00 @ <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC NDF>>"
   ```
   """
   @spec abs(t()) :: t()
@@ -665,7 +637,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting frame number.
+  - `round`: How to round the resulting frame number.
 
   ## What it is
 
@@ -740,7 +712,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting frames field.
+  - `round`: How to round the resulting frames field.
 
   ## What it is
 
@@ -761,7 +733,7 @@ defmodule Vtc.Timecode do
   def timecode(timecode, opts \\ []) do
     sections = sections(timecode, opts)
 
-    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
+    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
     frame_sep = if timecode.rate.ntsc == :drop, do: ";", else: ":"
 
     [
@@ -787,7 +759,7 @@ defmodule Vtc.Timecode do
 
   Arguments
 
-  - **precision**: The number of places to round to. Extra trailing 0's will still be
+  - `precision`: The number of places to round to. Extra trailing 0's will still be
     trimmed.
 
   ## What it is
@@ -810,14 +782,14 @@ defmodule Vtc.Timecode do
   The true runtime will often diverge from the hours, minutes, and seconds
   value of the timecode representation when dealing with non-whole-frame
   framerates. Even drop-frame timecode does not continuously adhere 1:1 to the
-  actual runtime. For instance, <01:00:00;00 @ <29.97 NTSC DF>> has a true runtime of
-  '00:59:59.9964', and <01:00:00:00 @ <23.98 NTSC NDF>> has a true runtime of
+  actual runtime. For instance, <01:00:00;00 <29.97 NTSC DF>> has a true runtime of
+  '00:59:59.9964', and <01:00:00:00 <23.98 NTSC NDF>> has a true runtime of
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()
   def runtime(timecode, precision \\ 9) do
     {seconds, negative?} =
-      if Ratio.compare(timecode.seconds, 0) == :lt,
+      if Ratio.lt?(timecode.seconds, 0),
         do: {Ratio.negate(timecode.seconds), true},
         else: {timecode.seconds, false}
 
@@ -866,7 +838,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the resulting ticks.
+  - `round`: How to round the resulting ticks.
 
   ## What it is
 
@@ -906,7 +878,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - **round**: How to round the internal frame count before conversion.
+  - `round`: How to round the internal frame count before conversion.
 
   ## What it is
 
@@ -929,7 +901,7 @@ defmodule Vtc.Timecode do
   - Sound turnover change lists.
   """
   @spec feet_and_frames(t(), opts :: [round: round()]) :: String.t()
-  def feet_and_frames(%__MODULE__{} = timecode, opts \\ []) do
+  def feet_and_frames(timecode, opts \\ []) do
     total_frames = timecode |> frames(opts) |> Kernel.abs()
 
     feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()
@@ -940,17 +912,9 @@ defmodule Vtc.Timecode do
       |> Integer.to_string()
       |> String.pad_leading(2, "0")
 
-    sign = if Ratio.compare(timecode.seconds, 0) == :lt, do: "-", else: ""
+    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
 
     "#{sign}#{feet}+#{frames}"
-  end
-
-  @spec to_string(t()) :: String.t()
-  def to_string(timecode) do
-    timecode_str = timecode(timecode)
-    rate_str = String.Chars.to_string(timecode.rate)
-
-    "<#{timecode_str} @ #{rate_str}>"
   end
 
   # Ensures that rounding is enabled for functions that cannot meaningfully turn
@@ -972,12 +936,14 @@ defimpl Inspect, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(timecode, _opts), do: Timecode.to_string(timecode)
+  def inspect(timecode, _opts) do
+    "<#{Timecode.timecode(timecode)} #{inspect(timecode.rate)}>"
+  end
 end
 
 defimpl String.Chars, for: Vtc.Timecode do
   alias Vtc.Timecode
 
   @spec to_string(Timecode.t()) :: String.t()
-  def to_string(timecode), do: Timecode.to_string(timecode)
+  def to_string(timecode), do: inspect(timecode)
 end

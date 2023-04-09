@@ -38,7 +38,7 @@ defmodule Vtc.MixProject do
       # Dev dependencies
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.21", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
 
       # Library Dependencies
       {:decimal, "~> 2.0"},
