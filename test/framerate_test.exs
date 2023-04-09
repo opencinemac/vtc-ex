@@ -4,14 +4,13 @@ defmodule Vtc.FramerateTest.ParseCase do
   defstruct [:name, :inputs, :ntsc, :playback, :timebase, :err, err_msg: ""]
 
   alias Vtc.Framerate
-  alias Vtc.Utils.Rational
 
   @type t :: %__MODULE__{
           name: String.t(),
-          inputs: [Rational.t() | integer() | float() | String.t()],
+          inputs: [Ratio.t() | integer() | float() | String.t()],
           ntsc: Framerate.ntsc(),
-          playback: Rational.t(),
-          timebase: Rational.t(),
+          playback: Ratio.t(),
+          timebase: Ratio.t(),
           err: Framerate.ParseError | nil,
           err_msg: String.t()
         }
@@ -28,8 +27,8 @@ defmodule Vtc.FramerateTest.ConstCase do
   @type t :: %__MODULE__{
           const: Framerate.t(),
           ntsc: Framerate.ntsc(),
-          playback: Rational.t(),
-          timebase: Rational.t()
+          playback: Ratio.t(),
+          timebase: Ratio.t()
         }
 end
 

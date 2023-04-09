@@ -42,7 +42,7 @@ defmodule Vtc.MixProject do
 
       # Library Dependencies
       {:decimal, "~> 2.0"},
-      {:ratio, "~> 2.0"}
+      {:ratio, "~> 4.0.0-rc.1"}
     ]
   end
 

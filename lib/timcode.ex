@@ -65,7 +65,7 @@ defmodule Vtc.Timecode do
   `Timecode` type.
   """
   @type t() :: %__MODULE__{
-          seconds: Rational.t(),
+          seconds: Ratio.t(),
           rate: Framerate.t()
         }
 
@@ -155,19 +155,20 @@ defmodule Vtc.Timecode do
   end
 
   # Rounds seconds value to the nearest whole-frame.
-  @spec with_seconds_round_to_frame(Rational.t(), Framerate.t(), maybe_round()) :: Rational.t()
+  @spec with_seconds_round_to_frame(Ratio.t(), Framerate.t(), maybe_round()) :: Ratio.t()
   def with_seconds_round_to_frame(seconds, _, :off), do: seconds
 
   def with_seconds_round_to_frame(seconds, rate, round) do
     case Ratio.div(seconds, rate.playback) do
+      %Ratio{denominator: 1} ->
+        seconds
+
       %Ratio{} ->
         rate.playback
         |> Ratio.mult(seconds)
         |> Rational.round(round)
+        |> Ratio.new()
         |> Ratio.div(rate.playback)
-
-      _ ->
-        seconds
     end
   end
 
@@ -227,8 +228,14 @@ defmodule Vtc.Timecode do
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
+    case frames do
+      %Ratio{} -> raise "HERE"
+      val -> val
+    end
+
     with {:ok, frames} <- Frames.frames(frames, rate) do
       frames
+      |> Ratio.new()
       |> Ratio.div(rate.playback)
       |> with_seconds(rate)
     end
@@ -275,7 +282,7 @@ defmodule Vtc.Timecode do
         ) :: parse_result()
   def with_premiere_ticks(ticks, rate, opts \\ []) do
     with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
-      seconds = Ratio.div(ticks, Consts.ppro_tick_per_second())
+      seconds = Ratio.new(ticks, Consts.ppro_tick_per_second())
       with_seconds(seconds, rate, opts)
     end
   end
@@ -482,7 +489,9 @@ defmodule Vtc.Timecode do
   ```
   """
   @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
-  def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate, opts)
+  def mult(a, b, opts \\ [])
+  def mult(a, %Ratio{} = b, opts), do: a.seconds |> Ratio.mult(b) |> with_seconds!(a.rate, opts)
+  def mult(a, b, opts), do: mult(a, Ratio.new(b), opts)
 
   @doc """
   Divides `dividend` by `divisor`. The result will inherit the framerate of `dividend`
@@ -511,10 +520,15 @@ defmodule Vtc.Timecode do
           divisor :: Ratio.t() | number(),
           opts :: [round: maybe_round()]
         ) :: t()
-  def div(dividend, divisor, opts \\ []) do
+
+  def div(dividend, divisor, opts \\ [])
+
+  def div(dividend, %Ratio{} = divisor, opts) do
     opts = Keyword.put_new(opts, :round, :floor)
     dividend.seconds |> Ratio.div(divisor) |> with_seconds!(dividend.rate, opts)
   end
+
+  def div(dividend, divisor, opts), do: div(dividend, Ratio.new(divisor), opts)
 
   @doc """
   Divides the total frame count of `dividend` by `divisor` and returns both a quotient
@@ -553,7 +567,10 @@ defmodule Vtc.Timecode do
       %{rate: rate} = dividend
 
       {quotient, remainder} =
-        dividend |> frames(round: round_frames) |> Rational.divrem(Ratio.new(divisor))
+        dividend
+        |> frames(round: round_frames)
+        |> Ratio.new()
+        |> Rational.divrem(Ratio.new(divisor))
 
       remainder = Rational.round(remainder, round_remainder)
 
@@ -586,7 +603,9 @@ defmodule Vtc.Timecode do
           divisor :: Ratio.t() | number(),
           opts :: [round_frames: round(), round_remainder: round()]
         ) :: t()
-  def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(divisor, opts) |> elem(1)
+  def rem(dividend, divisor, opts \\ [])
+  def rem(dividend, %Ratio{} = divisor, opts), do: dividend |> divrem(divisor, opts) |> elem(1)
+  def rem(dividend, divisor, opts), do: rem(dividend, Ratio.new(divisor), opts)
 
   @doc """
   As the kernel `-/1` function.
@@ -683,8 +702,8 @@ defmodule Vtc.Timecode do
     with :ok <- ensure_round_enabled(round) do
       rate = timecode.rate
       timebase = Framerate.timebase(rate)
-      frames_per_minute = Ratio.mult(timebase, Consts.seconds_per_minute())
-      frames_per_hour = Ratio.mult(timebase, Consts.seconds_per_hour())
+      frames_per_minute = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_minute()))
+      frames_per_hour = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_hour()))
 
       total_frames =
         timecode
@@ -692,7 +711,7 @@ defmodule Vtc.Timecode do
         |> Kernel.abs()
         |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
-      {hours, remainder} = Rational.divrem(total_frames, frames_per_hour)
+      {hours, remainder} = total_frames |> Ratio.new() |> Rational.divrem(frames_per_hour)
       {minutes, remainder} = Rational.divrem(remainder, frames_per_minute)
       {seconds, frames} = Rational.divrem(remainder, timebase)
 

@@ -83,7 +83,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
     seconds_per_frame =
       Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
 
-    assert {_, 0} = Rational.divrem(seconds, seconds_per_frame)
+    assert {_, %Ratio{numerator: 0, denominator: 1}} = Rational.divrem(seconds, seconds_per_frame)
   end
 end
 
@@ -337,7 +337,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != 0))
+              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
@@ -358,7 +358,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != 0))
+              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
@@ -376,7 +376,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != 0))
+              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
