@@ -1,44 +1,13 @@
-defmodule Vtc.TimecodeTest.TcParseCase do
-  @moduledoc false
-
-  alias Vtc.Sources.Frames
-  alias Vtc.Sources.Seconds
-
-  defstruct [
-    :name,
-    :rate,
-    :seconds_inputs,
-    :frames_inputs,
-    :seconds,
-    :frames,
-    :timecode,
-    :runtime,
-    :premiere_ticks,
-    :feet_and_frames
-  ]
-
-  @type t :: %__MODULE__{
-          name: String.t(),
-          rate: Framerate.t(),
-          seconds_inputs: [Seconds.t()],
-          frames_inputs: [Frames.t()],
-          seconds: Ratio.t(),
-          frames: integer(),
-          timecode: String.t(),
-          runtime: String.t(),
-          premiere_ticks: integer(),
-          feet_and_frames: String.t()
-        }
-end
-
 defmodule Vtc.TimecodeTest.ParseHelpers do
   @moduledoc false
 
   alias Vtc.Timecode
-  alias Vtc.TimecodeTest.TcParseCase
 
-  @spec make_negative_case(TcParseCase.t()) :: TcParseCase.t()
-  def make_negative_case(%TcParseCase{frames: 0} = test_case), do: test_case
+  # Functions used during macro expansion compilation cannot be declared in the same
+  # module, so these helpers need to live here.
+
+  @spec make_negative_case(map()) :: map()
+  def make_negative_case(%{frames: 0} = test_case), do: test_case
 
   def make_negative_case(test_case) do
     %{
@@ -67,12 +36,11 @@ defmodule Vtc.TimecodeTest do
   alias Vtc.Utils.Consts
 
   alias Vtc.TimecodeTest.ParseHelpers
-  alias Vtc.TimecodeTest.TcParseCase
 
   @parse_cases [
     # 23.98 NTSC #########################
     ######################################
-    %TcParseCase{
+    %{
       name: "01:00:00:00 @ 23.98 NTSC",
       rate: Rates.f23_98(),
       seconds_inputs: [
@@ -92,7 +60,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 915_372_057_600_000,
       feet_and_frames: "5400+00"
     },
-    %TcParseCase{
+    %{
       name: "00:40:00:00 @ 23.98 NTSC",
       rate: Rates.f23_98(),
       seconds_inputs: [
@@ -114,7 +82,7 @@ defmodule Vtc.TimecodeTest do
     },
     # 24 True ############################
     ######################################
-    %TcParseCase{
+    %{
       name: "01:00:00:00 @ 24",
       rate: Rates.f24(),
       seconds_inputs: [
@@ -135,7 +103,7 @@ defmodule Vtc.TimecodeTest do
     },
     # 29.97 Drop #########################
     ######################################
-    %TcParseCase{
+    %{
       name: "00:00:00;00 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -155,7 +123,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 0,
       feet_and_frames: "0+00"
     },
-    %TcParseCase{
+    %{
       name: "00:01:01;00 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -174,7 +142,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 15_493_519_641_600,
       feet_and_frames: "114+04"
     },
-    %TcParseCase{
+    %{
       name: "00:00:02;02 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -194,7 +162,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 525_491_366_400,
       feet_and_frames: "3+14"
     },
-    %TcParseCase{
+    %{
       name: "00:01:00;02 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -214,7 +182,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 15_256_200_960_000,
       feet_and_frames: "112+08"
     },
-    %TcParseCase{
+    %{
       name: "00:2:00;02 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -234,7 +202,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 30_495_450_585_600,
       feet_and_frames: "224+14"
     },
-    %TcParseCase{
+    %{
       name: "00:10:00;00 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -254,7 +222,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 152_409_447_590_400,
       feet_and_frames: "1123+14"
     },
-    %TcParseCase{
+    %{
       name: "00:11:00;02 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -274,7 +242,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 167_665_648_550_400,
       feet_and_frames: "1236+06"
     },
-    %TcParseCase{
+    %{
       name: "01:00:00;00 29.97 Drop-Frame",
       rate: Rates.f29_97_df(),
       seconds_inputs: [
@@ -296,7 +264,7 @@ defmodule Vtc.TimecodeTest do
     },
     # 59.94 NTSC DF ######################
     ######################################
-    %TcParseCase{
+    %{
       name: "00:00:00;00 59.94 Drop-Frame",
       rate: Rates.f59_94_df(),
       seconds_inputs: [
@@ -316,7 +284,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 0,
       feet_and_frames: "0+00"
     },
-    %TcParseCase{
+    %{
       name: "00:00:01;01 59.94 Drop-Frame",
       rate: Rates.f59_94_df(),
       seconds_inputs: [
@@ -336,7 +304,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 258_507_849_600,
       feet_and_frames: "3+13"
     },
-    %TcParseCase{
+    %{
       name: "00:00:01;03 59.94 Drop-Frame",
       rate: Rates.f59_94_df(),
       seconds_inputs: [
@@ -356,7 +324,7 @@ defmodule Vtc.TimecodeTest do
       premiere_ticks: 266_983_516_800,
       feet_and_frames: "3+15"
     },
-    %TcParseCase{
+    %{
       name: "00:01:00;04 59.94 Drop-Frame",
       rate: Rates.f59_94_df(),
       seconds_inputs: [
@@ -720,14 +688,14 @@ defmodule Vtc.TimecodeTest do
   end
 
   # Checks the results of non-raising parse methods.
-  @spec check_parsed(Timecode.parse_result(), TcParseCase.t()) :: term()
+  @spec check_parsed(Timecode.parse_result(), map()) :: term()
   defp check_parsed(result, test_case) do
     assert {:ok, %Timecode{} = parsed} = result
     check_parsed!(parsed, test_case)
   end
 
   # Checks the results of raising parse methods.
-  @spec check_parsed!(Timecode.t(), TcParseCase.t()) :: term()
+  @spec check_parsed!(Timecode.t(), map()) :: term()
   defp check_parsed!(parsed, test_case) do
     assert %Timecode{} = parsed
     assert parsed.seconds == test_case.seconds
