@@ -351,7 +351,7 @@ defmodule Vtc.Timecode do
 
   @doc """
   Returns whether `a` is greater than, equal to, or less than `b` in terms of real-world
-  seconds.
+  seconds. Compatible with `Enum.sort/2`.
 
   `b` May be any value that implements the `Frames` protocol, such as a timecode string,
   and will be assumed to be the same framerate as `a`. This is mostly to support quick
