@@ -8,7 +8,7 @@ defmodule Vtc.Range do
   - `out`: End TC. Must be greater than or equal to `in`.
   - `inclusive`: See below for more information. Default: `false`
 
-  ## Inclusive vs. Exclusive Ranges.
+  ## Inclusive vs. Exclusive Ranges
 
   Inclusive ranges treat the `out` timecode as the last visible frame of a piece of
   footage. This style of tc range is most often associated with AVID.
