@@ -166,6 +166,22 @@ iex> data_01 = %{id: 2, tc: tc_01}
 iex> data_02 = %{id: 1, tc: tc_02}
 iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
 "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+
+# Timecode Ranges help common operations with in/out points:
+iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> a_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> a = Range.new!(a_in, a_out)
+iex> inspect(a)
+"<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
+
+iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
+iex> b_out = Timecode.with_frames!("02:30:00:00", Rates.f23_98())
+iex> b = Range.new!(b_in, "02:30:00:00")
+iex> inspect(b)
+"<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC NDF>>"
+
+iex> Range.intersection!(a, b) |> inspect()
+"<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
 ```
 
 ## Features
@@ -207,6 +223,7 @@ iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
 - [X] Range type for working with and comparing frame ranges.
     - [X] Overlap between ranges
     - [X] Distance between ranges
+    - [X] Inclusive and exclusive ranges
 
 ## Installation
 
