@@ -162,7 +162,8 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
     property "seconds" do
       check all(
               rate <- frame_rate_gen() |> filter(&(&1.ntsc == nil)),
-              seconds <- map(integer(), fn scalar -> Ratio.mult(rate.playback, scalar) end),
+              seconds <-
+                map(integer(), fn scalar -> Ratio.mult(rate.playback, Ratio.new(scalar)) end),
               max_runs: 20
             ) do
         timecode = Timecode.with_seconds!(seconds, rate)
