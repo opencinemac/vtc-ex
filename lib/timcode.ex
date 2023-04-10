@@ -149,7 +149,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> input = %Vtc.Source.PremiereTicks{in: 254_016_000_000}
-  iex> Timecode.with_seconds!(input, Rates.f23_98) |> inspect()
+  iex> Timecode.with_seconds!(input, Rates.f23_98()) |> inspect()
   "<00:00:01:00 <23.98 NTSC>>"
   ```
   """
