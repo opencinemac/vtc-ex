@@ -140,6 +140,18 @@ defmodule Vtc.Timecode do
   iex> Timecode.with_seconds("3600.5", Rates.f23_98) |> inspect()
   "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
+
+  ## Premiere Ticks
+
+  The `Vtc.Source.PremiereTicks` struck implements the `Vtc.Source.Seconds` protocol
+  and can be used to parse the format. This struct is not a general-purpose Module for
+  the unit, and only exists to hint to the parsing function how it should be processed:
+
+  ```elixir
+  iex> input = %Vtc.Source.PremiereTicks{in: 254_016_000_000}
+  iex> Timecode.with_seconds!(input, Rates.f23_98) |> inspect()
+  "<00:00:01:00 <23.98 NTSC>>"
+  ```
   """
   @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
