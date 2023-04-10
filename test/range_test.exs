@@ -1088,7 +1088,7 @@ defmodule Vtc.RangeTest do
   @spec setup_negate(Range.t() | {:error, any()}) :: Range.t() | {:error, any()}
   defp setup_negate(%Range{} = range) do
     %Range{in: in_tc, out: out_tc} = range
-    %Range{range | in: Timecode.negate(out_tc), out: Timecode.negate(in_tc)}
+    %Range{range | in: Timecode.minus(out_tc), out: Timecode.minus(in_tc)}
   end
 
   defp setup_negate(value), do: value

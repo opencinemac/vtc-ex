@@ -399,7 +399,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
         %{timecode_string: tc_string} = tc_info
 
         positive = Timecode.with_frames!(tc_string, rate)
-        negative = Timecode.negate(positive)
+        negative = Timecode.minus(positive)
 
         assert Timecode.abs(positive) == Timecode.abs(negative)
       end

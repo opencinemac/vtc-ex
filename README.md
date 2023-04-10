@@ -130,7 +130,7 @@ iex> inspect(remainder)
 "<00:00:00:01 <23.98 NTSC>>"
 
 # We can make a timecode negative ...
-iex> tc = Timecode.negate(tc)
+iex> tc = Timecode.minus(tc)
 iex> inspect(tc)
 "<-17:33:14:16 <23.98 NTSC>>"
 

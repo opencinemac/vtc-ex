@@ -199,7 +199,7 @@ defimpl Inspect, for: Vtc.Framerate do
   end
 
   # Returns the string for tagging a framerate as drop frame or non-drop frame when
-  # the framerate coudl allow for both.
+  # the framerate could allow for both.
   @spec drop_string(Framerate.t()) :: String.t()
   defp drop_string(%{ntsc: nil}), do: ""
   defp drop_string(%{ntsc: :drop}), do: " DF"

@@ -1931,7 +1931,7 @@ defmodule Vtc.TimecodeTest do
           expected: expected
         } = @negate_case
 
-        assert Timecode.negate(input) == expected
+        assert Timecode.minus(input) == expected
       end
     end
   end

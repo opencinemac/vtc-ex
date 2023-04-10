@@ -617,18 +617,18 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.negate(tc) |> inspect()
+  iex> Timecode.minus(tc) |> inspect()
   "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
-  iex> Timecode.negate(tc) |> inspect()
+  iex> Timecode.minus(tc) |> inspect()
   "<01:00:00:00 <23.98 NTSC>>"
   ```
   """
-  @spec negate(t()) :: t()
-  def negate(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
+  @spec minus(t()) :: t()
+  def minus(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
 
   @doc """
   Returns the absolute value of `tc`.
