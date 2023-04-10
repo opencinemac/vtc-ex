@@ -357,14 +357,14 @@ defmodule Vtc.TimecodeTest do
         @negative_input ParseHelpers.make_negative_input(input_case)
 
         @tag case: :"with_seconds_#{test_index}_#{case_index}"
-        test "#{@test_case.name} | #{test_index}-#{case_index} | #{@input_case} | #{@test_case.rate}" do
+        test "#{@test_case.name} | #{test_index}-#{case_index} | #{inspect(@input_case)} | #{@test_case.rate}" do
           @input_case
           |> Timecode.with_seconds(@test_case.rate)
           |> check_parsed(@test_case)
         end
 
         @tag case: :"with_seconds_#{test_index}_#{case_index}_negative"
-        test "#{@test_case.name} | #{test_index}-#{case_index} | #{@input_case} | #{@test_case.rate} | negative" do
+        test "#{@test_case.name} | #{test_index}-#{case_index} | #{inspect(@input_case)} | #{@test_case.rate} | negative" do
           @negative_input
           |> Timecode.with_seconds(@test_case_negative.rate)
           |> check_parsed(@test_case_negative)
@@ -420,13 +420,13 @@ defmodule Vtc.TimecodeTest do
         @input_case input_case
         @negative_input ParseHelpers.make_negative_input(@input_case)
 
-        test "#{@test_case.name} | #{@input_case} | #{@test_case.rate}" do
+        test "#{@test_case.name} | #{inspect(@input_case)} | #{@test_case.rate}" do
           @input_case
           |> Timecode.with_seconds!(@test_case.rate)
           |> check_parsed!(@test_case)
         end
 
-        test "#{@test_case.name}! | #{@input_case} | #{@test_case.rate} | negative" do
+        test "#{@test_case.name}! | #{inspect(@input_case)} | #{@test_case.rate} | negative" do
           @negative_input
           |> Timecode.with_seconds!(@test_case_negative.rate)
           |> check_parsed!(@test_case_negative)

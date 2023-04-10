@@ -171,7 +171,7 @@ defmodule Vtc.FramerateTest do
       for {input_case, i} <- Enum.with_index(this_case.inputs) do
         @input input_case
 
-        test "#{case_name} - #{i}: #{input_case} - new" do
+        test "#{case_name} - #{i}: #{inspect(input_case)} - new" do
           case Framerate.new(@input, @test_case.ntsc) do
             {:ok, rate} ->
               check_parsed(@test_case, rate)
@@ -183,7 +183,7 @@ defmodule Vtc.FramerateTest do
           end
         end
 
-        test "#{case_name} - #{i}: #{input_case} - new!" do
+        test "#{case_name} - #{i}: #{inspect(input_case)} - new!" do
           if @test_case.err == nil do
             rate = Framerate.new!(@input, @test_case.ntsc)
             check_parsed(@test_case, rate)

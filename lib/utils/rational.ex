@@ -52,7 +52,3 @@ defmodule Vtc.Utils.Rational do
     {quotient, remainder}
   end
 end
-
-defimpl String.Chars, for: Ratio do
-  def to_string(ratio), do: inspect(ratio)
-end
