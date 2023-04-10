@@ -1931,7 +1931,7 @@ defmodule Vtc.TimecodeTest do
           expected: expected
         } = @negate_case
 
-        assert Timecode.negate(input) == expected
+        assert Timecode.minus(input) == expected
       end
     end
   end
@@ -1963,6 +1963,30 @@ defmodule Vtc.TimecodeTest do
 
         assert Timecode.abs(input) == expected
       end
+    end
+  end
+
+  describe "String.Chars.to_string/1" do
+    test "renders expected for non-drop" do
+      tc = Timecode.with_frames!(24, Rates.f23_98())
+      assert String.Chars.to_string(tc) == "<00:00:01:00 <23.98 NTSC>>"
+    end
+
+    test "renders with `;` frames sep for drop-frame" do
+      tc = Timecode.with_frames!(30, Rates.f29_97_df())
+      assert String.Chars.to_string(tc) == "<00:00:01;00 <29.97 NTSC DF>>"
+    end
+  end
+
+  describe "Inspect.inspect/2" do
+    test "renders expected for non-drop" do
+      tc = Timecode.with_frames!(24, Rates.f23_98())
+      assert Inspect.inspect(tc, Inspect.Opts.new([])) == "<00:00:01:00 <23.98 NTSC>>"
+    end
+
+    test "renders with `;` frames sep for drop-frame" do
+      tc = Timecode.with_frames!(30, Rates.f29_97_df())
+      assert Inspect.inspect(tc, Inspect.Opts.new([])) == "<00:00:01;00 <29.97 NTSC DF>>"
     end
   end
 end

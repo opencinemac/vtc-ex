@@ -12,6 +12,7 @@ defmodule Vtc.Framerate do
   - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
   """
   alias Vtc.Framerate.ParseError
+  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @enforce_keys [:playback, :ntsc]
@@ -115,9 +116,9 @@ defmodule Vtc.Framerate do
   # validates that a rate is a proper drop-frame framerate.
   @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
   defp validate_drop(rate, :drop) do
-    case Ratio.div(rate, Ratio.new(30_000, 1_001)) do
-      %Ratio{denominator: 1} -> :ok
-      _ -> {:error, %ParseError{reason: :bad_drop_rate}}
+    case DropFrame.drop_allowed?(rate) do
+      true -> :ok
+      false -> {:error, %ParseError{reason: :bad_drop_rate}}
     end
   end
 
@@ -181,7 +182,9 @@ defmodule Vtc.Framerate do
 end
 
 defimpl Inspect, for: Vtc.Framerate do
+  alias Vtc.Private.DropFrame
   alias Vtc.Framerate
+  alias Vtc.Utils.DropFrame
 
   @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(rate, _opts) do
@@ -192,14 +195,21 @@ defimpl Inspect, for: Vtc.Framerate do
 
     ntsc_string = if Framerate.ntsc?(rate), do: " NTSC", else: " fps"
 
-    drop_string =
-      case rate.ntsc do
-        :non_drop -> " NDF"
-        :drop -> " DF"
-        nil -> ""
-      end
+    "<#{float_str}#{ntsc_string}#{drop_string(rate)}>"
+  end
 
-    "<#{float_str}#{ntsc_string}#{drop_string}>"
+  # Returns the string for tagging a framerate as drop frame or non-drop frame when
+  # the framerate could allow for both.
+  @spec drop_string(Framerate.t()) :: String.t()
+  defp drop_string(%{ntsc: nil}), do: ""
+  defp drop_string(%{ntsc: :drop}), do: " DF"
+
+  defp drop_string(%{ntsc: :non_drop} = rate) do
+    if DropFrame.drop_allowed?(rate.playback) do
+      " NDF"
+    else
+      ""
+    end
   end
 end
 

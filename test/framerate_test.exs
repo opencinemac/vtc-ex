@@ -282,4 +282,41 @@ defmodule Vtc.FramerateTest do
       end
     end
   end
+
+  describe "#String.Chars.to_string/1" do
+    test "tags `NDF` for valid drop_frame rates" do
+      assert String.Chars.to_string(Rates.f29_97_ndf()) == "<29.97 NTSC NDF>"
+    end
+
+    test "tags `DF` for drop_frame" do
+      assert String.Chars.to_string(Rates.f29_97_df()) == "<29.97 NTSC DF>"
+    end
+
+    test "doesnt tag non-valid drop_frame rates" do
+      assert String.Chars.to_string(Rates.f23_98()) == "<23.98 NTSC>"
+    end
+
+    test "tags `fps` when not NTSC" do
+      assert String.Chars.to_string(Rates.f24()) == "<24.0 fps>"
+    end
+  end
+
+  describe "#Inspect.inspect/1" do
+    test "tags `NDF` for valid drop_frame rates" do
+      assert Inspect.inspect(Rates.f29_97_ndf(), Inspect.Opts.new([])) ==
+               "<29.97 NTSC NDF>"
+    end
+
+    test "tags `DF` for drop_frame" do
+      assert Inspect.inspect(Rates.f29_97_df(), Inspect.Opts.new([])) == "<29.97 NTSC DF>"
+    end
+
+    test "doesnt tag non-valid drop_frame rates" do
+      assert Inspect.inspect(Rates.f23_98(), Inspect.Opts.new([])) == "<23.98 NTSC>"
+    end
+
+    test "tags `fps` when not NTSC" do
+      assert Inspect.inspect(Rates.f24(), Inspect.Opts.new([])) == "<24.0 fps>"
+    end
+  end
 end
