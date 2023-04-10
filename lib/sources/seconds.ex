@@ -17,12 +17,11 @@ defprotocol Vtc.Source.Seconds do
 
   alias Vtc.Framerate
   alias Vtc.Timecode
-  alias Vtc.Utils.Rational
 
   @typedoc """
   Result type of `seconds/2`.
   """
-  @type result() :: {:ok, Rational.t()} | {:error, Timecode.ParseError.t()}
+  @type result() :: {:ok, Ratio.t()} | {:error, Timecode.ParseError.t()}
 
   @doc """
   Returns the value as a rational, real-world seconds value.
@@ -46,10 +45,9 @@ defimpl Vtc.Source.Seconds, for: [Ratio, Integer] do
   alias Vtc.Framerate
   alias Vtc.Source.Seconds
   alias Vtc.Utils.Parse
-  alias Vtc.Utils.Rational
 
-  @spec seconds(Rational.t(), Framerate.t()) :: Seconds.result()
-  def seconds(value, _rate), do: {:ok, value}
+  @spec seconds(Ratio.t(), Framerate.t()) :: Seconds.result()
+  def seconds(value, _rate), do: {:ok, Ratio.new(value)}
 end
 
 defimpl Vtc.Source.Seconds, for: Float do
@@ -57,7 +55,7 @@ defimpl Vtc.Source.Seconds, for: Float do
   alias Vtc.Source.Seconds
 
   @spec seconds(float(), Framerate.t()) :: Seconds.result()
-  def seconds(value, rate), do: value |> Ratio.new(1) |> Seconds.seconds(rate)
+  def seconds(value, rate), do: value |> Ratio.new() |> Seconds.seconds(rate)
 end
 
 defimpl Vtc.Source.Seconds, for: [String, BitString] do

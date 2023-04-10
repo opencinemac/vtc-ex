@@ -35,15 +35,15 @@ defmodule Vtc.Framerate do
   @typedoc """
   Type of `Framerate`
   """
-  @type t :: %__MODULE__{playback: Rational.t(), ntsc: ntsc()}
+  @type t :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
 
   @doc """
   The rational representation of the timecode timebase speed as a fraction in
   frames-per-second.
   """
-  @spec timebase(t()) :: Rational.t()
+  @spec timebase(t()) :: Ratio.t()
   def timebase(%{ntsc: nil} = framerate), do: framerate.playback
-  def timebase(framerate), do: Rational.round(framerate.playback)
+  def timebase(framerate), do: framerate.playback |> Rational.round() |> Ratio.new()
 
   @typedoc """
   Type returned by `new/2`
@@ -69,7 +69,7 @@ defmodule Vtc.Framerate do
   NOTE: Floats cannot be passed if the rate is not NTSC and the value is not a while
   number, as there is no way to know the precise time do to floating-point errors.
   """
-  @spec new(Rational.t() | float() | String.t(), ntsc(), boolean()) :: parse_result()
+  @spec new(Ratio.t() | number() | String.t(), ntsc(), boolean()) :: parse_result()
   def new(rate, ntsc, coerce_seconds_per_frame? \\ true)
 
   def new(rate, nil, _)
@@ -78,7 +78,7 @@ defmodule Vtc.Framerate do
 
   def new(rate, ntsc, coerce?)
       when is_float(rate) or is_integer(rate) or is_struct(rate, Ratio),
-      do: rate |> Ratio.new(1) |> new_core(ntsc, coerce?)
+      do: rate |> Ratio.new() |> new_core(ntsc, coerce?)
 
   def new(rate, ntsc, coerce?) when is_binary(rate) do
     # for binaries we need to try to match integer, float, and rational string
@@ -104,7 +104,7 @@ defmodule Vtc.Framerate do
   @doc """
   As `new/2` but raises an error instead.
   """
-  @spec new!(Rational.t() | float() | String.t(), ntsc(), boolean()) :: t()
+  @spec new!(Ratio.t() | number() | String.t(), ntsc(), boolean()) :: t()
   def new!(rate, ntsc, coerce_seconds_per_frame? \\ true) do
     case new(rate, ntsc, coerce_seconds_per_frame?) do
       {:ok, framerate} -> framerate
@@ -116,7 +116,7 @@ defmodule Vtc.Framerate do
   @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
   defp validate_drop(rate, :drop) do
     case Ratio.div(rate, Ratio.new(30_000, 1_001)) do
-      whole_number when is_integer(whole_number) -> :ok
+      %Ratio{denominator: 1} -> :ok
       _ -> {:error, %ParseError{reason: :bad_drop_rate}}
     end
   end
@@ -124,7 +124,7 @@ defmodule Vtc.Framerate do
   defp validate_drop(_, _), do: :ok
 
   # The core parser used to parse a rational or integer rate value.
-  @spec new_core(Rational.t(), ntsc(), boolean()) :: parse_result()
+  @spec new_core(Ratio.t(), ntsc(), boolean()) :: parse_result()
   defp new_core(rate, ntsc, coerce_seconds_per_frame?) do
     # validate that our ntsc atom is one of the acceptable values.
     with :ok <- validate_ntsc(ntsc),
@@ -146,11 +146,11 @@ defmodule Vtc.Framerate do
   defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _), do: rate
 
   defp coerce_ntsc_rate(rate, _),
-    do: rate |> Rational.round() |> Ratio.mult(Ratio.new(1000, 1001))
+    do: rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
 
   # Coerces timebase to framerate by flipping the numberator and denominator.
-  @spec coerce_seconds_per_frame(Rational.t(), boolean()) :: Rational.t()
-  defp coerce_seconds_per_frame(%Ratio{numerator: x, denominator: y}, true)
+  @spec coerce_seconds_per_frame(Ratio.t(), boolean()) :: Ratio.t()
+  defp coerce_seconds_per_frame(%{numerator: x, denominator: y}, true)
        when x < y,
        do: Ratio.new(y, x)
 
@@ -158,7 +158,7 @@ defmodule Vtc.Framerate do
 
   # Parses a rational string value like '24/1'. Conforms to the same API as
   # `Integer.parse/1` and `Float.parse/1`.
-  @spec parse_rational_string(String.t()) :: {Rational.t(), String.t()} | :error
+  @spec parse_rational_string(String.t()) :: {Ratio.t(), String.t()} | :error
   defp parse_rational_string(binary) do
     case String.split(binary, "/") do
       [_, _] = split ->

@@ -1,8 +1,6 @@
 defmodule Vtc.Utils.Parse do
   @moduledoc false
 
-  use Ratio
-
   alias Vtc.Framerate
   alias Vtc.Source.Frames
   alias Vtc.Source.Seconds
@@ -94,11 +92,16 @@ defmodule Vtc.Utils.Parse do
     with {:ok, adjustment} <- DropFrame.parse_adjustment(sections, rate) do
       frames_per_second = Framerate.timebase(rate)
 
+      seconds_for_minutes = Ratio.new(sections.minutes * Consts.seconds_per_minute())
+      seconds_for_hours = Ratio.new(sections.hours * Consts.seconds_per_hour())
+      frames_rat = Ratio.new(sections.frames)
+
       sections.seconds
-      |> Ratio.add(sections.minutes * Consts.seconds_per_minute())
-      |> Ratio.add(sections.hours * Consts.seconds_per_hour())
+      |> Ratio.new()
+      |> Ratio.add(seconds_for_minutes)
+      |> Ratio.add(seconds_for_hours)
       |> Ratio.mult(frames_per_second)
-      |> Ratio.add(sections.frames)
+      |> Ratio.add(frames_rat)
       |> Ratio.add(adjustment)
       |> Rational.round()
       |> then(fn frames -> if sections.negative?, do: -frames, else: frames end)
@@ -117,7 +120,7 @@ defmodule Vtc.Utils.Parse do
       groups
       |> Map.fetch!("frames")
       |> String.to_integer()
-      |> Ratio.add(feet * Consts.frames_per_foot())
+      |> then(&(&1 + feet * Consts.frames_per_foot()))
       |> then(fn frames -> if negative?, do: -frames, else: frames end)
       |> Frames.frames(rate)
     end
@@ -134,7 +137,7 @@ defmodule Vtc.Utils.Parse do
     end
   end
 
-  @spec runtime_matched_to_second(map()) :: Rational.t()
+  @spec runtime_matched_to_second(map()) :: Ratio.t()
   defp runtime_matched_to_second(matched) do
     negative? = Map.fetch!(matched, "negative") == "-"
     sections = extract_time_sections(matched, 2)
@@ -148,6 +151,6 @@ defmodule Vtc.Utils.Parse do
     |> Ratio.new(1)
     |> Ratio.add(hours * Consts.seconds_per_hour())
     |> Ratio.add(minutes * Consts.seconds_per_minute())
-    |> then(fn seconds -> if negative?, do: -seconds, else: seconds end)
+    |> then(fn seconds -> if negative?, do: Ratio.minus(seconds), else: seconds end)
   end
 end

@@ -1,15 +1,5 @@
 defmodule Vtc.Utils.Rational do
-  @moduledoc """
-  Utilities for working with `Ratio` vales.
-  """
-
-  @typedoc """
-  The Ratio module will often convert itself to an integer value if the result would be
-  a whole number, but otherwise return a %Ratio{} struct.
-
-  This type can be used when working with such a value.
-  """
-  @type t() :: Ratio.t() | integer()
+  @moduledoc false
 
   @doc """
   Rounds `x` based on `method`.
@@ -29,10 +19,9 @@ defmodule Vtc.Utils.Rational do
 
     - `:off`: Pass value through without rounding.
   """
-  @spec round(t(), :closest | :floor | :ceil) :: integer()
-  @spec round(t(), :off) :: t()
+  @spec round(Ratio.t(), :closest | :floor | :ceil) :: integer()
+  @spec round(Ratio.t(), :off) :: Ratio.t()
   def round(x, method \\ :closest)
-  def round(x, _) when is_integer(x), do: x
   def round(%{numerator: n, denominator: d}, :closest), do: round_closest(n, d)
   def round(x, :floor), do: Ratio.floor(x)
   def round(x, :ceil), do: Ratio.ceil(x)
@@ -50,7 +39,7 @@ defmodule Vtc.Utils.Rational do
   Does the divrem operation on a rational vale, returns a
   {whole_dividend, rational_remainder} tuple.
   """
-  @spec divrem(t(), t()) :: {integer(), t()}
+  @spec divrem(Ratio.t(), Ratio.t() | number()) :: {integer(), Ratio.t()}
   def divrem(x, divisor) when is_integer(x) and x < 0,
     do: divrem(%Ratio{numerator: x, denominator: 1}, divisor)
 
@@ -58,8 +47,8 @@ defmodule Vtc.Utils.Rational do
     do: dividend |> Ratio.abs() |> divrem(divisor) |> then(fn {q, r} -> {-q, r} end)
 
   def divrem(dividend, divisor) do
-    quotient = dividend |> Ratio.div(divisor) |> Ratio.floor()
-    remainder = Ratio.sub(dividend, Ratio.mult(divisor, quotient))
+    quotient = dividend |> Ratio.new() |> Ratio.div(Ratio.new(divisor)) |> Ratio.floor()
+    remainder = Ratio.sub(dividend, Ratio.mult(divisor, Ratio.new(quotient)))
     {quotient, remainder}
   end
 end

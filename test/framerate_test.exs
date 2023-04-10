@@ -4,14 +4,13 @@ defmodule Vtc.FramerateTest.ParseCase do
   defstruct [:name, :inputs, :ntsc, :playback, :timebase, :err, err_msg: ""]
 
   alias Vtc.Framerate
-  alias Vtc.Utils.Rational
 
   @type t :: %__MODULE__{
           name: String.t(),
-          inputs: [Rational.t() | integer() | float() | String.t()],
+          inputs: [Ratio.t() | integer() | float() | String.t()],
           ntsc: Framerate.ntsc(),
-          playback: Rational.t(),
-          timebase: Rational.t(),
+          playback: Ratio.t(),
+          timebase: Ratio.t(),
           err: Framerate.ParseError | nil,
           err_msg: String.t()
         }
@@ -28,8 +27,8 @@ defmodule Vtc.FramerateTest.ConstCase do
   @type t :: %__MODULE__{
           const: Framerate.t(),
           ntsc: Framerate.ntsc(),
-          playback: Rational.t(),
-          timebase: Rational.t()
+          playback: Ratio.t(),
+          timebase: Ratio.t()
         }
 end
 
@@ -172,7 +171,7 @@ defmodule Vtc.FramerateTest do
       for {input_case, i} <- Enum.with_index(this_case.inputs) do
         @input input_case
 
-        test "#{case_name} - #{i}: #{input_case} - new" do
+        test "#{case_name} - #{i}: #{inspect(input_case)} - new" do
           case Framerate.new(@input, @test_case.ntsc) do
             {:ok, rate} ->
               check_parsed(@test_case, rate)
@@ -184,7 +183,7 @@ defmodule Vtc.FramerateTest do
           end
         end
 
-        test "#{case_name} - #{i}: #{input_case} - new!" do
+        test "#{case_name} - #{i}: #{inspect(input_case)} - new!" do
           if @test_case.err == nil do
             rate = Framerate.new!(@input, @test_case.ntsc)
             check_parsed(@test_case, rate)
