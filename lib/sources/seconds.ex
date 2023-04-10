@@ -13,6 +13,7 @@ defprotocol Vtc.Source.Seconds do
   - `String`
     - runtime ("01:00:00.0")
     - decimal ("3600.0")
+  - `Vtc.Source.PremiereTicks`
   """
 
   alias Vtc.Framerate

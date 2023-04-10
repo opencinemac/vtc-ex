@@ -50,7 +50,6 @@ defmodule Vtc.Timecode do
 
   alias Vtc.Framerate
   alias Vtc.Source.Frames
-  alias Vtc.Source.PremiereTicks
   alias Vtc.Source.Seconds
   alias Vtc.Timecode.ParseError
   alias Vtc.Timecode.Sections
@@ -248,56 +247,6 @@ defmodule Vtc.Timecode do
   def with_frames!(frames, rate) do
     frames
     |> with_frames(rate)
-    |> handle_raise_function()
-  end
-
-  @doc """
-  Returns a new `Timecode` with a `premiere_ticks/1` return value equal
-  to the ticks arg.
-
-  ## Arguments
-
-  - `ticks`: Any value that can represent the number of ticks for a given timecode.
-    Must implement the `PremiereTicks` protocol.
-
-  - `rate`: Frame-per-second playback value of the timecode.
-
-  ## Options
-
-  - `round`: How to round the result with regards to whole-frames.
-
-  ## Examples
-
-  Accetps integers.
-
-  ```elixir
-  iex> Timecode.with_premiere_ticks(254_016_000_000, Rates.f23_98) |> inspect()
-  "{:ok, <00:00:01:00 <23.98 NTSC>>}"
-  ```
-  """
-  @spec with_premiere_ticks(
-          PremiereTicks.t(),
-          Framerate.t(),
-          opts :: [round: maybe_round()]
-        ) :: parse_result()
-  def with_premiere_ticks(ticks, rate, opts \\ []) do
-    with {:ok, ticks} <- PremiereTicks.ticks(ticks, rate) do
-      seconds = Ratio.new(ticks, Consts.ppro_tick_per_second())
-      with_seconds(seconds, rate, opts)
-    end
-  end
-
-  @doc """
-  As `with_premiere_ticks/3`, but raises on error.
-  """
-  @spec with_premiere_ticks!(
-          PremiereTicks.t(),
-          Framerate.t(),
-          opts :: [round: maybe_round()]
-        ) :: t()
-  def with_premiere_ticks!(ticks, rate, opts \\ []) do
-    ticks
-    |> with_premiere_ticks(rate, opts)
     |> handle_raise_function()
   end
 

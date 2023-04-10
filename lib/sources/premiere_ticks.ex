@@ -1,46 +1,31 @@
-defprotocol Vtc.Source.PremiereTicks do
+defmodule Vtc.Source.PremiereTicks do
   @moduledoc """
-  Protocol which types can implement to be passed as the main value of
-  `Vtc.Timecode.with_premiere_ticks/3`.
+  Implements `Seconds` protocol for Premiere ticks. See `Timecode.premiere_ticks/1`
+  for more information on this unit.
 
-  # Implementations
-
-  Out of the box, this protocol is implemented for the following types:
-
-  - `Integer`
+  Thus struct is used as an input wrapper only, not as the general-purpose Premiere
+  ticks unit.
   """
 
-  @doc """
-  Returns the number of Adobe Premiere Pro ticks as an integer.
-
-  # Arguments
-
-  - **value**: The source value.
-
-  - **rate**: The framerate of the timecode being parsed.
-
-  # Returns
-
-  A result tuple with a rational representation of the seconds value using `Ratio` on
-  success.
-  """
-
-  alias Vtc.Framerate
-  alias Vtc.Timecode
+  @enforce_keys [:in]
+  defstruct [:in]
 
   @typedoc """
-  Result type of `ticks/3`.
+  Contains only a single field for wrapping the underlying integer.
   """
-  @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
-
-  @spec ticks(t(), Framerate.t()) :: result()
-  def ticks(value, rate)
+  @type t() :: %__MODULE__{in: integer()}
 end
 
-defimpl Vtc.Source.PremiereTicks, for: Integer do
+defimpl Vtc.Source.Seconds, for: Vtc.Source.PremiereTicks do
+  @moduledoc """
+  Implements `Seconds` protocol for Premiere ticks.
+  """
+
   alias Vtc.Framerate
   alias Vtc.Source.PremiereTicks
+  alias Vtc.Source.Seconds
+  alias Vtc.Utils.Consts
 
-  @spec ticks(integer(), Framerate.t()) :: PremiereTicks.result()
-  def ticks(value, _rate), do: {:ok, value}
+  @spec seconds(PremiereTicks.t(), Framerate.t()) :: Seconds.result()
+  def seconds(ticks, _), do: {:ok, Ratio.new(ticks.in, Consts.ppro_tick_per_second())}
 end
