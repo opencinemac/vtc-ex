@@ -24,7 +24,7 @@ alias Vtc.Timecode
 
 # It's easy to make a new 23.98 NTSC timecode. We use the with_frames constructor here 
 # since timecode is really a human-readable way to represent frame count.
-iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98) |> inspect()
+iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98()) |> inspect()
 "<17:23:00:02 <23.98 NTSC>>"
 
 # We can get all sorts of ways to represent the timecode.
@@ -59,32 +59,32 @@ iex> Framerate.timebase(tc.rate)
 # Parsing is flexible
 
 # Partial timecode:
-iex> Timecode.with_frames!("3:12", Rates.f23_98) |> inspect()
+iex> Timecode.with_frames!("3:12", Rates.f23_98()) |> inspect()
 "<03:00:00:12 <23.98 NTSC>>"
 
 # Frame count:
-iex> Timecode.with_frames!(24, Rates.f23_98) |> inspect()
+iex> Timecode.with_frames!(24, Rates.f23_98()) |> inspect()
 "<00:00:01:00 <23.98 NTSC>>"
 
 # Seconds:
-iex> Timecode.with_seconds!(1.5, Rates.f23_98) |> inspect()
+iex> Timecode.with_seconds!(1.5, Rates.f23_98()) |> inspect()
 "<00:05:23:04 <23.98 NTSC>>"
 
 # Runtime:
-iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98) |> inspect()
+iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98()) |> inspect()
 "<00:05:23:04 <23.98 NTSC>>"
 
 # Premiere Ticks:
 iex> input = %PremiereTicks{in: 254_016_000_000}
-iex> Timecode.with_seconds!(input, Rates.f23_98) |> inspect()
+iex> Timecode.with_seconds!(input, Rates.f23_98()) |> inspect()
 "<00:00:01:00 <23.98 NTSC>>"
 
 # Feet and Frames:
-iex> Timecode.with_frames!("1+08", Rates.f23_98) |> inspect()
+iex> Timecode.with_frames!("1+08", Rates.f23_98()) |> inspect()
 "<00:00:01:00 <23.98 NTSC>>"
 
 # We can add two timecodes:
-iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98))
+iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98()))
 iex> inspect(tc)
 "<18:23:13:02 <23.98 NTSC>>"
 
@@ -104,8 +104,8 @@ iex> inspect(tc)
 "<17:33:14:16 <23.98 NTSC>>"
 
 # It's easy to compare two timecodes
-iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
-iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98)
+iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 iex> Timecode.compare(a, b)
 :gt
 
@@ -143,7 +143,7 @@ iex> inspect(tc)
 
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
-iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_Df)
+iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_df())
 iex> inspect(drop_frame)
 "<00:08:20;18 <29.97 NTSC DF>>"
 
@@ -157,7 +157,7 @@ iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop)) |> insp
 "<01:00:00:00 <47.95 NTSC>>"
 
 # We can also rebase the frames using a new framerate!
-iex> Timecode.rebase(tc, Rates.f23_98) |> inspect()
+iex> Timecode.rebase(tc, Rates.f23_98()) |> inspect()
 "<02:00:00:00 <23.98 NTSC>>"
 
 # Sorting is suported through the `compare/2` function:
