@@ -1,4 +1,5 @@
 defmodule Vtc.MixProject do
+  alias Vtc.Source
   use Mix.Project
 
   def project do
@@ -13,7 +14,12 @@ defmodule Vtc.MixProject do
         # The main page in the docs
         main: "readme",
         logo: "zdocs/source/logo1.svg",
-        extras: ["README.md", "zdocs/history.md"]
+        extras: ["README.md", "zdocs/history.md"],
+        groups_for_modules: [
+          "Core API": [Vtc.Timecode, Vtc.Framerate, Vtc.Range],
+          Data: [Vtc.Timecode.Sections, Vtc.Rates],
+          "Source Protocols": [Source.Seconds, Source.Frames, Source.PremiereTicks]
+        ]
       ],
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,

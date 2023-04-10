@@ -1,6 +1,7 @@
 defmodule Vtc.TimecodeTest.ParseHelpers do
   @moduledoc false
 
+  alias Vtc.Source.PremiereTicks
   alias Vtc.Timecode
 
   # Functions used during macro expansion compilation cannot be declared in the same
@@ -24,6 +25,7 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
   @spec make_negative_input(input) :: input when [input: String.t() | Ratio.t()]
   def make_negative_input(input) when is_binary(input), do: "-" <> input
   def make_negative_input(%Ratio{} = input), do: Ratio.minus(input)
+  def make_negative_input(%PremiereTicks{in: val}), do: %PremiereTicks{in: -val}
   def make_negative_input(input), do: -input
 end
 
@@ -33,6 +35,7 @@ defmodule Vtc.TimecodeTest do
   use ExUnit.Case, async: true
 
   alias Vtc.Rates
+  alias Vtc.Source.PremiereTicks
   alias Vtc.Timecode
   alias Vtc.Utils.Consts
 
@@ -47,7 +50,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(18_018, 5),
         3603.6,
-        "01:00:03.6"
+        "01:00:03.6",
+        %PremiereTicks{in: 915_372_057_600_000}
       ],
       frames_inputs: [
         86_400,
@@ -67,7 +71,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(12_012, 5),
         2402.4,
-        "00:40:02.4"
+        "00:40:02.4",
+        %PremiereTicks{in: 610_248_038_400_000}
       ],
       frames_inputs: [
         57_600,
@@ -88,7 +93,8 @@ defmodule Vtc.TimecodeTest do
       rate: Rates.f24(),
       seconds_inputs: [
         3600,
-        "01:00:00.0"
+        "01:00:00.0",
+        %PremiereTicks{in: 914_457_600_000_000}
       ],
       frames_inputs: [
         86_400,
@@ -110,7 +116,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         0,
         0.0,
-        "00:00:00.0"
+        "00:00:00.0",
+        %PremiereTicks{in: 0}
       ],
       frames_inputs: [
         0,
@@ -129,7 +136,8 @@ defmodule Vtc.TimecodeTest do
       rate: Rates.f29_97_df(),
       seconds_inputs: [
         Ratio.new(457_457, 7500),
-        "00:01:00.994266667"
+        "00:01:00.994266667",
+        %PremiereTicks{in: 15_493_519_641_600}
       ],
       frames_inputs: [
         1828,
@@ -149,7 +157,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(31_031, 15_000),
         2.068733333333333333333333333,
-        "00:00:02.068733333"
+        "00:00:02.068733333",
+        %PremiereTicks{in: 525_491_366_400}
       ],
       frames_inputs: [
         62,
@@ -169,7 +178,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
-        "00:01:00.06"
+        "00:01:00.06",
+        %PremiereTicks{in: 15_256_200_960_000}
       ],
       frames_inputs: [
         1800,
@@ -189,7 +199,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(1_800_799, 15_000),
         120.0532666666666666666666667,
-        "00:02:00.053266667"
+        "00:02:00.053266667",
+        %PremiereTicks{in: 30_495_450_585_600}
       ],
       frames_inputs: [
         3598,
@@ -209,7 +220,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(2_999_997, 5000),
         599.9994,
-        "00:09:59.9994"
+        "00:09:59.9994",
+        %PremiereTicks{in: 152_409_447_590_400}
       ],
       frames_inputs: [
         17_982,
@@ -229,7 +241,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(3_300_297, 5000),
         660.0594,
-        "00:11:00.0594"
+        "00:11:00.0594",
+        %PremiereTicks{in: 167_665_648_550_400}
       ],
       frames_inputs: [
         19_782,
@@ -249,7 +262,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(8_999_991, 2500),
         3599.9964,
-        "00:59:59.9964"
+        "00:59:59.9964",
+        %PremiereTicks{in: 914_456_685_542_400}
       ],
       frames_inputs: [
         107_892,
@@ -271,7 +285,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(0, 1),
         0.0,
-        "00:00:00.0"
+        "00:00:00.0",
+        %PremiereTicks{in: 0}
       ],
       frames_inputs: [
         0,
@@ -291,7 +306,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(61_061, 60_000),
         1.017683333333333333333333333,
-        "00:00:01.017683333"
+        "00:00:01.017683333",
+        %PremiereTicks{in: 258_507_849_600}
       ],
       frames_inputs: [
         61,
@@ -311,7 +327,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(21_021, 20_000),
         1.05105,
-        "00:00:01.05105"
+        "00:00:01.05105",
+        %PremiereTicks{in: 266_983_516_800}
       ],
       frames_inputs: [
         63,
@@ -331,7 +348,8 @@ defmodule Vtc.TimecodeTest do
       seconds_inputs: [
         Ratio.new(3003, 50),
         60.06,
-        "00:01:00.06"
+        "00:01:00.06",
+        %PremiereTicks{in: 15_256_200_960_000}
       ],
       frames_inputs: [
         3600,
@@ -549,30 +567,13 @@ defmodule Vtc.TimecodeTest do
 
   @ppro_ticks_per_frame div(Consts.ppro_tick_per_second(), 24)
 
-  describe "#with_premiere_ticks/3" do
-    for test_case <- @parse_cases do
-      @test_case test_case
-      @test_case_negative ParseHelpers.make_negative_case(test_case)
-
-      test "#{@test_case.name} | #{@test_case.premiere_ticks} | #{@test_case.rate}" do
-        @test_case.premiere_ticks
-        |> Timecode.with_premiere_ticks(@test_case.rate)
-        |> check_parsed(@test_case)
-      end
-
-      test "#{@test_case.name}! | #{@test_case.premiere_ticks} | #{@test_case.rate} | negative" do
-        @test_case.premiere_ticks
-        |> ParseHelpers.make_negative_input()
-        |> Timecode.with_premiere_ticks(@test_case_negative.rate)
-        |> check_parsed(@test_case_negative)
-      end
-    end
-
+  describe "#with_seconds/3 | Premiere Ticks" do
     test "round | :closest | implied" do
       {:ok, timecode} =
         @ppro_ticks_per_frame
         |> div(2)
-        |> Timecode.with_premiere_ticks(Rates.f24())
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24())
 
       assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     end
@@ -581,7 +582,8 @@ defmodule Vtc.TimecodeTest do
       {:ok, timecode} =
         @ppro_ticks_per_frame
         |> div(2)
-        |> Timecode.with_premiere_ticks(Rates.f24(), round: :closest)
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24(), round: :closest)
 
       assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     end
@@ -591,7 +593,8 @@ defmodule Vtc.TimecodeTest do
         @ppro_ticks_per_frame
         |> div(2)
         |> then(&(&1 - 1))
-        |> Timecode.with_premiere_ticks(Rates.f24(), round: :closest)
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24(), round: :closest)
 
       assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
     end
@@ -600,91 +603,35 @@ defmodule Vtc.TimecodeTest do
       {:ok, timecode} =
         @ppro_ticks_per_frame
         |> div(4)
-        |> Timecode.with_premiere_ticks(Rates.f24(), round: :ceil)
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24(), round: :ceil)
 
       assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     end
 
     test "round | :floor" do
       {:ok, timecode} =
-        Timecode.with_premiere_ticks(@ppro_ticks_per_frame - 1, Rates.f24(), round: :floor)
+        (@ppro_ticks_per_frame - 1)
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24(), round: :floor)
 
       assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
     end
 
     test "round | :off" do
       {:ok, timecode} =
-        Timecode.with_premiere_ticks(Consts.ppro_tick_per_second() - 1, Rates.f24(), round: :off)
+        (Consts.ppro_tick_per_second() - 1)
+        |> then(&%PremiereTicks{in: &1})
+        |> Timecode.with_seconds(Rates.f24(), round: :off)
 
       assert timecode == %Timecode{
                seconds:
-                 Ratio.new(Consts.ppro_tick_per_second() - 1, Consts.ppro_tick_per_second()),
+                 Ratio.new(
+                   Consts.ppro_tick_per_second() - 1,
+                   Consts.ppro_tick_per_second()
+                 ),
                rate: Rates.f24()
              }
-    end
-  end
-
-  describe "#with_premiere_ticks!/3" do
-    for test_case <- @parse_cases do
-      @test_case test_case
-      @test_case_negative ParseHelpers.make_negative_case(test_case)
-
-      test "#{@test_case.name} | #{@test_case.premiere_ticks} | #{@test_case.rate}" do
-        @test_case.premiere_ticks
-        |> Timecode.with_premiere_ticks!(@test_case.rate)
-        |> check_parsed!(@test_case)
-      end
-
-      test "#{@test_case.name}! | #{@test_case.premiere_ticks} | #{@test_case.rate} | negative" do
-        @test_case.premiere_ticks
-        |> ParseHelpers.make_negative_input()
-        |> Timecode.with_premiere_ticks!(@test_case_negative.rate)
-        |> check_parsed!(@test_case_negative)
-      end
-    end
-
-    test "round | :closest | implied" do
-      timecode =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> Timecode.with_premiere_ticks!(Rates.f24())
-
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
-
-    test "round | :closest | explicit" do
-      timecode =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :closest)
-
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
-
-    test "round | :closest | down" do
-      timecode =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> then(&(&1 - 1))
-        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :closest)
-
-      assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-    end
-
-    test "round | :ceil" do
-      timecode =
-        @ppro_ticks_per_frame
-        |> div(4)
-        |> Timecode.with_premiere_ticks!(Rates.f24(), round: :ceil)
-
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
-
-    test "round | :floor" do
-      timecode =
-        Timecode.with_premiere_ticks!(@ppro_ticks_per_frame - 1, Rates.f24(), round: :floor)
-
-      assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
     end
   end
 
