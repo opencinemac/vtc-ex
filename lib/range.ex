@@ -56,7 +56,7 @@ defmodule Vtc.Range do
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
   iex> Range.new(tc_in, tc_out) |> inspect()
-  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>}"
   ```
 
   Using a timecode string as `b`:
@@ -64,7 +64,7 @@ defmodule Vtc.Range do
   ```elixir
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Range.new(tc_in, "02:00:00:00") |> inspect()
-  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>}"
   ```
 
   Making a range with an inclusive out:
@@ -72,7 +72,7 @@ defmodule Vtc.Range do
   ```elixir
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Range.new(tc_in, "02:00:00:00", out_type: :inclusive) |> inspect()
-  "{:ok, <01:00:00:00 - 02:00:00:00 :inclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 02:00:00:00 :inclusive <23.98 NTSC>>}"
   ```
   """
   @spec new(
@@ -136,7 +136,7 @@ defmodule Vtc.Range do
   iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
   iex> Range.with_duration(start_tc, duration) |> inspect()
-  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC>>}"
   ```
 
   Using a timecode string as `b`:
@@ -144,7 +144,7 @@ defmodule Vtc.Range do
   ```elixir
   iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Range.with_duration(start_tc, "00:30:00:00") |> inspect()
-  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC>>}"
   ```
 
   Making a range with an inclusive out:
@@ -152,7 +152,7 @@ defmodule Vtc.Range do
   ```elixir
   iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Range.with_duration(start_tc, "00:30:00:00", out_type: :inclusive) |> inspect()
-  "{:ok, <01:00:00:00 - 01:29:59:23 :inclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 - 01:29:59:23 :inclusive <23.98 NTSC>>}"
   ```
   """
   @spec with_duration(
@@ -218,7 +218,7 @@ defmodule Vtc.Range do
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> range = Range.new!(tc_in, "02:00:00:00")
   iex> Range.with_inclusive_out(range) |> inspect()
-  "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC NDF>>"
+  "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC>>"
   ```
   """
   @spec with_inclusive_out(t()) :: t()
@@ -238,7 +238,7 @@ defmodule Vtc.Range do
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> range = Range.new!(tc_in, "02:00:00:00", out_type: :inclusive)
   iex> Range.with_exclusive_out(range) |> inspect()
-  "<01:00:00:00 - 02:00:00:01 :exclusive <23.98 NTSC NDF>>"
+  "<01:00:00:00 - 02:00:00:01 :exclusive <23.98 NTSC>>"
   ```
   """
   @spec with_exclusive_out(t()) :: t()
@@ -263,7 +263,7 @@ defmodule Vtc.Range do
   iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> range = Range.new!(tc_in, "01:30:00:00")
   iex> Range.duration(range) |> inspect()
-  "<00:30:00:00 <23.98 NTSC NDF>>"
+  "<00:30:00:00 <23.98 NTSC>>"
   ```
   """
   @spec duration(t()) :: Timecode.t()
@@ -332,7 +332,7 @@ defmodule Vtc.Range do
   iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex> Range.intersection(a, b) |> inspect()
-  "{:ok, <01:50:00:00 - 02:00:00:00 :inclusive <23.98 NTSC NDF>>}"
+  "{:ok, <01:50:00:00 - 02:00:00:00 :inclusive <23.98 NTSC>>}"
   ```
 
   ```elixir
@@ -363,7 +363,7 @@ defmodule Vtc.Range do
   iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex> Range.intersection!(a, b) |> inspect()
-  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC NDF>>"
+  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC>>"
   ```
   """
   @spec intersection!(t(), t()) :: t()
@@ -390,7 +390,7 @@ defmodule Vtc.Range do
   iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex> Range.separation(a, b) |> inspect()
-  "{:ok, <02:00:00:01 - 02:09:59:23 :inclusive <23.98 NTSC NDF>>}"
+  "{:ok, <02:00:00:01 - 02:09:59:23 :inclusive <23.98 NTSC>>}"
   ```
 
   ```elixir
@@ -421,7 +421,7 @@ defmodule Vtc.Range do
   iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex> Range.separation!(a, b) |> inspect()
-  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC NDF>>"
+  "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC>>"
   ```
   """
   @spec separation!(t(), t()) :: t()

@@ -4,10 +4,12 @@ defmodule Vtc.Utils.DropFrame do
   alias Vtc.Timecode
   alias Vtc.Utils.Rational
 
-  # Adjusts the frame number based on drop-frame TC conventions.
-  #
-  # Algorithm adapted from:
-  # https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
+  @doc """
+  Adjusts the frame number based on drop-frame TC conventions.
+
+  Algorithm adapted from:
+  https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
+  """
   @spec parse_adjustment(Timecode.Sections.t(), Framerate.t()) ::
           {:ok, integer()} | {:error, Timecode.ParseError.t()}
   def parse_adjustment(sections, %{ntsc: :drop} = rate) do
@@ -37,10 +39,12 @@ defmodule Vtc.Utils.DropFrame do
     end
   end
 
-  # Adjusts the frame number of a timecode so the proper drop-frame value is printed.
-  #
-  # Algorithm adapted from:
-  # https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
+  @doc """
+  Adjusts the frame number of a timecode so the proper drop-frame value is printed.
+
+  Algorithm adapted from:
+  https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
+  """
   @spec frame_num_adjustment(integer(), Framerate.t()) :: integer()
   def frame_num_adjustment(frame_number, %{ntsc: :drop} = rate) do
     framerate = Ratio.to_float(rate.playback)
@@ -75,5 +79,18 @@ defmodule Vtc.Utils.DropFrame do
   defp frames_dropped_per_minute(rate) do
     time_base = rate |> Framerate.timebase() |> Rational.round()
     round(time_base * 0.066666)
+  end
+
+  @doc """
+  Checks if the Framerate described by `rate` could be used as a drop-frame candidata,
+  as only rates cleanly divisible by `30_000/1_001` are mathematically compatible with
+  drop-frame math.
+  """
+  @spec drop_allowed?(Ratio.t()) :: boolean()
+  def drop_allowed?(rate) do
+    case Ratio.div(rate, Ratio.new(30_000, 1_001)) do
+      %Ratio{denominator: 1} -> true
+      _ -> false
+    end
   end
 end

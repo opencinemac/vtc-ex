@@ -995,6 +995,38 @@ defmodule Vtc.RangeTest do
     end
   end
 
+  describe "String.Chars.to_string/1" do
+    test "renders expected for :exclusive" do
+      range = setup_range({"01:00:00:00", "02:00:00:00"})
+
+      assert String.Chars.to_string(range) ==
+               "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
+    end
+
+    test "renders expected for :inclusive" do
+      range = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+
+      assert String.Chars.to_string(range) ==
+               "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC>>"
+    end
+  end
+
+  describe "Inspect.inspect/2" do
+    test "renders expected for :exclusive" do
+      range = setup_range({"01:00:00:00", "02:00:00:00"})
+
+      assert Inspect.inspect(range, Inspect.Opts.new([])) ==
+               "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
+    end
+
+    test "renders expected for :inclusive" do
+      range = {"01:00:00:00", "02:00:00:00"} |> setup_range() |> Range.with_inclusive_out()
+
+      assert Inspect.inspect(range, Inspect.Opts.new([])) ==
+               "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC>>"
+    end
+  end
+
   # Extracts a map in `:test_case` and merges it into the top-level context.
   @spec setup_test_case(%{optional(:test_case) => map()}) :: map()
   defp setup_test_case(%{test_case: test_case} = context), do: Map.merge(context, test_case)

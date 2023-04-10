@@ -24,25 +24,25 @@ defmodule Vtc.Timecode do
   iex>
   iex>
   iex> Enum.sort([tc_02, tc_01], Timecode) |> inspect()
-  "[<01:00:00:00 <23.98 NTSC NDF>>, <02:00:00:00 <23.98 NTSC NDF>>]"
+  "[<01:00:00:00 <23.98 NTSC>>, <02:00:00:00 <23.98 NTSC>>]"
   iex>
   iex>
   iex> Enum.sort([tc_01, tc_02], {:desc, Timecode}) |> inspect()
-  "[<02:00:00:00 <23.98 NTSC NDF>>, <01:00:00:00 <23.98 NTSC NDF>>]"
+  "[<02:00:00:00 <23.98 NTSC>>, <01:00:00:00 <23.98 NTSC>>]"
   iex>
   iex>
   iex> Enum.max([tc_02, tc_01], Timecode) |> inspect()
-  "<02:00:00:00 <23.98 NTSC NDF>>"
+  "<02:00:00:00 <23.98 NTSC>>"
   iex>
   iex>
   iex> Enum.min([tc_02, tc_01], Timecode) |> inspect()
-  "<01:00:00:00 <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC>>"
   iex>
   iex>
   iex> data_01 = %{id: 2, tc: tc_01}
   iex> data_02 = %{id: 1, tc: tc_02}
   iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
-  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
   ```
   """
 
@@ -111,35 +111,35 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_seconds("01:00:00.5", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
 
   ... floats...
 
   ```elixir
   iex> Timecode.with_seconds(3600.5, Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
 
   ... integers...
 
   ```elixir
   iex> Timecode.with_seconds(3600, Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:10 <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
 
   ... integer Strings...
 
   ```elixir
   iex> Timecode.with_seconds("3600", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:10 <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
 
   ... and float strings.
 
   ```elixir
   iex> Timecode.with_seconds("3600.5", Rates.f23_98) |> inspect()
-  "{:ok, <00:59:56:22 <23.98 NTSC NDF>>}"
+  "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
   """
   @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
@@ -202,28 +202,28 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_frames("01:00:00:00", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
 
   ... feet+frames strings...
 
   ```elixir
   iex> Timecode.with_frames("5400+00", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
 
   ... integers...
 
   ```elixir
   iex> Timecode.with_frames(86400, Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
 
   ... and integer strings.
 
   ```elixir
   iex> Timecode.with_frames("86400", Rates.f23_98) |> inspect()
-  "{:ok, <01:00:00:00 <23.98 NTSC NDF>>}"
+  "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
@@ -272,7 +272,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> Timecode.with_premiere_ticks(254_016_000_000, Rates.f23_98) |> inspect()
-  "{:ok, <00:00:01:00 <23.98 NTSC NDF>>}"
+  "{:ok, <00:00:01:00 <23.98 NTSC>>}"
   ```
   """
   @spec with_premiere_ticks(
@@ -313,7 +313,7 @@ defmodule Vtc.Timecode do
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> {:ok, rebased} = Timecode.rebase(timecode, Rates.f47_95())
   iex> inspect(rebased)
-  "<00:30:00:00 <47.95 NTSC NDF>>"
+  "<00:30:00:00 <47.95 NTSC>>"
   ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
@@ -380,7 +380,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> Timecode.add(a, b) |> inspect()
-  "<02:30:21:17 <23.98 NTSC NDF>>"
+  "<02:30:21:17 <23.98 NTSC>>"
   ```
 
   Two timecodes running at different rates:
@@ -389,7 +389,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Timecode.add(a, b) |> inspect()
-  "<01:00:00:01 <23.98 NTSC NDF>>"
+  "<01:00:00:01 <23.98 NTSC>>"
   ```
 
   Using a timcode and a bare string:
@@ -397,7 +397,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.add(a, "01:30:21:17") |> inspect()
-  "<02:30:21:17 <23.98 NTSC NDF>>"
+  "<02:30:21:17 <23.98 NTSC>>"
   ```
   """
   @spec add(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
@@ -430,7 +430,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.sub(a, b) |> inspect()
-  "<00:30:21:17 <23.98 NTSC NDF>>"
+  "<00:30:21:17 <23.98 NTSC>>"
   ```
 
   When `b` is greater than `a`, the result is negative:
@@ -439,7 +439,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
   iex> Timecode.sub(a, b) |> inspect()
-  "<-01:00:00:00 <23.98 NTSC NDF>>"
+  "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
   Two timecodes running at different rates:
@@ -448,7 +448,7 @@ defmodule Vtc.Timecode do
   iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Timecode.sub(a, b) |> inspect()
-  "<01:00:00:01 <23.98 NTSC NDF>>"
+  "<01:00:00:01 <23.98 NTSC>>"
   ```
 
   Using a timcode and a bare string:
@@ -456,7 +456,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> Timecode.sub(a, "01:00:00:00") |> inspect()
-  "<00:30:21:17 <23.98 NTSC NDF>>"
+  "<00:30:21:17 <23.98 NTSC>>"
   ```
   """
   @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
@@ -481,11 +481,11 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.mult(a, 2) |> inspect()
-  "<02:00:00:00 <23.98 NTSC NDF>>"
+  "<02:00:00:00 <23.98 NTSC>>"
 
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.mult(a, 0.5) |> inspect()
-  "<00:30:00:00 <23.98 NTSC NDF>>"
+  "<00:30:00:00 <23.98 NTSC>>"
   ```
   """
   @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
@@ -508,11 +508,11 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.div(dividend, 2) |> inspect()
-  "<00:30:00:00 <23.98 NTSC NDF>>"
+  "<00:30:00:00 <23.98 NTSC>>"
 
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.div(dividend, 0.5) |> inspect()
-  "<02:00:00:00 <23.98 NTSC NDF>>"
+  "<02:00:00:00 <23.98 NTSC>>"
   ```
   """
   @spec div(
@@ -550,7 +550,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
   iex> Timecode.divrem(dividend, 4) |> inspect()
-  "{<00:15:00:00 <23.98 NTSC NDF>>, <00:00:00:01 <23.98 NTSC NDF>>}"
+  "{<00:15:00:00 <23.98 NTSC>>, <00:00:00:01 <23.98 NTSC>>}"
   ```
   """
   @spec divrem(
@@ -595,7 +595,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
   iex> Timecode.rem(dividend, 4) |> inspect()
-  "<00:00:00:01 <23.98 NTSC NDF>>"
+  "<00:00:00:01 <23.98 NTSC>>"
   ```
   """
   @spec rem(
@@ -618,13 +618,13 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.negate(tc) |> inspect()
-  "<-01:00:00:00 <23.98 NTSC NDF>>"
+  "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> Timecode.negate(tc) |> inspect()
-  "<01:00:00:00 <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC>>"
   ```
   """
   @spec negate(t()) :: t()
@@ -638,13 +638,13 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> Timecode.abs(tc) |> inspect()
-  "<01:00:00:00 <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC>>"
   ```
 
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> Timecode.abs(tc) |> inspect()
-  "<01:00:00:00 <23.98 NTSC NDF>>"
+  "<01:00:00:00 <23.98 NTSC>>"
   ```
   """
   @spec abs(t()) :: t()
@@ -802,7 +802,7 @@ defmodule Vtc.Timecode do
   value of the timecode representation when dealing with non-whole-frame
   framerates. Even drop-frame timecode does not continuously adhere 1:1 to the
   actual runtime. For instance, <01:00:00;00 <29.97 NTSC DF>> has a true runtime of
-  '00:59:59.9964', and <01:00:00:00 <23.98 NTSC NDF>> has a true runtime of
+  '00:59:59.9964', and <01:00:00:00 <23.98 NTSC>> has a true runtime of
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()

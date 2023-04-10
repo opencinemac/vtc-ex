@@ -25,7 +25,7 @@ alias Vtc.Timecode
 # It's easy to make a new 23.98 NTSC timecode. We use the with_frames constructor here 
 # since timecode is really a human-readable way to represent frame count.
 iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98) |> inspect()
-"<17:23:00:02 <23.98 NTSC NDF>>"
+"<17:23:00:02 <23.98 NTSC>>"
 
 # We can get all sorts of ways to represent the timecode.
 iex> Timecode.timecode(tc)
@@ -60,47 +60,47 @@ iex> Framerate.timebase(tc.rate)
 
 # Partial timecode:
 iex> Timecode.with_frames!("3:12", Rates.f23_98) |> inspect()
-"<03:00:00:12 <23.98 NTSC NDF>>"
+"<03:00:00:12 <23.98 NTSC>>"
 
 # Frame count:
 iex> Timecode.with_frames!(24, Rates.f23_98) |> inspect()
-"<00:00:01:00 <23.98 NTSC NDF>>"
+"<00:00:01:00 <23.98 NTSC>>"
 
 # Seconds:
 iex> Timecode.with_seconds!(1.5, Rates.f23_98) |> inspect()
-"<00:05:23:04 <23.98 NTSC NDF>>"
+"<00:05:23:04 <23.98 NTSC>>"
 
 # Runtime:
 iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98) |> inspect()
-"<00:05:23:04 <23.98 NTSC NDF>>"
+"<00:05:23:04 <23.98 NTSC>>"
 
 # Premiere Ticks:
 iex> Timecode.with_premiere_ticks!(254_016_000_000, Rates.f23_98) |> inspect()
-"<00:00:01:00 <23.98 NTSC NDF>>"
+"<00:00:01:00 <23.98 NTSC>>"
 
 # Feet and Frames:
 iex> Timecode.with_frames!("1+08", Rates.f23_98) |> inspect()
-"<00:00:01:00 <23.98 NTSC NDF>>"
+"<00:00:01:00 <23.98 NTSC>>"
 
 # We can add two timecodes:
 iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98))
 iex> inspect(tc)
-"<18:23:13:02 <23.98 NTSC NDF>>"
+"<18:23:13:02 <23.98 NTSC>>"
 
 # But if we want to do something quickly, we just use a timecode string instead.
 iex> tc = Timecode.add(tc, "00:10:00:00")
 iex> inspect(tc)
-"<18:33:13:02 <23.98 NTSC NDF>>"
+"<18:33:13:02 <23.98 NTSC>>"
 
 # Adding ints means adding frames.
 iex> tc = Timecode.add(tc, 38)
 iex> inspect(tc)
-"<18:33:14:16 <23.98 NTSC NDF>>"
+"<18:33:14:16 <23.98 NTSC>>"
 
 # We can subtract too.
 iex> tc = Timecode.sub(tc, "01:00:00:00")
 iex> inspect(tc)
-"<17:33:14:16 <23.98 NTSC NDF>>"
+"<17:33:14:16 <23.98 NTSC>>"
 
 # It's easy to compare two timecodes
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98)
@@ -115,30 +115,30 @@ iex> Timecode.compare(a, "00:59:00:00")
 # We can multiply
 iex> tc = Timecode.mult(tc, 2)
 iex> inspect(tc)
-"<35:06:29:08 <23.98 NTSC NDF>>"
+"<35:06:29:08 <23.98 NTSC>>"
 
 # ... divide ...
 iex> tc = Timecode.div(tc, 2)
 iex> inspect(tc)
-"<17:33:14:16 <23.98 NTSC NDF>>"
+"<17:33:14:16 <23.98 NTSC>>"
 
 # ... and even get the remainder while dividing!
 iex> {dividend, remainder} = Timecode.divmod(tc, 3)
 iex> inspect(dividend)
-"<05:51:04:21 <23.98 NTSC NDF>>"
+"<05:51:04:21 <23.98 NTSC>>"
 iex> inspect(remainder)
-"<00:00:00:01 <23.98 NTSC NDF>>"
+"<00:00:00:01 <23.98 NTSC>>"
 
 # We can make a timecode negative ...
 iex> tc = Timecode.negate(tc)
 iex> inspect(tc)
-"<-17:33:14:16 <23.98 NTSC NDF>>"
+"<-17:33:14:16 <23.98 NTSC>>"
 
 # ... or take its absolute value.
 
 iex> tc = Timecode.abs(tc)
 iex> inspect(tc)
-"<17:33:14:16 <23.98 NTSC NDF>>"
+"<17:33:14:16 <23.98 NTSC>>"
 
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
@@ -165,29 +165,29 @@ iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 iex> data_01 = %{id: 2, tc: tc_01}
 iex> data_02 = %{id: 1, tc: tc_02}
 iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
-"[%{id: 2, tc: <01:00:00:00 <23.98 NTSC NDF>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC NDF>>}]"
+"[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
 
 # Timecode Ranges help common operations with in/out points:
 iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 iex> a = Range.new!(a_in, a_out)
 iex> inspect(a)
-"<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
+"<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 
 iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
 iex> b_out = Timecode.with_frames!("02:30:00:00", Rates.f23_98())
 iex> b = Range.new!(b_in, "02:30:00:00")
 iex> inspect(b)
-"<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC NDF>>"
+"<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
 
 iex> Range.duration(b) |> inspect()
-iex> "<00:45:00:00 <23.98 NTSC NDF>>"
+iex> "<00:45:00:00 <23.98 NTSC>>"
 
 iex> Range.overlaps?(a, b) |> inspect()
 iex> true
 
 iex> Range.intersection!(a, b) |> inspect()
-"<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC NDF>>"
+"<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
 ## Features
