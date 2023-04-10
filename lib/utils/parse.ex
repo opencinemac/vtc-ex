@@ -102,7 +102,7 @@ defmodule Vtc.Utils.Parse do
       |> Ratio.add(seconds_for_hours)
       |> Ratio.mult(frames_per_second)
       |> Ratio.add(frames_rat)
-      |> Ratio.add(adjustment)
+      |> Ratio.add(Ratio.new(adjustment))
       |> Rational.round()
       |> then(fn frames -> if sections.negative?, do: -frames, else: frames end)
       |> then(&{:ok, &1})
@@ -145,12 +145,15 @@ defmodule Vtc.Utils.Parse do
     {minutes, sections} = pop_time_section(sections)
     {hours, _} = pop_time_section(sections)
 
+    seconds_for_hours = Ratio.new(hours * Consts.seconds_per_hour())
+    minutes_for_hours = Ratio.new(minutes * Consts.seconds_per_minute())
+
     matched
     |> Map.fetch!("seconds")
     |> Decimal.new()
-    |> Ratio.new(1)
-    |> Ratio.add(hours * Consts.seconds_per_hour())
-    |> Ratio.add(minutes * Consts.seconds_per_minute())
+    |> Ratio.new()
+    |> Ratio.add(seconds_for_hours)
+    |> Ratio.add(minutes_for_hours)
     |> then(fn seconds -> if negative?, do: Ratio.minus(seconds), else: seconds end)
   end
 end

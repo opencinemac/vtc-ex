@@ -887,7 +887,9 @@ defmodule Vtc.Timecode do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      timecode.seconds |> Ratio.mult(Consts.ppro_tick_per_second()) |> Rational.round(round)
+      timecode.seconds
+      |> Ratio.mult(Ratio.new(Consts.ppro_tick_per_second()))
+      |> Rational.round(round)
     end
   end
 
