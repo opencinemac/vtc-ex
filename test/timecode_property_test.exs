@@ -14,7 +14,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
     map(
       {
         integer(),
-        integer() |> filter(&(&1 != 0))
+        filter(integer(), &(&1 != 0))
       },
       fn {numerator, denominator} -> Ratio.new(numerator, denominator) end
     )
@@ -24,7 +24,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
   def frame_rate_gen do
     map(
       {
-        integer() |> filter(&(&1 > 0)),
+        filter(integer(), &(&1 > 0)),
         map(boolean(), fn
           true -> :non_drop
           false -> nil
@@ -41,7 +41,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
         integer(1..23),
         integer(0..59),
         integer(0..59),
-        integer(0..((Framerate.timebase(rate) |> Rational.round()) - 1)),
+        integer(0..((rate |> Framerate.timebase() |> Rational.round()) - 1)),
         boolean()
       },
       fn {hours, minutes, seconds, frames, negative?} = values ->
@@ -80,8 +80,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
   def assert_frame_rounded(timecode) do
     %{seconds: seconds, rate: %{playback: playback_rate}} = timecode
 
-    seconds_per_frame =
-      Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
+    seconds_per_frame = Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
 
     assert {_, %Ratio{numerator: 0, denominator: 1}} = Rational.divrem(seconds, seconds_per_frame)
   end
@@ -93,10 +92,10 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  import Vtc.TimecodeTest.Properties.Parse.Helpers
+
   alias Vtc.Framerate
   alias Vtc.Timecode
-
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   describe "parse round trip" do
     property "timecode | ntsc | drop" do
@@ -130,10 +129,10 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  import Vtc.TimecodeTest.Properties.Parse.Helpers
+
   alias Vtc.Framerate
   alias Vtc.Timecode
-
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   describe "parse round trip" do
     property "timecode | ntsc | non_drop" do
@@ -161,7 +160,7 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
 
     property "seconds" do
       check all(
-              rate <- frame_rate_gen() |> filter(&(&1.ntsc == nil)),
+              rate <- filter(frame_rate_gen(), &(&1.ntsc == nil)),
               seconds <-
                 map(integer(), fn scalar -> Ratio.mult(rate.playback, Ratio.new(scalar)) end),
               max_runs: 20
@@ -179,10 +178,10 @@ defmodule Vtc.TimecodeTest.Properties.Rebase do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  import Vtc.TimecodeTest.Properties.Parse.Helpers
+
   alias Vtc.Framerate
   alias Vtc.Timecode
-
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   describe "#rebase/2" do
     property "round trip rebases do not lose accuracy" do
@@ -232,11 +231,11 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  import Vtc.TimecodeTest.Properties.Parse.Helpers
+
   alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Timecode
-
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   describe "#compare/2" do
     property "if a.rate = b.rate then a and b comparison should equal the comparison of their frame count" do
@@ -324,7 +323,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               timecode_values <- timecode_gen(rate),
-              multiplier <- float() |> filter(&(&1 != 0))
+              multiplier <- filter(float(), &(&1 != 0))
             ) do
         %{timecode_string: timecode_string} = timecode_values
         a = Timecode.with_frames!(timecode_string, rate)
@@ -338,7 +337,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
+              divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
@@ -359,7 +358,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
+              divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)
@@ -377,7 +376,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmatic do
       check all(
               rate <- frame_rate_gen(),
               tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- ratio() |> filter(&(&1 != Ratio.new(0)))
+              divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
         dividend = Timecode.with_frames!(tc_string, rate)

@@ -1048,8 +1048,7 @@ defmodule Vtc.RangeTest do
           Range.t() | {:error, any()}
   defp setup_range(values, rate \\ Rates.f23_98())
 
-  defp setup_range({in_tc, out_tc}, rate)
-       when is_binary(in_tc) and is_binary(out_tc) do
+  defp setup_range({in_tc, out_tc}, rate) when is_binary(in_tc) and is_binary(out_tc) do
     in_tc = Timecode.with_frames!(in_tc, rate)
     out_tc = Timecode.with_frames!(out_tc, rate)
     range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
@@ -1094,8 +1093,7 @@ defmodule Vtc.RangeTest do
   defp setup_negate(value), do: value
 
   @spec setup_overlap_expected(%{optional(:expected) => Range.t() | {:error, any()}}) :: map()
-  defp setup_overlap_expected(%{expected: %Range{} = expected}),
-    do: [expected: {:ok, expected}]
+  defp setup_overlap_expected(%{expected: %Range{} = expected}), do: [expected: {:ok, expected}]
 
   defp setup_overlap_expected(context), do: context
 end

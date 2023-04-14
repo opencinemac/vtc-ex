@@ -1,9 +1,9 @@
 defmodule Vtc.FramerateTest.ParseCase do
   @moduledoc false
 
-  defstruct [:name, :inputs, :ntsc, :playback, :timebase, :err, err_msg: ""]
-
   alias Vtc.Framerate
+
+  defstruct [:name, :inputs, :ntsc, :playback, :timebase, :err, err_msg: ""]
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -37,11 +37,10 @@ defmodule Vtc.FramerateTest do
 
   use ExUnit.Case, async: true
 
-  alias Vtc.Rates
-
   alias Vtc.Framerate
   alias Vtc.FramerateTest.ConstCase
   alias Vtc.FramerateTest.ParseCase
+  alias Vtc.Rates
 
   describe "#parse" do
     cases = [

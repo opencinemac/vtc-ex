@@ -22,7 +22,7 @@ defmodule Vtc.TimecodeTest.ParseHelpers do
     }
   end
 
-  @spec make_negative_input(input) :: input when [input: String.t() | Ratio.t()]
+  @spec make_negative_input(input) :: input when input: String.t() | Ratio.t()
   def make_negative_input(input) when is_binary(input), do: "-" <> input
   def make_negative_input(%Ratio{} = input), do: Ratio.minus(input)
   def make_negative_input(%PremiereTicks{in: val}), do: %PremiereTicks{in: -val}
@@ -37,7 +37,6 @@ defmodule Vtc.TimecodeTest do
   alias Vtc.Rates
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
-
   alias Vtc.TimecodeTest.ParseHelpers
 
   @parse_cases [
@@ -420,8 +419,7 @@ defmodule Vtc.TimecodeTest do
     end
 
     test "ParseTimecodeError when bad format" do
-      {:error, %Timecode.ParseError{} = error} =
-        Timecode.with_seconds("notatimecode", Rates.f24())
+      {:error, %Timecode.ParseError{} = error} = Timecode.with_seconds("notatimecode", Rates.f24())
 
       assert :unrecognized_format == error.reason
       assert "string format not recognized" = Timecode.ParseError.message(error)
@@ -516,16 +514,14 @@ defmodule Vtc.TimecodeTest do
     end
 
     test "ParseTimecodeError - Format" do
-      assert {:error, %Timecode.ParseError{} = error} =
-               Timecode.with_frames("notatimecode", Rates.f24())
+      assert {:error, %Timecode.ParseError{} = error} = Timecode.with_frames("notatimecode", Rates.f24())
 
       assert :unrecognized_format == error.reason
       assert "string format not recognized" = Timecode.ParseError.message(error)
     end
 
     test "ParseTimecodeError - Bad Drop Frame" do
-      assert {:error, %Timecode.ParseError{} = error} =
-               Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
+      assert {:error, %Timecode.ParseError{} = error} = Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
 
       assert :bad_drop_frames == error.reason
 
@@ -857,8 +853,7 @@ defmodule Vtc.TimecodeTest do
     test "round: :off raises" do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception =
-        assert_raise ArgumentError, fn -> Timecode.premiere_ticks(timecode, round: :off) end
+      exception = assert_raise ArgumentError, fn -> Timecode.premiere_ticks(timecode, round: :off) end
 
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
@@ -928,8 +923,7 @@ defmodule Vtc.TimecodeTest do
     test "round: :off raises" do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception =
-        assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
+      exception = assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
 
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
@@ -1763,8 +1757,7 @@ defmodule Vtc.TimecodeTest do
       a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
       b = 1
 
-      exception =
-        assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_remainder: :off) end
+      exception = assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_remainder: :off) end
 
       assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end

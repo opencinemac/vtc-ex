@@ -370,8 +370,7 @@ defmodule Vtc.Timecode do
   @spec add(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
   def add(a, b, opts \\ [])
 
-  def add(a, %__MODULE__{} = b, opts),
-    do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
+  def add(a, %__MODULE__{} = b, opts), do: a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
 
   def add(a, b, opts), do: add(a, with_frames!(b, a.rate), opts)
 
@@ -429,8 +428,7 @@ defmodule Vtc.Timecode do
   @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
   def sub(a, b, opts \\ [])
 
-  def sub(a, %__MODULE__{} = b, opts),
-    do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
+  def sub(a, %__MODULE__{} = b, opts), do: a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
 
   def sub(a, b, opts), do: sub(a, with_frames!(b, a.rate), opts)
 
@@ -695,8 +693,7 @@ defmodule Vtc.Timecode do
   - Cut lists like an EDL.
   """
   @spec timecode(t(), opts :: [round: round()]) :: String.t()
-  def timecode(timecode, opts \\ []),
-    do: timecode |> TimecodeStr.from_timecode(opts) |> then(& &1.in)
+  def timecode(timecode, opts \\ []), do: timecode |> TimecodeStr.from_timecode(opts) |> then(& &1.in)
 
   @doc """
   Runtime Returns the true, real-world runtime of the timecode in HH:MM:SS.FFFFFFFFF
@@ -732,8 +729,7 @@ defmodule Vtc.Timecode do
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()
-  def runtime(timecode, precision \\ 9),
-    do: timecode |> RuntimeStr.from_timecode(precision) |> then(& &1.in)
+  def runtime(timecode, precision \\ 9), do: timecode |> RuntimeStr.from_timecode(precision) |> then(& &1.in)
 
   @doc """
   Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
@@ -811,8 +807,7 @@ defmodule Vtc.Timecode do
   @spec ensure_round_enabled(maybe_round(), String.t()) :: :ok
   defp ensure_round_enabled(round, arg_name \\ "round")
 
-  defp ensure_round_enabled(:off, arg_name),
-    do: raise(ArgumentError.exception("`#{arg_name}` cannot be `:off`"))
+  defp ensure_round_enabled(:off, arg_name), do: raise(ArgumentError.exception("`#{arg_name}` cannot be `:off`"))
 
   defp ensure_round_enabled(_, _), do: :ok
 

@@ -63,8 +63,7 @@ defmodule Vtc.Utils.DropFrame do
     tens_of_mins_adjustment = dropped_per_min * 9 * tens_of_mins
 
     if remaining_mins > dropped_per_min do
-      remaining_minutes_adjustment =
-        dropped_per_min * div(remaining_mins - dropped_per_min, frames_per_min)
+      remaining_minutes_adjustment = dropped_per_min * div(remaining_mins - dropped_per_min, frames_per_min)
 
       tens_of_mins_adjustment + remaining_minutes_adjustment
     else

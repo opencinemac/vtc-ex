@@ -1,7 +1,8 @@
 defmodule Vtc.MixProject do
+  use Mix.Project
+
   alias Vtc.Source.Frames
   alias Vtc.Source.Seconds
-  use Mix.Project
 
   def project do
     [
@@ -39,6 +40,10 @@ defmodule Vtc.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Library Dependencies
+      {:decimal, "~> 2.0"},
+      {:ratio, "~> 3.0"},
+
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},
       {:stream_data, "~> 0.5.0", only: [:test]},
@@ -48,10 +53,7 @@ defmodule Vtc.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
-
-      # Library Dependencies
-      {:decimal, "~> 2.0"},
-      {:ratio, "~> 3.0"}
+      {:styler, "~> 0.3", only: [:dev, :test], runtime: false}
     ]
   end
 
