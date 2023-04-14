@@ -45,8 +45,7 @@ defmodule Vtc.Source.Frames.TimecodeStr do
   end
 
   @spec render_tc_field(integer()) :: String.t()
-  defp render_tc_field(value),
-    do: value |> Integer.to_string() |> String.pad_leading(2, "0")
+  defp render_tc_field(value), do: value |> Integer.to_string() |> String.pad_leading(2, "0")
 end
 
 defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.TimecodeStr do
@@ -55,8 +54,8 @@ defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.TimecodeStr do
   """
 
   alias Vtc.Framerate
-  alias Vtc.Source.Frames.TimecodeStr
   alias Vtc.Source.Frames
+  alias Vtc.Source.Frames.TimecodeStr
   alias Vtc.Timecode
   alias Vtc.Utils.Consts
   alias Vtc.Utils.DropFrame

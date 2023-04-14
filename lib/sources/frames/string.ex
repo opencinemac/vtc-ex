@@ -1,8 +1,8 @@
 defimpl Vtc.Source.Frames, for: [String, BitString] do
   alias Vtc.Framerate
   alias Vtc.Source.Frames
-  alias Vtc.Source.Frames.TimecodeStr
   alias Vtc.Source.Frames.FeetAndFrames
+  alias Vtc.Source.Frames.TimecodeStr
 
   @spec frames(String.t(), Framerate.t()) :: Frames.result()
   def frames(value, rate) do

@@ -27,8 +27,7 @@ defmodule Vtc.Timecode.ParseError do
   Returns a message for the error reason.
   """
   @spec message(t()) :: String.t()
-  def message(%{reason: :unrecognized_format}),
-    do: "string format not recognized"
+  def message(%{reason: :unrecognized_format}), do: "string format not recognized"
 
   def message(%{reason: :bad_drop_frames}),
     do: "frames value not allowed for drop-frame timecode. frame should have been dropped"

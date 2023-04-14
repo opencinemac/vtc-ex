@@ -41,8 +41,7 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
     hours = hours |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
     minutes = minutes |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
 
-    seconds_floor =
-      seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
+    seconds_floor = seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
 
     fractal_seconds = runtime_render_fractal_seconds(fractal_seconds)
 
@@ -59,7 +58,8 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
       if Decimal.eq?(seconds_fractal, 0) do
         ""
       else
-        Decimal.to_string(seconds_fractal)
+        seconds_fractal
+        |> Decimal.to_string()
         |> String.trim_leading("0")
         |> String.trim_trailing("0")
         |> String.trim_trailing(".")

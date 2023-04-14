@@ -73,13 +73,10 @@ defmodule Vtc.Framerate do
   @spec new(Ratio.t() | number() | String.t(), ntsc(), boolean()) :: parse_result()
   def new(rate, ntsc, coerce_seconds_per_frame? \\ true)
 
-  def new(rate, nil, _)
-      when is_float(rate) and rate != Kernel.floor(rate),
-      do: {:error, %ParseError{reason: :imprecise}}
+  def new(rate, nil, _) when is_float(rate) and rate != Kernel.floor(rate), do: {:error, %ParseError{reason: :imprecise}}
 
-  def new(rate, ntsc, coerce?)
-      when is_float(rate) or is_integer(rate) or is_struct(rate, Ratio),
-      do: rate |> Ratio.new() |> new_core(ntsc, coerce?)
+  def new(rate, ntsc, coerce?) when is_float(rate) or is_integer(rate) or is_struct(rate, Ratio),
+    do: rate |> Ratio.new() |> new_core(ntsc, coerce?)
 
   def new(rate, ntsc, coerce?) when is_binary(rate) do
     # for binaries we need to try to match integer, float, and rational string
@@ -146,14 +143,11 @@ defmodule Vtc.Framerate do
   defp coerce_ntsc_rate(rate, nil), do: rate
   defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _), do: rate
 
-  defp coerce_ntsc_rate(rate, _),
-    do: rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
+  defp coerce_ntsc_rate(rate, _), do: rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
 
   # Coerces timebase to framerate by flipping the numberator and denominator.
   @spec coerce_seconds_per_frame(Ratio.t(), boolean()) :: Ratio.t()
-  defp coerce_seconds_per_frame(%{numerator: x, denominator: y}, true)
-       when x < y,
-       do: Ratio.new(y, x)
+  defp coerce_seconds_per_frame(%{numerator: x, denominator: y}, true) when x < y, do: Ratio.new(y, x)
 
   defp coerce_seconds_per_frame(rate, _), do: rate
 
@@ -183,14 +177,15 @@ defmodule Vtc.Framerate do
 end
 
 defimpl Inspect, for: Vtc.Framerate do
-  alias Vtc.Private.DropFrame
   alias Vtc.Framerate
+  alias Vtc.Private.DropFrame
   alias Vtc.Utils.DropFrame
 
   @spec inspect(Framerate.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(rate, _opts) do
     float_str =
-      Ratio.to_float(rate.playback)
+      rate.playback
+      |> Ratio.to_float()
       |> Float.round(2)
       |> Float.to_string()
 

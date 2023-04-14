@@ -40,8 +40,7 @@ defmodule Vtc.Utils.Rational do
   {whole_dividend, rational_remainder} tuple.
   """
   @spec divrem(Ratio.t(), Ratio.t() | number()) :: {integer(), Ratio.t()}
-  def divrem(x, divisor) when is_integer(x) and x < 0,
-    do: divrem(%Ratio{numerator: x, denominator: 1}, divisor)
+  def divrem(x, divisor) when is_integer(x) and x < 0, do: divrem(%Ratio{numerator: x, denominator: 1}, divisor)
 
   def divrem(%{numerator: n} = dividend, divisor) when n < 0,
     do: dividend |> Ratio.abs() |> divrem(divisor) |> then(fn {q, r} -> {-q, r} end)
