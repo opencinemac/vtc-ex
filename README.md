@@ -43,8 +43,8 @@ iex> Timecode.runtime(tc, 3)
 iex> Timecode.premiere_ticks(tc)
 15915544300656000
 
-iex> Timecode.feet_and_frames(tc)
-"93889+10"
+iex> Timecode.feet_and_frames(tc) |> inspect()
+"<93889+10 :ff35mm_4perf>"
 
 # We can inspect the framerate.
 iex> tc.rate.ntsc

@@ -1,7 +1,7 @@
 defmodule Vtc.TimecodeTest.ParseHelpers do
   @moduledoc false
 
-  alias Vtc.Source.PremiereTicks
+  alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
 
   # Functions used during macro expansion compilation cannot be declared in the same
@@ -35,9 +35,8 @@ defmodule Vtc.TimecodeTest do
   use ExUnit.Case, async: true
 
   alias Vtc.Rates
-  alias Vtc.Source.PremiereTicks
+  alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
-  alias Vtc.Utils.Consts
 
   alias Vtc.TimecodeTest.ParseHelpers
 
@@ -565,7 +564,7 @@ defmodule Vtc.TimecodeTest do
     end
   end
 
-  @ppro_ticks_per_frame div(Consts.ppro_tick_per_second(), 24)
+  @ppro_ticks_per_frame div(PremiereTicks.per_second(), 24)
 
   describe "#with_seconds/3 | Premiere Ticks" do
     test "round | :closest | implied" do
@@ -620,15 +619,15 @@ defmodule Vtc.TimecodeTest do
 
     test "round | :off" do
       {:ok, timecode} =
-        (Consts.ppro_tick_per_second() - 1)
+        (PremiereTicks.per_second() - 1)
         |> then(&%PremiereTicks{in: &1})
         |> Timecode.with_seconds(Rates.f24(), round: :off)
 
       assert timecode == %Timecode{
                seconds:
                  Ratio.new(
-                   Consts.ppro_tick_per_second() - 1,
-                   Consts.ppro_tick_per_second()
+                   PremiereTicks.per_second() - 1,
+                   PremiereTicks.per_second()
                  ),
                rate: Rates.f24()
              }
@@ -804,8 +803,8 @@ defmodule Vtc.TimecodeTest do
       end
     end
 
-    @one_quarter_tick Ratio.new(1, Consts.ppro_tick_per_second() * 4)
-    @one_half_tick Ratio.new(1, Consts.ppro_tick_per_second() * 2)
+    @one_quarter_tick Ratio.new(1, PremiereTicks.per_second() * 4)
+    @one_half_tick Ratio.new(1, PremiereTicks.per_second() * 2)
     @three_quarter_tick Ratio.add(@one_half_tick, @one_quarter_tick)
 
     test "round | :closest | implied" do
@@ -814,7 +813,7 @@ defmodule Vtc.TimecodeTest do
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode) == Consts.ppro_tick_per_second() + 1
+      assert Timecode.premiere_ticks(timecode) == PremiereTicks.per_second() + 1
     end
 
     test "round | :closest | explicit" do
@@ -823,7 +822,7 @@ defmodule Vtc.TimecodeTest do
         rate: Rates.f24()
       }
 
-      expexted = Consts.ppro_tick_per_second() + 1
+      expexted = PremiereTicks.per_second() + 1
       assert Timecode.premiere_ticks(timecode, round: :closest) == expexted
     end
 
@@ -833,7 +832,7 @@ defmodule Vtc.TimecodeTest do
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode, round: :closest) == Consts.ppro_tick_per_second()
+      assert Timecode.premiere_ticks(timecode, round: :closest) == PremiereTicks.per_second()
     end
 
     test "round | :floor" do
@@ -842,7 +841,7 @@ defmodule Vtc.TimecodeTest do
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode, round: :floor) == Consts.ppro_tick_per_second()
+      assert Timecode.premiere_ticks(timecode, round: :floor) == PremiereTicks.per_second()
     end
 
     test "round | :ceil" do
@@ -851,7 +850,7 @@ defmodule Vtc.TimecodeTest do
         rate: Rates.f24()
       }
 
-      expected = Consts.ppro_tick_per_second() + 1
+      expected = PremiereTicks.per_second() + 1
       assert Timecode.premiere_ticks(timecode, round: :ceil) == expected
     end
 
@@ -877,38 +876,53 @@ defmodule Vtc.TimecodeTest do
       }
 
       test "#{@test_case.name}" do
-        assert Timecode.feet_and_frames(@input_struct) == @test_case.feet_and_frames
+        result = @input_struct |> Timecode.feet_and_frames() |> String.Chars.to_string()
+        assert result == @test_case.feet_and_frames
       end
 
       test "#{@test_case.name} | negative" do
-        assert Timecode.feet_and_frames(@input_struct_negative) ==
-                 @test_case_negative.feet_and_frames
+        result =
+          @input_struct_negative
+          |> Timecode.feet_and_frames()
+          |> String.Chars.to_string()
+
+        assert result == @test_case_negative.feet_and_frames
       end
     end
 
     test "round | :closest | implied" do
       timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.feet_and_frames(timecode) == "1+08"
+
+      result = timecode |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      assert result == "1+08"
     end
 
     test "round | :closest | explicit" do
       timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.feet_and_frames(timecode, round: :closest) == "1+08"
+
+      result = timecode |> Timecode.feet_and_frames(round: :closest) |> String.Chars.to_string()
+      assert result == "1+08"
     end
 
     test "round | :closest | down" do
       timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
-      assert Timecode.feet_and_frames(timecode) == "1+07"
+
+      result = timecode |> Timecode.feet_and_frames(round: :closest) |> String.Chars.to_string()
+      assert result == "1+07"
     end
 
     test "round | :floor" do
       timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
-      assert Timecode.feet_and_frames(timecode, round: :floor) == "1+07"
+
+      result = timecode |> Timecode.feet_and_frames(round: :floor) |> String.Chars.to_string()
+      assert result == "1+07"
     end
 
     test "round | :ceil" do
       timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
-      assert Timecode.feet_and_frames(timecode, round: :ceil) == "1+08"
+
+      result = timecode |> Timecode.feet_and_frames(round: :ceil) |> String.Chars.to_string()
+      assert result == "1+08"
     end
 
     test "round: :off raises" do

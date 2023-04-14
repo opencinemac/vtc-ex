@@ -48,13 +48,16 @@ defmodule Vtc.Timecode do
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
 
+  alias Vtc.FilmFormat
   alias Vtc.Framerate
   alias Vtc.Source.Frames
+  alias Vtc.Source.Frames.FeetAndFrames
+  alias Vtc.Source.Frames.TimecodeStr
   alias Vtc.Source.Seconds
+  alias Vtc.Source.Seconds.PremiereTicks
+  alias Vtc.Source.Seconds.RuntimeStr
   alias Vtc.Timecode.ParseError
   alias Vtc.Timecode.Sections
-  alias Vtc.Utils.Consts
-  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
@@ -143,12 +146,15 @@ defmodule Vtc.Timecode do
 
   ## Premiere Ticks
 
-  The `Vtc.Source.PremiereTicks` struck implements the `Vtc.Source.Seconds` protocol
-  and can be used to parse the format. This struct is not a general-purpose Module for
-  the unit, and only exists to hint to the parsing function how it should be processed:
+  The `Vtc.Source.Seconds.PremiereTicks` struck implements the `Vtc.Source.Seconds`
+  protocol and can be used to parse the format. This struct is not a general-purpose
+  Module for the unit, and only exists to hint to the parsing function how it should be
+  processed:
 
   ```elixir
-  iex> input = %Vtc.Source.PremiereTicks{in: 254_016_000_000}
+  iex> alias Vtc.Source.Seconds.PremiereTicks
+  iex>
+  iex> input = %PremiereTicks{in: 254_016_000_000}
   iex> Timecode.with_seconds!(input, Rates.f23_98()) |> inspect()
   "<00:00:01:00 <23.98 NTSC>>"
   ```
@@ -661,28 +667,7 @@ defmodule Vtc.Timecode do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      rate = timecode.rate
-      timebase = Framerate.timebase(rate)
-      frames_per_minute = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_minute()))
-      frames_per_hour = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_hour()))
-
-      total_frames =
-        timecode
-        |> frames(opts)
-        |> Kernel.abs()
-        |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
-
-      {hours, remainder} = total_frames |> Ratio.new() |> Rational.divrem(frames_per_hour)
-      {minutes, remainder} = Rational.divrem(remainder, frames_per_minute)
-      {seconds, frames} = Rational.divrem(remainder, timebase)
-
-      %Sections{
-        negative?: timecode.seconds < 0,
-        hours: hours,
-        minutes: minutes,
-        seconds: seconds,
-        frames: Rational.round(frames, round)
-      }
+      Sections.from_timecode(timecode, opts)
     end
   end
 
@@ -710,28 +695,8 @@ defmodule Vtc.Timecode do
   - Cut lists like an EDL.
   """
   @spec timecode(t(), opts :: [round: round()]) :: String.t()
-  def timecode(timecode, opts \\ []) do
-    sections = sections(timecode, opts)
-
-    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
-    frame_sep = if timecode.rate.ntsc == :drop, do: ";", else: ":"
-
-    [
-      sections.hours,
-      sections.minutes,
-      sections.seconds,
-      sections.frames
-    ]
-    |> Enum.map(&render_tc_field/1)
-    |> Enum.intersperse(":")
-    |> then(&[sign | &1])
-    |> List.replace_at(-2, frame_sep)
-    |> List.to_string()
-  end
-
-  @spec render_tc_field(integer()) :: String.t()
-  defp render_tc_field(value),
-    do: value |> Integer.to_string() |> String.pad_leading(2, "0")
+  def timecode(timecode, opts \\ []),
+    do: timecode |> TimecodeStr.from_timecode(opts) |> then(& &1.in)
 
   @doc """
   Runtime Returns the true, real-world runtime of the timecode in HH:MM:SS.FFFFFFFFF
@@ -767,51 +732,8 @@ defmodule Vtc.Timecode do
   '01:00:03.6'
   """
   @spec runtime(t(), integer()) :: String.t()
-  def runtime(timecode, precision \\ 9) do
-    {seconds, negative?} =
-      if Ratio.lt?(timecode.seconds, 0),
-        do: {Ratio.minus(timecode.seconds), true},
-        else: {timecode.seconds, false}
-
-    seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
-
-    {hours, seconds} = Decimal.div_rem(seconds, Consts.seconds_per_hour())
-    {minutes, seconds} = Decimal.div_rem(seconds, Consts.seconds_per_minute())
-
-    Decimal.Context
-    seconds = Decimal.round(seconds, precision)
-    seconds_floor = Decimal.round(seconds, 0, :down)
-    fractal_seconds = Decimal.sub(seconds, seconds_floor)
-
-    hours = hours |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
-    minutes = minutes |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
-
-    seconds_floor =
-      seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
-
-    fractal_seconds = runtime_render_fractal_seconds(fractal_seconds)
-
-    # We'll add a negative sign if the timecode is negative.
-    sign = if negative?, do: "-", else: ""
-
-    "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{fractal_seconds}"
-  end
-
-  # Renders fractal seconds to a string.
-  @spec runtime_render_fractal_seconds(Decimal.t()) :: String.t()
-  defp runtime_render_fractal_seconds(seconds_fractal) do
-    rendered =
-      if Decimal.eq?(seconds_fractal, 0) do
-        ""
-      else
-        Decimal.to_string(seconds_fractal)
-        |> String.trim_leading("0")
-        |> String.trim_trailing("0")
-        |> String.trim_trailing(".")
-      end
-
-    if rendered == "", do: ".0", else: rendered
-  end
+  def runtime(timecode, precision \\ 9),
+    do: timecode |> RuntimeStr.from_timecode(precision) |> then(& &1.in)
 
   @doc """
   Returns the number of elapsed ticks this timecode represents in Adobe Premiere Pro.
@@ -848,9 +770,7 @@ defmodule Vtc.Timecode do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      timecode.seconds
-      |> Ratio.mult(Ratio.new(Consts.ppro_tick_per_second()))
-      |> Rational.round(round)
+      timecode |> PremiereTicks.from_timecode(opts) |> then(& &1.in)
     end
   end
 
@@ -882,22 +802,9 @@ defmodule Vtc.Timecode do
 
   - Sound turnover change lists.
   """
-  @spec feet_and_frames(t(), opts :: [round: round()]) :: String.t()
-  def feet_and_frames(timecode, opts \\ []) do
-    total_frames = timecode |> frames(opts) |> Kernel.abs()
-
-    feet = total_frames |> Kernel.div(Consts.frames_per_foot()) |> Integer.to_string()
-
-    frames =
-      total_frames
-      |> Kernel.rem(Consts.frames_per_foot())
-      |> Integer.to_string()
-      |> String.pad_leading(2, "0")
-
-    sign = if Ratio.lt?(timecode.seconds, 0), do: "-", else: ""
-
-    "#{sign}#{feet}+#{frames}"
-  end
+  @spec feet_and_frames(t(), opts :: [format: FilmFormat.t(), round: round()]) ::
+          FeetAndFrames.t()
+  def feet_and_frames(timecode, opts \\ []), do: FeetAndFrames.from_timecode(timecode, opts)
 
   # Ensures that rounding is enabled for functions that cannot meaningfully turn
   # rounding off, such as those that must return an integer.
