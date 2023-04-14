@@ -177,6 +177,7 @@ defmodule Vtc.Framerate do
   on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
   """
   @spec ntsc?(t()) :: boolean()
+  def ntsc?(rate)
   def ntsc?(%{ntsc: nil}), do: false
   def ntsc?(_), do: true
 end

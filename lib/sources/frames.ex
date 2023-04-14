@@ -12,6 +12,8 @@ defprotocol Vtc.Source.Frames do
     - timecode ("01:00:00:00")
     - integer ("86400")
     - Feet+Frames ("5400+00")
+  - `Vtc.Source.Frames.TimecodeStr`
+  - `Vtc.Source.Frames.FeetAndFrames`
   """
 
   alias Vtc.Framerate
@@ -38,21 +40,4 @@ defprotocol Vtc.Source.Frames do
 
   @spec frames(t(), Framerate.t()) :: result()
   def frames(value, rate)
-end
-
-defimpl Vtc.Source.Frames, for: Integer do
-  alias Vtc.Framerate
-  alias Vtc.Source.Frames
-
-  @spec frames(integer(), Framerate.t()) :: Frames.result()
-  def frames(value, _rate), do: {:ok, value}
-end
-
-defimpl Vtc.Source.Frames, for: [String, BitString] do
-  alias Vtc.Framerate
-  alias Vtc.Source.Frames
-  alias Vtc.Utils.Parse
-
-  @spec frames(String.t(), Framerate.t()) :: Frames.result()
-  def frames(value, rate), do: Parse.parse_frames_string(value, rate)
 end

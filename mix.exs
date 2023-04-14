@@ -1,5 +1,6 @@
 defmodule Vtc.MixProject do
-  alias Vtc.Source
+  alias Vtc.Source.Frames
+  alias Vtc.Source.Seconds
   use Mix.Project
 
   def project do
@@ -17,8 +18,10 @@ defmodule Vtc.MixProject do
         extras: ["README.md", "zdocs/history.md"],
         groups_for_modules: [
           "Core API": [Vtc.Timecode, Vtc.Framerate, Vtc.Range],
-          Data: [Vtc.Timecode.Sections, Vtc.Rates],
-          "Source Protocols": [Source.Seconds, Source.Frames, Source.PremiereTicks]
+          Data: [Vtc.Timecode.Sections, Vtc.Rates, Vtc.FilmFormat],
+          "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
+          "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
+          "Source Protocols": [Seconds, Frames]
         ]
       ],
       build_embedded: Mix.env() == :prod,
