@@ -9,7 +9,7 @@ test:
 
 .PHONY: lint
 lint:
-	-mix format --check-formatted
+	-mix style --check-formatted
 	-mix dialyzer
 	-mix credo --strict
 	-find . -type f | grep -e "\.ex$$" -e "\.exs$$" | grep -v zdevelop/ | grep -v _build | grep -v deps | xargs misspell -error
