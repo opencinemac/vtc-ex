@@ -2,6 +2,8 @@ defmodule Vtc.RangeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Vtc.TestUtils
+
   alias Vtc.Framerate
   alias Vtc.Range
   alias Vtc.Rates
@@ -489,7 +491,7 @@ defmodule Vtc.RangeTest do
 
     @describetag ranges: [:a, :b]
 
-    @overlap_cases [
+    test_cases = [
       %{
         name: "1.a == 2.a and 1.b == 2.b",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -570,7 +572,7 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- @overlap_cases do
+    for test_case <- test_cases do
       @tag test_case: test_case
       test "#{test_case.name} | :exclusive", context do
         %{a: a, b: b, test_case: %{expected: expected}} = context
@@ -651,7 +653,7 @@ defmodule Vtc.RangeTest do
     setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
     @describetag ranges: [:a, :b, :expected]
 
-    @test_cases [
+    test_cases = [
       %{
         name: "1.a == 2.a and 1.b == 2.b",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -732,7 +734,7 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- @test_cases do
+    for test_case <- test_cases do
       @tag test_case: test_case
       test "#{test_case.name} | :exclusive", context do
         %{a: a, b: b, expected: expected} = context
@@ -858,7 +860,7 @@ defmodule Vtc.RangeTest do
     setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
     @describetag ranges: [:a, :b, :expected]
 
-    @test_cases [
+    test_cases = [
       %{
         name: "a < b",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -873,7 +875,7 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- @test_cases do
+    for test_case <- test_cases do
       @tag test_case: test_case
       test "#{test_case.name} | :exclusive", context do
         %{a: a, b: b, expected: expected} = context
@@ -1026,11 +1028,6 @@ defmodule Vtc.RangeTest do
                "<01:00:00:00 - 01:59:59:23 :inclusive <23.98 NTSC>>"
     end
   end
-
-  # Extracts a map in `:test_case` and merges it into the top-level context.
-  @spec setup_test_case(%{optional(:test_case) => map()}) :: map()
-  defp setup_test_case(%{test_case: test_case} = context), do: Map.merge(context, test_case)
-  defp setup_test_case(context), do: context
 
   # Turns specified test case range shorthands into full blown ranges.
   @spec setup_ranges(%{optional(:ranges) => [Map.key()]}) :: Keyword.t()
