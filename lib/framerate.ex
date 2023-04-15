@@ -82,10 +82,10 @@ defmodule Vtc.Framerate do
     `1/24`  becomes `24/1`. This can be helpeful when you are parsing a rate given in
     seconds-per-frame rather than frames-per-second. Default: `false`.
 
-  > #### Float Precision {:. warning}
+  > #### Float Precision {: .warning}
   >
   > Only floats representing a whole number can be passed for non-NTSC rates, as there
-  > is no fully precise way to convert fractional floats to Rational values.
+  > is no fully precise way to convert fractional floats to rational values.
   """
   @spec new(Ratio.t() | number() | String.t(), new_opts()) :: parse_result()
   def new(rate, opts \\ [])
