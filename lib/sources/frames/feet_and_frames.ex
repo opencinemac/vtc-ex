@@ -45,6 +45,17 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
     end
   end
 
+  @doc """
+  Parses a `FeetAndFrames` value from a string.
+  """
+  @spec from_string!(String.t(), film_format: FilmFormat.t()) :: t()
+  def from_string!(ff_string, opts \\ []) do
+    case from_string(ff_string, opts) do
+      {:ok, parsed} -> parsed
+      {:error, error} -> raise error
+    end
+  end
+
   @doc false
   @spec from_timecode(
           Timecode.t(),
