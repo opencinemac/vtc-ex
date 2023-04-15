@@ -19,7 +19,7 @@ defmodule Vtc.Timecode.ParseError do
   defexception [:reason]
 
   @typedoc """
-  Type of `Timecode.ParseError`
+  Type of `Timecode.ParseError`.
   """
   @type t() :: %__MODULE__{reason: :unrecognized_format | :bad_drop_frames}
 

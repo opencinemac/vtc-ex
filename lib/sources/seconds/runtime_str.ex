@@ -71,7 +71,7 @@ end
 
 defimpl Vtc.Source.Seconds, for: Vtc.Source.Seconds.RuntimeStr do
   @moduledoc """
-  Implements `Seconds` protocol for Premiere ticks.
+  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
   """
 
   alias Vtc.Framerate

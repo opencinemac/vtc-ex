@@ -10,6 +10,16 @@ defmodule Vtc.Framerate do
     fraction in frames-per-second.
 
   - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
+
+  ## Playback vs Timebase
+
+  For NTSC timecode, the timebase always runs at a whole number of frames-per-second,
+  which the timecode pretends in the playback speed of the Media. This makes timecode
+  string calculations clean and accurate, rather than having partial frames at second
+  and minute boundaries.
+
+  So for footage shot at 23.98 NTSC, Timecode is caculated as-if the footage were
+  running at 24fps, which `Vtc` calls the 'timebase'.
   """
   alias Vtc.Framerate.ParseError
   alias Vtc.Utils.DropFrame
@@ -34,21 +44,23 @@ defmodule Vtc.Framerate do
   @type ntsc() :: :non_drop | :drop | nil
 
   @typedoc """
-  Type of `Framerate`
+  Type of `Vtc.Framerate`
   """
   @type t :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
 
   @doc """
-  The rational representation of the timecode timebase speed as a fraction in
-  frames-per-second.
+  The rational representation of the timecode's 'logical speed'.
+
+  Returned value is in frames-per-second.
   """
   @spec timebase(t()) :: Ratio.t()
   def timebase(%{ntsc: nil} = framerate), do: framerate.playback
   def timebase(framerate), do: framerate.playback |> Rational.round() |> Ratio.new()
 
   @doc """
-  Returns true if the value represents and NTSC framerate, therefore will return true
-  on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
+  Returns true if the value represents and NTSC framerate.
+
+  Will return true on a Framerate with an `:ntsc` value of `:non_drop` and `:drop`.
   """
   @spec ntsc?(t()) :: boolean()
   def ntsc?(rate)

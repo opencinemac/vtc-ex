@@ -83,6 +83,15 @@ iex> Timecode.with_seconds!(input, Rates.f23_98()) |> inspect()
 iex> Timecode.with_frames!("1+08", Rates.f23_98()) |> inspect()
 "<00:00:01:00 <23.98 NTSC>>"
 
+# By default, feet+frames is interpreted as 35mm, 4perf film. You can use the
+# `Vtc.Source.Frames.FeetAndFrames` struct to parse other film formats:
+
+iex> alias Vtc.Source.Frames.FeetAndFrames
+iex>
+iex> {:ok, feet_and_frames} = FeetAndFrames.from_string("5400+00", film_format: :ff16mm)
+iex> Timecode.with_frames(feet_and_frames, Rates.f23_98()) |> inspect()
+"{:ok, <01:15:00:00 <23.98 NTSC>>}"
+
 # We can add two timecodes:
 iex> tc = Timecode.add(tc, Timecode.with_frames!("01:00:00:00", Rates.f23_98()))
 iex> inspect(tc)
@@ -228,8 +237,8 @@ iex> Range.intersection!(a, b) |> inspect()
     - [X] Feet+Frames | '5400+00'
         - [X] 35mm, 4-perf
         - [ ] 35mm, 3-perf
-        - [ ] 35mm, 2-perf
-        - [ ] 16mm
+        - [X] 35mm, 2-perf
+        - [X] 16mm
     - [X] Premiere Ticks | 15240960000000
 - Operations:
     - [X] Comparisons (==, <, <=, >, >=)
@@ -255,6 +264,12 @@ iex> Range.intersection!(a, b) |> inspect()
     - [X] Distance between ranges
     - [X] Inclusive and exclusive ranges
 
+## Attributions
+
+<div>Drop-frame calculations adapted from <a href="https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/">David Heidelberger's blog.</a></div>
+<div>35mm, 2perf and 16mm format support based on <a href="https://github.com/opencinemac/vtc-rs/pull/8">Jamie Hardt's work for vtc-rs.</a></div>
+<div>Logo made by <a href="" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
@@ -263,7 +278,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.5"}
+    {:vtc, "~> 0.7"}
   ]
 end
 ```

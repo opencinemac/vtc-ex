@@ -38,10 +38,7 @@ defmodule Vtc.Framerate.ParseError do
   """
   @spec message(t()) :: String.t()
   def message(%{reason: :bad_drop_rate}), do: "drop-frame rates must be divisible by 30000/1001"
-
   def message(%{reason: :invalid_ntsc}), do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
-
   def message(%{reason: :unrecognized_format}), do: "framerate string format not recognized"
-
   def message(%{reason: :imprecise}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
 end
