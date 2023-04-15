@@ -52,8 +52,8 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
     total_frames = Timecode.frames(timecode, frames_opts)
     frames_per_foot = FilmFormat.frames_per_foot(film_format)
 
-    feet = Kernel.div(total_frames, frames_per_foot)
-    frames = Kernel.rem(total_frames, frames_per_foot)
+    feet = div(total_frames, frames_per_foot)
+    frames = rem(total_frames, frames_per_foot)
 
     %__MODULE__{feet: feet, frames: frames, film_format: film_format}
   end

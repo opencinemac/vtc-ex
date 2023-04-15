@@ -141,6 +141,28 @@ iex> tc = Timecode.abs(tc)
 iex> inspect(tc)
 "<17:33:14:16 <23.98 NTSC>>"
 
+# Special `eval` macro blocks let us use native operators:
+iex> require Timecode
+iex>
+iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
+iex>
+iex> result = Timecode.eval do
+iex>   a + b * 2 - c
+iex> end
+iex>
+iex> inspect(result)
+"<01:45:00:00 <23.98 NTSC>>"
+
+# Or even do some quick scratch calculations in a given framerate:
+iex> result = Timecode.eval at: 23.98 do
+iex>   "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
+iex> end
+iex>
+iex> inspect(result)
+"<01:45:00:00 <23.98 NTSC>>"
+
 # We can make dropframe timecode for 29.97 or 59.94 using one of the pre-set 
 # framerates.
 iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_df())
@@ -219,6 +241,7 @@ iex> Range.intersection!(a, b) |> inspect()
     - [X] Negative
     - [X] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
+    - [X] Native Operator Evaluation
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'

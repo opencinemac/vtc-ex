@@ -55,7 +55,7 @@ defmodule Vtc.Timecode.Sections do
     {seconds, frames} = Rational.divrem(remainder, timebase)
 
     %__MODULE__{
-      negative?: timecode.seconds < 0,
+      negative?: Ratio.lt?(timecode.seconds, 0),
       hours: hours,
       minutes: minutes,
       seconds: seconds,
