@@ -264,6 +264,12 @@ iex> Range.intersection!(a, b) |> inspect()
     - [X] Distance between ranges
     - [X] Inclusive and exclusive ranges
 
+## Attributions
+
+<div>Drop-frame calculations adapted from <a href="https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/">David Heidelberger's blog.</a></div>
+<div>35mm, 2perf and 16mm format support based on <a href="https://github.com/opencinemac/vtc-rs/pull/8">Jamie Hardt's work for vtc-rs.</a></div>
+<div>Logo made by <a href="" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
