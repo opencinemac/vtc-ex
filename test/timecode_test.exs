@@ -1,6 +1,7 @@
 defmodule Vtc.TimecodeTest.Helpers do
   @moduledoc false
 
+  alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
 
@@ -18,7 +19,9 @@ defmodule Vtc.TimecodeTest.Helpers do
         timecode: "-" <> test_case.timecode,
         runtime: "-" <> test_case.runtime,
         premiere_ticks: -test_case.premiere_ticks,
-        feet_and_frames: "-" <> test_case.feet_and_frames
+        feet_and_frames_35mm_4perf: "-" <> test_case.feet_and_frames_35mm_4perf,
+        feet_and_frames_35mm_2perf: "-" <> test_case.feet_and_frames_35mm_2perf,
+        feet_and_frames_16mm: "-" <> test_case.feet_and_frames_16mm
     }
   end
 
@@ -26,10 +29,14 @@ defmodule Vtc.TimecodeTest.Helpers do
   def make_negative_input(input) when is_binary(input), do: "-" <> input
   def make_negative_input(%Ratio{} = input), do: Ratio.minus(input)
   def make_negative_input(%PremiereTicks{in: val}), do: %PremiereTicks{in: -val}
+
+  def make_negative_input(%FeetAndFrames{feet: feet, frames: frames} = val),
+    do: %FeetAndFrames{val | feet: -feet, frames: -frames}
+
   def make_negative_input(input), do: -input
 end
 
-defmodule Vtc.TimecodeTest do
+defmodule Vtc.TimecodeTest.Parse do
   @moduledoc false
 
   use ExUnit.Case, async: true
@@ -38,6 +45,7 @@ defmodule Vtc.TimecodeTest do
   import Vtc.TimecodeTest.Helpers
 
   alias Vtc.Rates
+  alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
 
@@ -56,14 +64,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         86_400,
         "01:00:00:00",
-        "5400+00"
+        "5400+00",
+        %FeetAndFrames{feet: 5400, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 2700, frames: 0, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 4320, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(18_018, 5),
       frames: 86_400,
       timecode: "01:00:00:00",
       runtime: "01:00:03.6",
       premiere_ticks: 915_372_057_600_000,
-      feet_and_frames: "5400+00"
+      feet_and_frames_35mm_4perf: "5400+00",
+      feet_and_frames_35mm_2perf: "2700+00",
+      feet_and_frames_16mm: "4320+00"
     },
     %{
       name: "00:40:00:00 @ 23.98 NTSC",
@@ -77,14 +90,45 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         57_600,
         "00:40:00:00",
-        "3600+00"
+        "3600+00",
+        %FeetAndFrames{feet: 3600, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 1800, frames: 0, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 2880, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(12_012, 5),
       frames: 57_600,
       timecode: "00:40:00:00",
       runtime: "00:40:02.4",
       premiere_ticks: 610_248_038_400_000,
-      feet_and_frames: "3600+00"
+      feet_and_frames_35mm_4perf: "3600+00",
+      feet_and_frames_35mm_2perf: "1800+00",
+      feet_and_frames_16mm: "2880+00"
+    },
+    %{
+      name: "23:13:29:07 @ 23.98 NTSC",
+      rate: Rates.f23_98(),
+      seconds_inputs: [
+        Ratio.new(2_008_629_623, 24_000),
+        83_692.900958333,
+        "23:14:52.900958333",
+        %PremiereTicks{in: 21_259_335_929_832_000}
+      ],
+      frames_inputs: [
+        2_006_623,
+        "23:13:29:07",
+        "125413+15",
+        %FeetAndFrames{feet: 125_413, frames: 15, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 62_706, frames: 31, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 100_331, frames: 03, film_format: :ff16mm}
+      ],
+      seconds: Ratio.new(2_008_629_623, 24_000),
+      frames: 2_006_623,
+      timecode: "23:13:29:07",
+      runtime: "23:14:52.900958333",
+      premiere_ticks: 21_259_335_929_832_000,
+      feet_and_frames_35mm_4perf: "125413+15",
+      feet_and_frames_35mm_2perf: "62706+31",
+      feet_and_frames_16mm: "100331+03"
     },
     # 24 True ############################
     ######################################
@@ -99,14 +143,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         86_400,
         "01:00:00:00",
-        "5400+00"
+        "5400+00",
+        %FeetAndFrames{feet: 5400, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 2700, frames: 0, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 4320, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(3600, 1),
       frames: 86_400,
       timecode: "01:00:00:00",
       runtime: "01:00:00.0",
       premiere_ticks: 914_457_600_000_000,
-      feet_and_frames: "5400+00"
+      feet_and_frames_35mm_4perf: "5400+00",
+      feet_and_frames_35mm_2perf: "2700+00",
+      feet_and_frames_16mm: "4320+00"
     },
     # 29.97 Drop #########################
     ######################################
@@ -122,14 +171,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         0,
         "00:00:00;00",
-        "0+00"
+        "0+00",
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(0, 1),
       frames: 0,
       timecode: "00:00:00;00",
       runtime: "00:00:00.0",
       premiere_ticks: 0,
-      feet_and_frames: "0+00"
+      feet_and_frames_35mm_4perf: "0+00",
+      feet_and_frames_35mm_2perf: "0+00",
+      feet_and_frames_16mm: "0+00"
     },
     %{
       name: "00:01:01;00 29.97 Drop-Frame",
@@ -142,14 +196,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         1828,
         "00:01:01;00",
-        "114+04"
+        "114+04",
+        %FeetAndFrames{feet: 114, frames: 4, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 57, frames: 4, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 91, frames: 8, film_format: :ff16mm}
       ],
       seconds: Ratio.new(457_457, 7500),
       frames: 1828,
       timecode: "00:01:01;00",
       runtime: "00:01:00.994266667",
       premiere_ticks: 15_493_519_641_600,
-      feet_and_frames: "114+04"
+      feet_and_frames_35mm_4perf: "114+04",
+      feet_and_frames_35mm_2perf: "57+04",
+      feet_and_frames_16mm: "91+08"
     },
     %{
       name: "00:00:02;02 29.97 Drop-Frame",
@@ -163,14 +222,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         62,
         "00:00:02;02",
-        "3+14"
+        "3+14",
+        %FeetAndFrames{feet: 3, frames: 14, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 1, frames: 30, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 3, frames: 2, film_format: :ff16mm}
       ],
       seconds: Ratio.new(31_031, 15_000),
       frames: 62,
       timecode: "00:00:02;02",
       runtime: "00:00:02.068733333",
       premiere_ticks: 525_491_366_400,
-      feet_and_frames: "3+14"
+      feet_and_frames_35mm_4perf: "3+14",
+      feet_and_frames_35mm_2perf: "1+30",
+      feet_and_frames_16mm: "3+02"
     },
     %{
       name: "00:01:00;02 29.97 Drop-Frame",
@@ -184,14 +248,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         1800,
         "00:01:00;02",
-        "112+08"
+        "112+08",
+        %FeetAndFrames{feet: 112, frames: 8, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 56, frames: 8, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 90, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(3003, 50),
       frames: 1800,
       timecode: "00:01:00;02",
       runtime: "00:01:00.06",
       premiere_ticks: 15_256_200_960_000,
-      feet_and_frames: "112+08"
+      feet_and_frames_35mm_4perf: "112+08",
+      feet_and_frames_35mm_2perf: "56+08",
+      feet_and_frames_16mm: "90+00"
     },
     %{
       name: "00:2:00;02 29.97 Drop-Frame",
@@ -205,14 +274,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         3598,
         "00:02:00;02",
-        "224+14"
+        "224+14",
+        %FeetAndFrames{feet: 224, frames: 14, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 112, frames: 14, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 179, frames: 18, film_format: :ff16mm}
       ],
       seconds: Ratio.new(1_800_799, 15_000),
       frames: 3598,
       timecode: "00:02:00;02",
       runtime: "00:02:00.053266667",
       premiere_ticks: 30_495_450_585_600,
-      feet_and_frames: "224+14"
+      feet_and_frames_35mm_4perf: "224+14",
+      feet_and_frames_35mm_2perf: "112+14",
+      feet_and_frames_16mm: "179+18"
     },
     %{
       name: "00:10:00;00 29.97 Drop-Frame",
@@ -226,14 +300,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         17_982,
         "00:10:00;00",
-        "1123+14"
+        "1123+14",
+        %FeetAndFrames{feet: 1123, frames: 14, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 561, frames: 30, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 899, frames: 2, film_format: :ff16mm}
       ],
       seconds: Ratio.new(2_999_997, 5000),
       frames: 17_982,
       timecode: "00:10:00;00",
       runtime: "00:09:59.9994",
       premiere_ticks: 152_409_447_590_400,
-      feet_and_frames: "1123+14"
+      feet_and_frames_35mm_4perf: "1123+14",
+      feet_and_frames_35mm_2perf: "561+30",
+      feet_and_frames_16mm: "899+02"
     },
     %{
       name: "00:11:00;02 29.97 Drop-Frame",
@@ -247,14 +326,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         19_782,
         "00:11:00;02",
-        "1236+06"
+        "1236+06",
+        %FeetAndFrames{feet: 1236, frames: 6, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 618, frames: 6, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 989, frames: 2, film_format: :ff16mm}
       ],
       seconds: Ratio.new(3_300_297, 5000),
       frames: 19_782,
       timecode: "00:11:00;02",
       runtime: "00:11:00.0594",
       premiere_ticks: 167_665_648_550_400,
-      feet_and_frames: "1236+06"
+      feet_and_frames_35mm_4perf: "1236+06",
+      feet_and_frames_35mm_2perf: "618+06",
+      feet_and_frames_16mm: "989+02"
     },
     %{
       name: "01:00:00;00 29.97 Drop-Frame",
@@ -268,14 +352,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         107_892,
         "01:00:00;00",
-        "6743+04"
+        "6743+04",
+        %FeetAndFrames{feet: 6743, frames: 4, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 3371, frames: 20, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 5394, frames: 12, film_format: :ff16mm}
       ],
       seconds: Ratio.new(8_999_991, 2500),
       frames: 107_892,
       timecode: "01:00:00;00",
       runtime: "00:59:59.9964",
       premiere_ticks: 914_456_685_542_400,
-      feet_and_frames: "6743+04"
+      feet_and_frames_35mm_4perf: "6743+04",
+      feet_and_frames_35mm_2perf: "3371+20",
+      feet_and_frames_16mm: "5394+12"
     },
     # 59.94 NTSC DF ######################
     ######################################
@@ -291,14 +380,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         0,
         "00:00:00;00",
-        "0+00"
+        "0+00",
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 0, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(0, 1),
       frames: 0,
       timecode: "00:00:00;00",
       runtime: "00:00:00.0",
       premiere_ticks: 0,
-      feet_and_frames: "0+00"
+      feet_and_frames_35mm_4perf: "0+00",
+      feet_and_frames_35mm_2perf: "0+00",
+      feet_and_frames_16mm: "0+00"
     },
     %{
       name: "00:00:01;01 59.94 Drop-Frame",
@@ -312,14 +406,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         61,
         "00:00:01;01",
-        "3+13"
+        "3+13",
+        %FeetAndFrames{feet: 3, frames: 13, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 1, frames: 29, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 3, frames: 1, film_format: :ff16mm}
       ],
       seconds: Ratio.new(61_061, 60_000),
       frames: 61,
       timecode: "00:00:01;01",
       runtime: "00:00:01.017683333",
       premiere_ticks: 258_507_849_600,
-      feet_and_frames: "3+13"
+      feet_and_frames_35mm_4perf: "3+13",
+      feet_and_frames_35mm_2perf: "1+29",
+      feet_and_frames_16mm: "3+01"
     },
     %{
       name: "00:00:01;03 59.94 Drop-Frame",
@@ -333,14 +432,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         63,
         "00:00:01;03",
-        "3+15"
+        "3+15",
+        %FeetAndFrames{feet: 3, frames: 15, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 1, frames: 31, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 3, frames: 3, film_format: :ff16mm}
       ],
       seconds: Ratio.new(21_021, 20_000),
       frames: 63,
       timecode: "00:00:01;03",
       runtime: "00:00:01.05105",
       premiere_ticks: 266_983_516_800,
-      feet_and_frames: "3+15"
+      feet_and_frames_35mm_4perf: "3+15",
+      feet_and_frames_35mm_2perf: "1+31",
+      feet_and_frames_16mm: "3+03"
     },
     %{
       name: "00:01:00;04 59.94 Drop-Frame",
@@ -354,14 +458,19 @@ defmodule Vtc.TimecodeTest do
       frames_inputs: [
         3600,
         "00:01:00;04",
-        "225+00"
+        "225+00",
+        %FeetAndFrames{feet: 225, frames: 0, film_format: :ff35mm_4perf},
+        %FeetAndFrames{feet: 112, frames: 16, film_format: :ff35mm_2perf},
+        %FeetAndFrames{feet: 180, frames: 0, film_format: :ff16mm}
       ],
       seconds: Ratio.new(3003, 50),
       frames: 3600,
       timecode: "00:01:00;04",
       runtime: "00:01:00.06",
       premiere_ticks: 15_256_200_960_000,
-      feet_and_frames: "225+00"
+      feet_and_frames_35mm_4perf: "225+00",
+      feet_and_frames_35mm_2perf: "112+16",
+      feet_and_frames_16mm: "180+00"
     }
   ]
 
@@ -500,7 +609,7 @@ defmodule Vtc.TimecodeTest do
         @tag test_case: test_case
         @tag input_case: input_case
         @tag case: :"with_frames_#{case_index}_#{input_index}"
-        test "#{test_case.name} | #{case_index}:#{input_index} | #{input_case} | #{test_case.rate}", context do
+        test "#{test_case.name} | #{case_index}:#{input_index} | #{inspect(input_case)} | #{test_case.rate}", context do
           %{test_case: test_case, input_case: input_case} = context
 
           input_case
@@ -508,7 +617,7 @@ defmodule Vtc.TimecodeTest do
           |> check_parsed(test_case)
         end
 
-        name = "#{test_case.name}! | #{case_index}:#{input_index} | #{input_case} | #{test_case.rate} | negative"
+        name = "#{test_case.name}! | #{case_index}:#{input_index} | #{inspect(input_case)} | #{test_case.rate} | negative"
 
         @tag test_case: make_negative_case(test_case)
         @tag input_case: make_negative_input(input_case)
@@ -887,21 +996,75 @@ defmodule Vtc.TimecodeTest do
 
     for test_case <- parse_cases do
       @tag test_case: test_case
-      test "#{test_case.name}", context do
-        %{seconds: seconds, feet_and_frames: feet_and_frames, rate: rate} = context
+      test "#{test_case.name} | 35mm, 4perf", context do
+        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
         input = %Timecode{seconds: seconds, rate: rate}
 
         result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
-        assert result == feet_and_frames
+        assert result == expected
       end
 
       @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | negative", context do
-        %{seconds: seconds, feet_and_frames: feet_and_frames, rate: rate} = context
+      test "#{test_case.name} | 35mm, 4perf | negative", context do
+        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
         input = %Timecode{seconds: seconds, rate: rate}
 
         result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
-        assert result == feet_and_frames
+        assert result == expected
+      end
+
+      @tag test_case: test_case
+      test "#{test_case.name} | 35mm, 4perf | explicit", context do
+        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+        assert result == expected
+      end
+
+      @tag test_case: make_negative_case(test_case)
+      test "#{test_case.name} | 35mm, 4perf | explicit | negative", context do
+        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+        assert result == expected
+      end
+
+      @tag test_case: test_case
+      test "#{test_case.name} | 35mm, 2perf", context do
+        %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+        assert result == expected
+      end
+
+      @tag test_case: make_negative_case(test_case)
+      test "#{test_case.name} | 35mm, 2perf | negative", context do
+        %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+        assert result == expected
+      end
+
+      @tag test_case: test_case
+      test "#{test_case.name} | 16mm", context do
+        %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+        assert result == expected
+      end
+
+      @tag test_case: make_negative_case(test_case)
+      test "#{test_case.name} | 16mm | negative", context do
+        %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = context
+        input = %Timecode{seconds: seconds, rate: rate}
+
+        result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+        assert result == expected
       end
     end
 
@@ -944,7 +1107,6 @@ defmodule Vtc.TimecodeTest do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception = assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
-
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end

@@ -44,7 +44,7 @@ defmodule Vtc.Range do
   @doc """
   Creates a new `Range`.
 
-  `out_tc` may be a `Timecode` value for any value that implements the `Frames`
+  `out_tc` may be a `Vtc.Timecode` value for any value that implements the `Vtc.Source.Frames`
   protocol.
 
   Returns an error if the resulting range would not have a duration greater or eual to
@@ -124,11 +124,10 @@ defmodule Vtc.Range do
 
   @doc """
   Returns a range with an `:in` value of `tc_in` and a duration of `duration`.
-  `duration` may be a `Timecode` value for any value that implements the `Frames`
-  protocol.
 
-  Returns an error if `duration` is less than `0` seconds or if `tc_in` and `tc_out` do
-  not have  the same `rate`.
+  `duration` may be a `Vtc.Timecode` value for any value that implements the
+  `Vtc.Source.Frames` protocol. Returns an error if `duration` is less than `0` seconds
+  or if `tc_in` and `tc_out` do not have  the same `rate`.
 
   ## Examples
 
@@ -255,7 +254,7 @@ defmodule Vtc.Range do
   defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1, round: :off)
 
   @doc """
-  Returns the duration in `Timecode` of `range`.
+  Returns the duration in `Vtc.Timecode` of `range`.
 
   ## Examples
 
@@ -317,8 +316,9 @@ defmodule Vtc.Range do
   end
 
   @doc """
-  Returns `nil` if the two ranges do not intersect, otherwise returns the Range
-  of the intersection of the two Ranges.
+  Returns the the range where `a` and `b` overlap/intersect.
+
+  Returns `nil` if the two ranges do not intersect.
 
   `a` and `b` do not have to have matching `:out_type` settings, but the result will
   inherit `a`'s setting.
@@ -375,8 +375,9 @@ defmodule Vtc.Range do
   end
 
   @doc """
-  Returns `nil` if the two ranges do intersect, otherwise returns the Range of the space
-  between the intersections of the two Ranges.
+  Returns the range between two, non-overlapping ranges.
+
+  Returns `nil` if the two ranges are not separated.
 
   `a` and `b` do not have to have matching `:out_type` settings, but the result will
   inherit `a`'s setting.

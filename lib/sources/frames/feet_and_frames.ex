@@ -24,8 +24,13 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
 
   @ff_regex ~r/(?P<negative>-)?(?P<feet>[0-9]+)\+(?P<frames>[0-9]+)/
 
-  @spec from_string(String.t(), FilmFormat.t()) :: {:ok, t()} | {:error, Timecode.ParseError.t()}
-  def from_string(ff_string, film_format \\ :ff35mm_4perf) do
+  @doc """
+  Parses a `FeetAndFrames` value from a string.
+  """
+  @spec from_string(String.t(), film_format: FilmFormat.t()) :: {:ok, t()} | {:error, Timecode.ParseError.t()}
+  def from_string(ff_string, opts \\ []) do
+    film_format = Keyword.get(opts, :film_format, :ff35mm_4perf)
+
     with {:ok, groups} <- Parse.apply_regex(@ff_regex, ff_string) do
       negative? = Map.fetch!(groups, "negative") == "-"
       multiplier = if negative?, do: -1, else: 1
@@ -43,17 +48,21 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
   @doc false
   @spec from_timecode(
           Timecode.t(),
-          opts :: [format: FilmFormat.t(), round: Timecode.round()]
+          opts :: [film_format: FilmFormat.t(), round: Timecode.round()]
         ) :: t()
   def from_timecode(timecode, opts) do
-    film_format = Keyword.get(opts, :format, :ff35mm_4perf)
+    film_format = Keyword.get(opts, :film_format, :ff35mm_4perf)
     frames_opts = Keyword.take(opts, [:round])
 
-    total_frames = Timecode.frames(timecode, frames_opts)
-    frames_per_foot = FilmFormat.frames_per_foot(film_format)
+    perfs_per_foot = FilmFormat.perfs_per_foot(film_format)
+    perfs_per_frame = FilmFormat.perfs_per_frame(film_format)
 
-    feet = div(total_frames, frames_per_foot)
-    frames = rem(total_frames, frames_per_foot)
+    total_frames = Timecode.frames(timecode, frames_opts)
+
+    perfs = perfs_per_frame * total_frames
+
+    feet = div(perfs, perfs_per_foot)
+    frames = perfs |> rem(perfs_per_foot) |> div(perfs_per_frame)
 
     %__MODULE__{feet: feet, frames: frames, film_format: film_format}
   end
@@ -81,7 +90,7 @@ end
 
 defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.FeetAndFrames do
   @moduledoc """
-  Implements `Seconds` protocol for Premiere ticks.
+  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
   """
 
   alias Vtc.FilmFormat
@@ -91,8 +100,11 @@ defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.FeetAndFrames do
 
   @spec frames(FeetAndFrames.t(), Framerate.t()) :: Frames.result()
   def frames(feet_frames, rate) do
-    frames_per_foor = FilmFormat.frames_per_foot(feet_frames.film_format)
-    frames = feet_frames.frames + feet_frames.feet * frames_per_foor
+    perfs_per_foot = FilmFormat.perfs_per_foot(feet_frames.film_format)
+    perfs_per_frame = FilmFormat.perfs_per_frame(feet_frames.film_format)
+
+    perfs = feet_frames.feet * perfs_per_foot + feet_frames.frames * perfs_per_frame
+    frames = div(perfs, perfs_per_frame)
 
     Frames.frames(frames, rate)
   end
