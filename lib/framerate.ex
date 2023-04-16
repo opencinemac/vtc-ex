@@ -48,6 +48,7 @@ defmodule Vtc.Framerate do
   """
   @type t :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
 
+  @doc section: :inspect
   @doc """
   The rational representation of the timecode's 'logical speed'.
 
@@ -57,6 +58,7 @@ defmodule Vtc.Framerate do
   def timebase(%{ntsc: nil} = framerate), do: framerate.playback
   def timebase(framerate), do: framerate.playback |> Rational.round() |> Ratio.new()
 
+  @doc section: :inspect
   @doc """
   Returns true if the value represents and NTSC framerate.
 
@@ -77,6 +79,7 @@ defmodule Vtc.Framerate do
   """
   @type new_opts() :: [ntsc: ntsc(), invert?: boolean()]
 
+  @doc section: :parse
   @doc """
   Creates a new Framerate with a playback speed or timebase.
 
@@ -125,6 +128,7 @@ defmodule Vtc.Framerate do
 
   def new(rate, opts), do: new_core(rate, opts)
 
+  @doc section: :parse
   @doc """
   As `new/2` but raises an error instead.
   """

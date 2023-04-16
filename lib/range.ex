@@ -41,6 +41,7 @@ defmodule Vtc.Range do
   @enforce_keys [:in, :out, :out_type]
   defstruct [:in, :out, :out_type]
 
+  @doc section: :parse
   @doc """
   Creates a new `Range`.
 
@@ -97,6 +98,7 @@ defmodule Vtc.Range do
     end
   end
 
+  @doc section: :parse
   @doc """
   As `new/3`, but raises on error.
   """
@@ -122,6 +124,7 @@ defmodule Vtc.Range do
     end
   end
 
+  @doc section: :parse
   @doc """
   Returns a range with an `:in` value of `tc_in` and a duration of `duration`.
 
@@ -181,6 +184,7 @@ defmodule Vtc.Range do
     end
   end
 
+  @doc section: :parse
   @doc """
   As with_duration/3, but raises on error.
   """
@@ -208,6 +212,7 @@ defmodule Vtc.Range do
   defp validate_rates_equal(_, _, a_name, b_name),
     do: {:error, ArgumentError.exception("`#{a_name}` and `#{b_name}` must have same `rate`")}
 
+  @doc section: :manipulate
   @doc """
   Adjusts range to have an inclusive out timecode.
 
@@ -228,6 +233,7 @@ defmodule Vtc.Range do
     %__MODULE__{range | out: new_out, out_type: :inclusive}
   end
 
+  @doc section: :manipulate
   @doc """
   Adjusts range to have an exclusive out timecode.
 
@@ -253,6 +259,7 @@ defmodule Vtc.Range do
   defp adjust_out_exclusive(tc, :exclusive), do: tc
   defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1, round: :off)
 
+  @doc section: :inspect
   @doc """
   Returns the duration in `Vtc.Timecode` of `range`.
 
@@ -271,6 +278,7 @@ defmodule Vtc.Range do
     Timecode.sub(out_tc, in_tc)
   end
 
+  @doc section: :compare
   @doc """
   Returns `true` if there is overlap between `a` and `b`.
 
@@ -315,6 +323,7 @@ defmodule Vtc.Range do
     end
   end
 
+  @doc section: :compare
   @doc """
   Returns the the range where `a` and `b` overlap/intersect.
 
@@ -348,6 +357,7 @@ defmodule Vtc.Range do
   @spec intersection(t(), t()) :: {:ok, t()} | {:error, :none}
   def intersection(a, b), do: calc_overlap(a, b, &overlaps?(&1, &2))
 
+  @doc section: :compare
   @doc """
   As `intersection`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is no overlap.
@@ -374,6 +384,7 @@ defmodule Vtc.Range do
     end
   end
 
+  @doc section: :compare
   @doc """
   Returns the range between two, non-overlapping ranges.
 
@@ -407,6 +418,7 @@ defmodule Vtc.Range do
   @spec separation(t(), t()) :: {:ok, t()} | {:error, :none}
   def separation(a, b), do: calc_overlap(a, b, &(not overlaps?(&1, &2)))
 
+  @doc section: :compare
   @doc """
   As `separation`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is overlap.

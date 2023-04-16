@@ -21,8 +21,11 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
   @type t() :: %__MODULE__{in: String.t()}
 
   @doc false
-  @spec from_timecode(Timecode.t(), pos_integer()) :: t()
-  def from_timecode(timecode, precision) do
+  @spec from_timecode(Timecode.t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: t()
+  def from_timecode(timecode, opts) do
+    precision = Keyword.get(opts, :precision, 9)
+    trim_zeros = Keyword.get(opts, :trim_zeros?, true)
+
     {seconds, negative?} =
       if Ratio.lt?(timecode.seconds, 0),
         do: {Ratio.minus(timecode.seconds), true},
@@ -43,7 +46,7 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
 
     seconds_floor = seconds_floor |> Decimal.to_integer() |> Integer.to_string() |> String.pad_leading(2, "0")
 
-    fractal_seconds = runtime_render_fractal_seconds(fractal_seconds)
+    fractal_seconds = runtime_render_fractal_seconds(fractal_seconds, trim_zeros)
 
     # We'll add a negative sign if the timecode is negative.
     sign = if negative?, do: "-", else: ""
@@ -52,20 +55,15 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
   end
 
   # Renders fractal seconds to a string.
-  @spec runtime_render_fractal_seconds(Decimal.t()) :: String.t()
-  defp runtime_render_fractal_seconds(seconds_fractal) do
-    rendered =
-      if Decimal.eq?(seconds_fractal, 0) do
-        ""
-      else
-        seconds_fractal
-        |> Decimal.to_string()
-        |> String.trim_leading("0")
-        |> String.trim_trailing("0")
-        |> String.trim_trailing(".")
-      end
+  @spec runtime_render_fractal_seconds(Decimal.t(), boolean()) :: String.t()
+  defp runtime_render_fractal_seconds(seconds_fractal, trim_zeros?) do
+    rendered = seconds_fractal |> Decimal.to_string(:normal) |> String.trim_leading("0")
+    rendered = if trim_zeros?, do: String.trim_trailing(rendered, "0"), else: rendered
 
-    if rendered == "", do: ".0", else: rendered
+    case rendered do
+      "." -> ".0"
+      rendered -> rendered
+    end
   end
 end
 

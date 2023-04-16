@@ -23,6 +23,14 @@ defmodule Vtc.MixProject do
           "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames]
+        ],
+        groups_for_docs: [
+          Parse: &(&1[:section] == :parse),
+          Manipulate: &(&1[:section] == :manipulate),
+          Inspect: &(&1[:section] == :inspect),
+          Compare: &(&1[:section] == :compare),
+          Arithmatic: &(&1[:section] == :arithmatic),
+          Convert: &(&1[:section] == :convert)
         ]
       ],
       build_embedded: Mix.env() == :prod,
