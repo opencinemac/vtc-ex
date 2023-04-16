@@ -30,7 +30,9 @@ defmodule Vtc.MixProject do
           Inspect: &(&1[:section] == :inspect),
           Compare: &(&1[:section] == :compare),
           Arithmatic: &(&1[:section] == :arithmatic),
-          Convert: &(&1[:section] == :convert)
+          Convert: &(&1[:section] == :convert),
+          Consts: &(&1[:section] == :consts),
+          Perfs: &(&1[:section] == :perfs)
         ]
       ],
       build_embedded: Mix.env() == :prod,

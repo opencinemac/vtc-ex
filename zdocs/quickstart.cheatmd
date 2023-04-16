@@ -355,19 +355,20 @@ It's easy to compare two timecodes.
 #### [compare/2](`Vtc.Timecode.compare/2`)
 
 ```elixir
-iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> Timecode.compare(a, b)
-:gt
+:lt
 ```
 
-There a host of other comparison functions like `Vtc.Timecode.gt/2?` that return 
+There a host of other specific comparison functions like [eq?/2](`Vtc.Timecode.gt?/2`), 
+[gt?/2](`Vtc.Timecode.gt?/2`) that return 
 booleans.
 
-#### [gt?/2](`Vtc.Timecode.gt?/2`)
+#### Specific comparison
 
 ```elixir
-iex> Timecode.gt?(a, b)
+iex> Timecode.lt?(a, b)
 true
 ```
 
@@ -377,7 +378,7 @@ Like arithmatic, we can compare directly with a timecode string:
 
 ```elixir
 iex> Timecode.compare(a, "00:59:00:00")
-:lt
+:gt
 ```
 
 Sorting is suported through the [compare/2](`Vtc.Timecode.compare/2`) function.

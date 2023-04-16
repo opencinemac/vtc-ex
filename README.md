@@ -15,32 +15,73 @@
 
 ## Demo
 
-A small preview of what `Vtc` has to offer:
+A small preview of what `Vtc` has to offer. Note that printing statements like 
+`inspect/1` have been elided from the examples below.
+
+`Vtc` can [parse](https://hexdocs.pm/vtc/Vtc.Timecode.html#parse) a number of different 
+formats, from timecodes, to frame counts, to film length measured in feet and frames:
 
 ```elixir
 iex> Timecode.with_seconds!(1.5, Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
-
+iex>
 iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98())
 "<17:23:00:02 <23.98 NTSC>>"
+```
 
+Once in a [Timecode](https://hexdocs.pm/vtc/Vtc.Timecode.html) struct, you 
+[convert](https://hexdocs.pm/vtc/Vtc.Timecode.html#convert) to any of the supported 
+formats:
+
+```elixir
 iex> Timecode.frames(tc)
 1501922
-
+iex>
 iex> Timecode.feet_and_frames(tc)
 "<93889+10 :ff35mm_4perf>"
+```
 
+[Comparisons](https://hexdocs.pm/vtc/Vtc.Timecode.html#compare) and 
+[kernel sorting](https://hexdocs.pm/vtc/Vtc.Timecode.html#module-sorting-support) are 
+supported, with many helper functions for specific comparisons:
+
+```elixir
 iex> Timecode.compare(tc, "02:00:00:00")
 :gt
+iex>
+iex> Timecode.gt?(tc, "02:00:00:00")
+true
+iex>
+iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> data_01 = %{id: 2, tc: tc_01}
+iex> data_02 = %{id: 1, tc: tc_02}
+iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+"[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
+```
 
+All sensible [arithmatic](https://hexdocs.pm/vtc/Vtc.Timecode.html#arithmatic) 
+operations are provided, such as addition, subtraction, and multiplication:
+
+```elixir
 iex> tc = Timecode.add(tc, "01:00:00:00")
 "<18:23:13:02 <23.98 NTSC>>"
+```
 
+You can even use native operators within special 
+[eval/2](https://hexdocs.pm/vtc/Vtc.Timecode.html#eval/2) blocks:
+
+```elixir
 iex> Timecode.eval at: 23.98 do
 iex>   tc + "00:30:00:00" * 2 - "00:15:00:00"
 iex> end
 "<19:08:13:02 <23.98 NTSC>>"
+```
 
+[Ranges](https://hexdocs.pm/vtc/Vtc.Range.html) let you operate on in/out points, such
+as finding the overlapping area between two ranges:
+
+```elixir
 iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a = Range.new!(a_in, "02:00:00:00")
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
@@ -53,9 +94,10 @@ iex> Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
-Note that printing statements like `inspect/1` have been elided from the examples above.
-For a more in depth look at the full capabilities of this library, check out the
-[quickstart guide](https://hexdocs.pm/vtc/quickstart.html) or 
+## Further Reading
+
+Check out the [Quickstart Guide](https://hexdocs.pm/vtc/quickstart.html) for a more in 
+depth walkthrough of what `Vtc` can do, or dive straight into the
 [API reference](https://hexdocs.pm/vtc/api-reference.html).
 
 ## Goals
@@ -120,11 +162,13 @@ For a more in depth look at the full capabilities of this library, check out the
 
 ## Attributions
 
-<div>Drop-frame calculations adapted from <a href="https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/">David Heidelberger's blog.</a></div>
+Drop-frame calculations adapted from 
+[David Heidelberger's blog](https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/).
 
-<div>35mm, 2perf and 16mm format support based on <a href="https://github.com/opencinemac/vtc-rs/pull/8">Jamie Hardt's work for vtc-rs.</a></div>
+35mm, 2perf and 16mm format support based on 
+[Jamie Hardt's work for vtc-rs](https://github.com/opencinemac/vtc-rs/pull/8).
 
-<div>Logo made by <a href="" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+Logo made by Freepik from [www.flaticon.com](https://www.flaticon.com/).
 
 ## Installation
 

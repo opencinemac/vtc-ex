@@ -60,6 +60,7 @@ defmodule Vtc.Timecode.Eval do
     {:abs, 1}
   ]
 
+  # Replaces operators with calls to a `Timecode` function.
   @spec replace_ops_ast(Macro.t()) :: Macro.t()
   defp replace_ops_ast({op, _, args} = ast) when is_map_key(@tc_ops, {op, length(args)}) do
     tc_func_name = Map.fetch!(@tc_ops, {op, length(args)})
@@ -84,6 +85,7 @@ defmodule Vtc.Timecode.Eval do
     |> then(&timecode_func(tc_func_name, meta, &1))
   end
 
+  # Wraps timecode args in `cast_timecode_arg/2`.
   @spec wrap_tc_val_in_cast(Macro.t(), Macro.metadata()) :: Macro.t()
   def wrap_tc_val_in_cast({:num, _, [arg]}, _), do: arg
 
@@ -105,6 +107,7 @@ defmodule Vtc.Timecode.Eval do
     end
   end
 
+  # Inserted into the head of each eval block. Sets up the default framerate variable.
   @spec setup_rate(Framerate.t() | number() | Ratio.t() | nil, ntsc: Framerate.ntsc()) :: Framerate.t() | nil
   def setup_rate(nil, _), do: nil
   def setup_rate(%Framerate{} = rate, _), do: rate
@@ -114,6 +117,7 @@ defmodule Vtc.Timecode.Eval do
   @spec timecode_func(atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()
   defp timecode_func(name, meta, args), do: aliased_func_call([:Vtc, :Timecode], name, meta, args)
 
+  # Constructs the AST for an alias + function call.
   @spec aliased_func_call([atom()], atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()
   defp aliased_func_call(aliases, func_name, meta, args) do
     func_call = {:., meta, [{:__aliases__, meta, aliases}, func_name]}

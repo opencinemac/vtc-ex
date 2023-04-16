@@ -43,10 +43,10 @@ defmodule Vtc.Range do
 
   @doc section: :parse
   @doc """
-  Creates a new `Range`.
+  Creates a new [Range](`Vtc.Range`).
 
-  `out_tc` may be a `Vtc.Timecode` value for any value that implements the `Vtc.Source.Frames`
-  protocol.
+  `out_tc` may be a [Timecode](`Vtc.Timecode`) value for any value that implements the
+  [Frames](`Vtc.Source.Frames`) protocol.
 
   Returns an error if the resulting range would not have a duration greater or eual to
   0, or if `tc_in` and `tc_out` do not have the same `rate`.
@@ -128,9 +128,9 @@ defmodule Vtc.Range do
   @doc """
   Returns a range with an `:in` value of `tc_in` and a duration of `duration`.
 
-  `duration` may be a `Vtc.Timecode` value for any value that implements the
-  `Vtc.Source.Frames` protocol. Returns an error if `duration` is less than `0` seconds
-  or if `tc_in` and `tc_out` do not have  the same `rate`.
+  `duration` may be a [Timecode](`Vtc.Timecode`) value for any value that implements the
+  [Frames](`Vtc.Source.Frames`) protocol. Returns an error if `duration` is less than
+  `0` seconds or if `tc_in` and `tc_out` do not have  the same `rate`.
 
   ## Examples
 
@@ -261,7 +261,7 @@ defmodule Vtc.Range do
 
   @doc section: :inspect
   @doc """
-  Returns the duration in `Vtc.Timecode` of `range`.
+  Returns the duration in [Timecode](`Vtc.Timecode`) of `range`.
 
   ## Examples
 

@@ -17,9 +17,9 @@ defprotocol Vtc.Source.Frames do
 
     - Feet+Frames ("5400+00")
 
-  - `Vtc.Source.Frames.TimecodeStr`
+  - [TimecodeStr](`Vtc.Source.Frames.TimecodeStr`)
 
-  - `Vtc.Source.Frames.FeetAndFrames`
+  - [FeetAndFrames](`Vtc.Source.Frames.FeetAndFrames`)
   """
 
   alias Vtc.Framerate

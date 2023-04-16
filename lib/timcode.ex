@@ -15,8 +15,8 @@ defmodule Vtc.Timecode do
 
   ## Sorting Support
 
-  `Vtc.Timecode` implements `compare/2`, and as such, can be used wherever the standard
-  library calls for a `Sorter` module. Let's see it in action:
+  [Timecode](`Vtc.Timecode`) implements `compare/2`, and as such, can be used wherever
+  the standard library calls for a `Sorter` module. Let's see it in action:
 
   ```elixir
   iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
@@ -48,9 +48,10 @@ defmodule Vtc.Timecode do
   ## Arithmatic Autocasting
 
   For operators that take two `timecode values`, likt `add/3` or `compare/2`, as long as
-  one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that implements
-  the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  be the same framerate as the other. This is mostly to support quick scripting.
+  one argument is a [Timecode](`Vtc.Timecode`) value, `a` or `b` May be any value that
+  implements the [Frames](`Vtc.Source.Frames`) protocol, such as a timecode string, and
+  will be assumed to be the same framerate as the other. This is mostly to support quick
+  scripting.
 
   If parsing the value fails during casting, the function raises a
   `Vtc.Timecode.ParseError`.
@@ -76,7 +77,7 @@ defmodule Vtc.Timecode do
   defstruct [:seconds, :rate]
 
   @typedoc """
-  `Vtc.Timecode` type.
+  [Timecode](`Vtc.Timecode`) type.
   """
   @type t() :: %__MODULE__{
           seconds: Ratio.t(),
@@ -106,13 +107,13 @@ defmodule Vtc.Timecode do
 
   @doc section: :parse
   @doc """
-  Returns a new `Vtc.Timecode` with a `Timecode.seconds` field value equal to the
+  Returns a new [Timecode](`Vtc.Timecode`) with a `:seconds` field value equal to the
   `seconds` arg.
 
   ## Arguments
 
   - `seconds`: A value which can be represented as a number of real-world seconds.
-    Must implement the `Vtc.Source.Seconds` protocol.
+    Must implement the [Seconds](`Vtc.Source.Seconds`) protocol.
 
   - `rate`: Frame-per-second playback value of the timecode.
 
@@ -159,10 +160,10 @@ defmodule Vtc.Timecode do
 
   ## Premiere Ticks
 
-  The `Vtc.Source.Seconds.PremiereTicks` struck implements the `Vtc.Source.Seconds`
-  protocol and can be used to parse the format. This struct is not a general-purpose
-  Module for the unit, and only exists to hint to the parsing function how it should be
-  processed:
+  The `Vtc.Source.Seconds.PremiereTicks` struck implements the
+  [Seconds](`Vtc.Source.Seconds`) protocol and can be used to parse the format. This
+  struct is not a general-purpose Module for the unit, and only exists to hint to the
+  parsing function how it should be processed:
 
   ```elixir
   iex> alias Vtc.Source.Seconds.PremiereTicks
@@ -177,8 +178,8 @@ defmodule Vtc.Timecode do
     round = Keyword.get(opts, :round, :closest)
 
     with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
-      # If the vaue doesn't cleany divide into the framerate then we need to round to the
-      # nearest frame.
+      # If the vaue doesn't cleany divide into the framerate then we need to round to
+      # the nearest frame.
       seconds = with_seconds_round_to_frame(seconds, rate, round)
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
     end
@@ -215,12 +216,13 @@ defmodule Vtc.Timecode do
 
   @doc section: :parse
   @doc """
-  Returns a new `Vtc.Timecode` with a `frames/2` return value equal to the `frames` arg.
+  Returns a new [Timecode](`Vtc.Timecode`) with a `frames/2` return value equal to the
+  `frames` arg.
 
   ## Arguments
 
   - `frames`: A value which can be represented as a frame number / frame count. Must
-    implement the `Vtc.Source.Frames` protocol.
+    implement the [Frames](`Vtc.Source.Frames`) protocol.
 
   - `rate`: Frame-per-second playback value of the timecode.
 
@@ -245,7 +247,7 @@ defmodule Vtc.Timecode do
   ```
 
   By default, feet+frames is interpreted as 35mm, 4perf film. You can use the
-  `Vtc.Source.Frames.FeetAndFrames` struct to parse other film formats:
+  [FeetAndFrames](`Vtc.Source.Frames.FeetAndFrames`) struct to parse other film formats:
 
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
@@ -324,8 +326,8 @@ defmodule Vtc.Timecode do
   Compatible with `Enum.sort/2`. For more on sorting non-builtin values, see
   [the Elixir ducumentation](https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs).
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
-  for more information on how equality is determined.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  See `eq?/2` for more information on how equality is determined.
 
   ## Examples
 
@@ -355,7 +357,7 @@ defmodule Vtc.Timecode do
   @doc """
   Returns `true` if `a` is eqaul to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Examples
 
@@ -390,8 +392,8 @@ defmodule Vtc.Timecode do
   @doc """
   Returns `true` if `a` is less than `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
-  for more information on how equality is determined.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  See `eq?/2` for more information on how equality is determined.
 
   ## Examples
 
@@ -409,8 +411,8 @@ defmodule Vtc.Timecode do
   @doc """
   Returns `true` if `a` is less than or equal to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
-  for more information on how equality is determined.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  See `eq?/2` for more information on how equality is determined.
   """
   @spec lte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def lte?(a, b), do: compare(a, b) in [:lt, :eq]
@@ -419,8 +421,8 @@ defmodule Vtc.Timecode do
   @doc """
   Returns `true` if `a` is greater than `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
-  for more information on how equality is determined.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  See `eq?/2` for more information on how equality is determined.
   """
   @spec gt?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def gt?(a, b), do: compare(a, b) == :gt
@@ -429,8 +431,8 @@ defmodule Vtc.Timecode do
   @doc """
   Returns `true` if `a` is greater than or eqaul to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
-  for more information on how equality is determined.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  See `eq?/2` for more information on how equality is determined.
   """
   @spec gte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def gte?(a, b), do: compare(a, b) in [:gt, :eq]
@@ -443,7 +445,7 @@ defmodule Vtc.Timecode do
   equal, the result will inheret the framerat of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
@@ -492,7 +494,7 @@ defmodule Vtc.Timecode do
   equal, the result will inheret the framerat of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
+  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
@@ -745,11 +747,11 @@ defmodule Vtc.Timecode do
   ## Options
 
   - `at`: The Framerate to cast non-timecode values to. If this value is not set, then
-    at least one value in each operation must be a `Vtc.Timecode`. This value can be any
-    value accepted by `Framerate.new/2`.
+    at least one value in each operation must be a [Timecode](`Vtc.Timecode`). This
+    value can be any value accepted by `Framerate.new/2`.
 
   - `ntsc`: The `ntsc` value to use when creating a new Framerate with `at`. Not needed
-    if `at` is a `Vtc.Framerate` value.
+    if `at` is a [Framerate](`Vtc.Framerate`) value.
 
   ## Examples
 
@@ -787,9 +789,9 @@ defmodule Vtc.Timecode do
   "<01:45:00:00 <23.98 NTSC>>"
   ```
 
-  Just like the regular `Vtc.Timecode` functions, only one value in an arithmatic expression
-  needs to be a `Vtc.Timecode` value. In the case above, since multiplication happens first,
-  that's `b`:
+  Just like the regular [Timecode](`Vtc.Timecode`) functions, only one value in an
+  arithmatic expression needs to be a [Timecode](`Vtc.Timecode`) value. In the case
+  above, since multiplication happens first, that's `b`:
 
   ```elixir
   iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
@@ -803,8 +805,8 @@ defmodule Vtc.Timecode do
   ```
 
   You can supply a default framerate if you just want to do some quick calculations.
-  This framerate is inherited by every value that implements the `Vtc.Source.Frames` protocol in
-  the block, including integers:
+  This framerate is inherited by every value that implements the
+  [Frames](`Vtc.Source.Frames`) protocol in the block, including integers:
 
   ```elixir
   iex> result = Timecode.eval at: Rates.f23_98() do
@@ -929,11 +931,13 @@ defmodule Vtc.Timecode do
   Timecode is used as a human-readable way to represent the id of a given frame. It is
   formatted to give a rough sense of where to find a frame:
   `{HOURS}:{MINUTES}:{SECONDS}:{FRAME}`. For more on timecode, see Frame.io's
-  [excellent post](https://blog.frame.io/2017/07/17/timecode-and-frame-rates/) on the subject.
+  [excellent post](https://blog.frame.io/2017/07/17/timecode-and-frame-rates/) on the
+  subject.
 
   ## Where you see it
 
-  Timecode is ubiquitous in video editing, a small sample of places you might see timecode:
+  Timecode is ubiquitous in video editing, a small sample of places you might see
+  timecode:
 
   - Source and Playback monitors in your favorite NLE.
   - Burned into the footage for dailies.
@@ -1074,8 +1078,8 @@ defmodule Vtc.Timecode do
 
   For the most part, feet + frames has died out as a reference, because digital media is
   not measured in feet. The most common place it is still used is Studio Sound
-  Departments. Many Sound Mixers and Designers intuitively think in feet + frames, and it
-  is often burned into the reference picture for them.
+  Departments. Many Sound Mixers and Designers intuitively think in feet + frames, and
+  it is often burned into the reference picture for them.
 
   - Telecine.
   - Sound turnover reference picture.

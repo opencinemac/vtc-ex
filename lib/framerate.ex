@@ -44,7 +44,7 @@ defmodule Vtc.Framerate do
   @type ntsc() :: :non_drop | :drop | nil
 
   @typedoc """
-  Type of `Vtc.Framerate`
+  Type of [Framerate](`Vtc.Framerate`)
   """
   @type t :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
 
