@@ -889,14 +889,6 @@ defmodule Vtc.TimecodeTest.Parse do
         %{seconds: seconds, runtime: runtime, rate: rate} = context
         input = %Timecode{seconds: seconds, rate: rate}
 
-        assert Timecode.runtime(input, 9) == runtime
-      end
-
-      @tag test_case: test_case
-      test "#{test_case.name} | precision 9 default", context do
-        %{seconds: seconds, runtime: runtime, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
         assert Timecode.runtime(input) == runtime
       end
 
@@ -905,8 +897,41 @@ defmodule Vtc.TimecodeTest.Parse do
         %{seconds: seconds, runtime: runtime, rate: rate} = context
         input = %Timecode{seconds: seconds, rate: rate}
 
-        assert Timecode.runtime(input, 9) == runtime
+        assert Timecode.runtime(input) == runtime
       end
+    end
+
+    test ":precision respected" do
+      input = %Timecode{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
+
+      assert Timecode.runtime(input, precision: 9) == "23:14:52.900958333"
+      assert Timecode.runtime(input, precision: 8) == "23:14:52.90095833"
+      assert Timecode.runtime(input, precision: 7) == "23:14:52.9009583"
+      assert Timecode.runtime(input, precision: 6) == "23:14:52.900958"
+      assert Timecode.runtime(input, precision: 5) == "23:14:52.90096"
+      assert Timecode.runtime(input, precision: 4) == "23:14:52.901"
+      assert Timecode.runtime(input, precision: 3) == "23:14:52.901"
+      assert Timecode.runtime(input, precision: 2) == "23:14:52.9"
+      assert Timecode.runtime(input, precision: 1) == "23:14:52.9"
+    end
+
+    test "trim_zeros?: false" do
+      input = %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()}
+      assert Timecode.runtime(input, trim_zeros?: false) == "00:00:00.000000000"
+    end
+
+    test "trim_zeros?: false, :precision respected" do
+      input = %Timecode{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
+
+      assert Timecode.runtime(input, precision: 9, trim_zeros?: false) == "23:14:52.900958333"
+      assert Timecode.runtime(input, precision: 8, trim_zeros?: false) == "23:14:52.90095833"
+      assert Timecode.runtime(input, precision: 7, trim_zeros?: false) == "23:14:52.9009583"
+      assert Timecode.runtime(input, precision: 6, trim_zeros?: false) == "23:14:52.900958"
+      assert Timecode.runtime(input, precision: 5, trim_zeros?: false) == "23:14:52.90096"
+      assert Timecode.runtime(input, precision: 4, trim_zeros?: false) == "23:14:52.9010"
+      assert Timecode.runtime(input, precision: 3, trim_zeros?: false) == "23:14:52.901"
+      assert Timecode.runtime(input, precision: 2, trim_zeros?: false) == "23:14:52.90"
+      assert Timecode.runtime(input, precision: 1, trim_zeros?: false) == "23:14:52.9"
     end
   end
 
@@ -1245,7 +1270,7 @@ defmodule Vtc.TimecodeTest.Parse do
         %{val_in: val_in, expected: expected} = context
 
         parsed = Timecode.with_seconds!(val_in, Rates.f24())
-        assert expected == Timecode.runtime(parsed, 9)
+        assert expected == Timecode.runtime(parsed)
       end
     end
   end

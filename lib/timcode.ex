@@ -958,8 +958,8 @@ defmodule Vtc.Timecode do
   '00:59:59.9964', and <01:00:00:00 <23.98 NTSC>> has a true runtime of
   '01:00:03.6'
   """
-  @spec runtime(t(), integer()) :: String.t()
-  def runtime(timecode, precision \\ 9), do: timecode |> RuntimeStr.from_timecode(precision) |> then(& &1.in)
+  @spec runtime(t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: String.t()
+  def runtime(timecode, opts \\ []), do: timecode |> RuntimeStr.from_timecode(opts) |> then(& &1.in)
 
   @doc """
   Returns the number of elapsed ticks `timecode` represents in Adobe Premiere Pro.
