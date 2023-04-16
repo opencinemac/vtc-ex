@@ -12,7 +12,7 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
   ## String Conversion
 
   [FeetAndFrames](`Vtc.Source.Frames.FeetAndFrames`) can be converted into a string
-  through the `String.Chars.to_string/1` function.`
+  through the `String.Chars.to_string/1` function.
 
   ## Examples
 
