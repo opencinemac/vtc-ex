@@ -1,6 +1,6 @@
 defmodule Vtc.Source.Frames.TimecodeStr do
   @moduledoc """
-  Implementation of `Vtc.Source.Frames` for timecode string. See
+  Implementation of [Frames](`Vtc.Source.Frames`) for timecode string. See
   `Vtc.Timecode.timecode/2` for more information on this format.
 
   This struct is used as an input wrapper only, not as the general-purpose Premiere
@@ -50,7 +50,7 @@ end
 
 defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.TimecodeStr do
   @moduledoc """
-  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
+  Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks.
   """
 
   alias Vtc.Framerate

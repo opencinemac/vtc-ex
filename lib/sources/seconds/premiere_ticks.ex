@@ -1,6 +1,6 @@
 defmodule Vtc.Source.Seconds.PremiereTicks do
   @moduledoc """
-  Implements `Vtc.Source.Seconds` protocol for Premiere ticks. See
+  Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks. See
   `Vtc.Timecode.premiere_ticks/2` for more information on this unit.
 
   This struct is used as an input wrapper only, not as the general-purpose Premiere
@@ -38,7 +38,7 @@ end
 
 defimpl Vtc.Source.Seconds, for: Vtc.Source.Seconds.PremiereTicks do
   @moduledoc """
-  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
+  Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks.
   """
 
   alias Vtc.Framerate

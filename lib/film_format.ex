@@ -60,9 +60,8 @@ defmodule Vtc.FilmFormat do
   """
   @type t() :: :ff35mm_4perf | :ff35mm_2perf | :ff16mm
 
+  @doc section: :perfs
   @doc """
-  c
-
   Perferations are the holes that run along the sides of a strip of film, and are used
   by the camera's sprocket to physically pull the film in place to be exposed. For
   more information, see [this Wikipedia atricle](https://en.wikipedia.org/wiki/Film_perforations#:~:text=Film%20perforations%2C%20also%20known%20as,film%20format%2C%20and%20intended%20usage).
@@ -84,6 +83,7 @@ defmodule Vtc.FilmFormat do
   def perfs_per_foot(film_format, _) when film_format in [:ff35mm_4perf, :ff35mm_2perf], do: 64
   def perfs_per_foot(:ff16mm, opts), do: if(Keyword.get(opts, :physical?), do: 40, else: 20)
 
+  @doc section: :perfs
   @doc """
   Perferation count in a single frame of film.
   """

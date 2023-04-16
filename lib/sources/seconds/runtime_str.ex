@@ -1,10 +1,10 @@
 defmodule Vtc.Source.Seconds.RuntimeStr do
   @moduledoc """
-  Implementation of `Vtc.Source.Seconds` for runtime strings. See
+  Implementation of [Seconds](`Vtc.Source.Seconds`) for runtime strings. See
   `Vtc.Timecode.runtime/2` for more information on this format.
 
   By default, this wrapper does not need to be used by callers, as the string
-  implementation of the `Vtc.Source.Seconds` protocol calls this type's impl
+  implementation of the [Seconds](`Vtc.Source.Seconds`) protocol calls this type's impl
   automatically. Only use this type if you do not wish for the parser to fall back to
   other type parsing as well.
   """
@@ -69,7 +69,7 @@ end
 
 defimpl Vtc.Source.Seconds, for: Vtc.Source.Seconds.RuntimeStr do
   @moduledoc """
-  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
+  Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks.
   """
 
   alias Vtc.Framerate

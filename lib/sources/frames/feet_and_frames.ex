@@ -7,7 +7,21 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
   - `feet`: The amount of film in Feet that would run through the camera in a given
     amount of time.
   - `feet`: The number of frames left over after `feet` of film has run.
-  - `film_format`: The type of film this value represents.
+  - `film_format`: The type of film this value represents. Default: `:ff35mm_4perf`.
+
+  ## String Conversion
+
+  [FeetAndFrames](`Vtc.Source.Frames.FeetAndFrames`) can be converted into a string
+  through the `String.Chars.to_string/1` function.`
+
+  ## Examples
+
+  ```elixir
+  iex> alias Vtc.Source.Frames.FeetAndFrames
+  iex>
+  iex> %FeetAndFrames{feet: 10, frames: 4} |> String.Chars.to_string()
+  "10+04"
+  ```
   """
 
   alias Vtc.FilmFormat
@@ -101,7 +115,7 @@ end
 
 defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.FeetAndFrames do
   @moduledoc """
-  Implements `Vtc.Source.Seconds` protocol for Premiere ticks.
+  Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks.
   """
 
   alias Vtc.FilmFormat
