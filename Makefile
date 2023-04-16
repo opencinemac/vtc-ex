@@ -16,7 +16,7 @@ lint:
 
 .PHONY: format
 format:
-	-mix format
+	-mix style
 
 .PHONY: doc
 doc:
