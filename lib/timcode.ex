@@ -44,6 +44,16 @@ defmodule Vtc.Timecode do
   iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
   "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
   ```
+
+  ## Arithmatic Autocasting
+
+  For operators that take two `timecode values`, likt `add/3` or `compare/2`, as long as
+  one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that implements
+  the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
+  be the same framerate as the other. This is mostly to support quick scripting.
+
+  If parsing the value fails during casting, the function raises a
+  `Vtc.Timecode.ParseError`.
   """
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
@@ -94,6 +104,7 @@ defmodule Vtc.Timecode do
   """
   @type parse_result() :: {:ok, t()} | {:error, ParseError.t() | %ArgumentError{}}
 
+  @doc section: :parse
   @doc """
   Returns a new `Vtc.Timecode` with a `Timecode.seconds` field value equal to the
   `seconds` arg.
@@ -191,6 +202,7 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :parse
   @doc """
   As `with_seconds/3`, but raises on error.
   """
@@ -201,6 +213,7 @@ defmodule Vtc.Timecode do
     |> handle_raise_function()
   end
 
+  @doc section: :parse
   @doc """
   Returns a new `Vtc.Timecode` with a `frames/2` return value equal to the `frames` arg.
 
@@ -258,11 +271,6 @@ defmodule Vtc.Timecode do
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
-    case frames do
-      %Ratio{} -> raise "HERE"
-      val -> val
-    end
-
     with {:ok, frames} <- Frames.frames(frames, rate) do
       frames
       |> Ratio.new()
@@ -271,6 +279,7 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :parse
   @doc """
   As `Timecode.with_frames/3`, but raises on error.
   """
@@ -281,6 +290,7 @@ defmodule Vtc.Timecode do
     |> handle_raise_function()
   end
 
+  @doc section: :manipulate
   @doc """
   Rebases `timecode` to a new framerate.
 
@@ -300,32 +310,22 @@ defmodule Vtc.Timecode do
   def rebase(%{rate: rate} = timecode, rate), do: {:ok, timecode}
   def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
 
+  @doc section: :manipulate
   @doc """
   As `rebase/2`, but raises on error.
   """
   @spec rebase!(t(), Framerate.t()) :: t()
   def rebase!(timecode, new_rate), do: timecode |> rebase(new_rate) |> handle_raise_function()
 
+  @doc section: :compare
   @doc """
   Comapare the values of `a` and `b`.
 
   Compatible with `Enum.sort/2`. For more on sorting non-builtin values, see
   [the Elixir ducumentation](https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs).
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
-
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
-
-  > #### Sorting with Timecodes {: .info}
-  >
-  > This function can be used anyware the standard library expexts a `sorter`. See
-  > top-level `Vtc.Timecode` docs for more information.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
+  for more information on how equality is determined.
 
   ## Examples
 
@@ -351,34 +351,47 @@ defmodule Vtc.Timecode do
     Ratio.compare(a.seconds, b.seconds)
   end
 
+  @doc section: :compare
   @doc """
   Returns `true` if `a` is eqaul to `b`.
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
 
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
+  ## Examples
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> true = Timecode.eq?(a, b)
+  ```
+
+  Timecodes with the *same* string representation, but *different* real-world seconds
+  values, are *not* equal:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f24())
+  iex> false = Timecode.eq?(a, b)
+  ```
+
+  But Timecodes with the *different* string representation, but the *same* real-world
+  seconds values, *are* equal:
+
+  ```elixir
+  iex> a = Timecode.with_frames!("01:00:00:12", Rates.f23_98())
+  iex> b = Timecode.with_frames!("01:00:00:24", Rates.f47_95())
+  iex> true = Timecode.eq?(a, b)
+  ```
   """
   @spec eq?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def eq?(a, b), do: compare(a, b) == :eq
 
+  @doc section: :compare
   @doc """
   Returns `true` if `a` is less than `b`.
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
-
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
+  for more information on how equality is determined.
 
   ## Examples
 
@@ -392,54 +405,37 @@ defmodule Vtc.Timecode do
   @spec lt?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def lt?(a, b), do: compare(a, b) == :lt
 
+  @doc section: :compare
   @doc """
   Returns `true` if `a` is less than or equal to `b`.
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
-
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
+  for more information on how equality is determined.
   """
   @spec lte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def lte?(a, b), do: compare(a, b) in [:lt, :eq]
 
+  @doc section: :compare
   @doc """
   Returns `true` if `a` is greater than `b`.
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
-
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
+  for more information on how equality is determined.
   """
   @spec gt?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def gt?(a, b), do: compare(a, b) == :gt
 
+  @doc section: :compare
   @doc """
   Returns `true` if `a` is greater than or eqaul to `b`.
 
-  > #### Argument Autocasting {: .info}
-  >
-  > As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  > implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to
-  > be the same framerate as the other. This is mostly to support quick scripting. Will
-
-  > #### Raises {: .error}
-  >
-  > Raises if there is an error parsing a `Vtc.Source.Frames` value from either argument.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values. See `eq?/2`
+  for more information on how equality is determined.
   """
   @spec gte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def gte?(a, b), do: compare(a, b) in [:gt, :eq]
 
+  @doc section: :arithmatic
   @doc """
   Add two timecodes.
 
@@ -447,10 +443,7 @@ defmodule Vtc.Timecode do
   equal, the result will inheret the framerat of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be assumed to be
-  the same framerate as the other. This is mostly to support quick scripting. Will raise
-  if there is an error parsing a `Vtc.Source.Frames` value.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
 
   ## Options
 
@@ -491,6 +484,7 @@ defmodule Vtc.Timecode do
     a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
   end
 
+  @doc section: :arithmatic
   @doc """
   Subtract `b` from `a`.
 
@@ -498,10 +492,7 @@ defmodule Vtc.Timecode do
   equal, the result will inheret the framerat of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  As long as one argument is a `Vtc.Timecode` value, `a` or `b` May be any value that
-  implements the `Vtc.Source.Frames` protocol, such as a timecode string, and will be
-  assumed to be the same framerate as the other. This is mostly to support quick
-  scripting. Will raise if there is an error parsing a `Vtc.Source.Frames` value.
+  [auto-casts](#module-artithmatic-autocasting) `Vtc.Source.Frames` values.
 
   ## Options
 
@@ -559,6 +550,7 @@ defmodule Vtc.Timecode do
   defp cast_op_args(%__MODULE__{} = a, b), do: {a, with_frames!(b, a.rate)}
   defp cast_op_args(a, %__MODULE__{} = b), do: {with_frames!(a, b.rate), b}
 
+  @doc section: :arithmatic
   @doc """
   Scales `a` by `b`.
 
@@ -585,6 +577,7 @@ defmodule Vtc.Timecode do
   @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
   def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(Ratio.new(b)) |> with_seconds!(a.rate, opts)
 
+  @doc section: :arithmatic
   @doc """
   Divides `dividend` by `divisor`.
 
@@ -619,6 +612,7 @@ defmodule Vtc.Timecode do
     dividend.seconds |> Ratio.div(Ratio.new(divisor)) |> with_seconds!(dividend.rate, opts)
   end
 
+  @doc section: :arithmatic
   @doc """
   Divides the total frame count of `dividend` by `divisor` and returns both a quotient
   and a remainder.
@@ -667,6 +661,7 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :arithmatic
   @doc """
   Devides the total frame count of `dividend` by `devisor`, and returns the remainder.
 
@@ -695,6 +690,7 @@ defmodule Vtc.Timecode do
         ) :: t()
   def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(Ratio.new(divisor), opts) |> elem(1)
 
+  @doc section: :arithmatic
   @doc """
   As the kernel `-/1` function.
 
@@ -718,6 +714,7 @@ defmodule Vtc.Timecode do
   @spec minus(t()) :: t()
   def minus(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
 
+  @doc section: :arithmatic
   @doc """
   Returns the absolute value of `tc`.
 
@@ -738,6 +735,7 @@ defmodule Vtc.Timecode do
   @spec abs(t()) :: t()
   def abs(tc), do: %{tc | seconds: Ratio.abs(tc.seconds)}
 
+  @doc section: :arithmatic
   @doc """
   Evalutes timecode mathematical expressions in a `do` block.
 
@@ -843,6 +841,7 @@ defmodule Vtc.Timecode do
   @spec eval([at: Framerate.t() | number() | Ratio.t(), ntsc: Framerate.ntsc()], Macro.input()) :: Macro.t()
   defmacro eval(opts \\ [], body), do: Eval.eval(opts, body)
 
+  @doc section: :convert
   @doc """
   Returns the number of frames that would have elapsed between 00:00:00:00 and
   `timecode`.
@@ -873,6 +872,14 @@ defmodule Vtc.Timecode do
           <displayformat>NDF</displayformat>
       </timecode>
       ```
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.frames(timecode)
+  86400
+  ```
   """
   @spec frames(t(), opts :: [round: round()]) :: integer()
   def frames(timecode, opts \\ []) do
@@ -885,8 +892,17 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :convert
   @doc """
   The individual sections of a timecode string as i64 values.
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.sections(timecode) |> inspect()
+  "%Vtc.Timecode.Sections{negative?: false, hours: 1, minutes: 0, seconds: 0, frames: 0}"
+  ```
   """
   @spec sections(t(), opts :: [round: round()]) :: Sections.t()
   def sections(timecode, opts \\ []) do
@@ -897,6 +913,7 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :convert
   @doc """
   Returns the the formatted SMPTE timecode
 
@@ -921,18 +938,32 @@ defmodule Vtc.Timecode do
   - Source and Playback monitors in your favorite NLE.
   - Burned into the footage for dailies.
   - Cut lists like an EDL.
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!(86400, Rates.f23_98())
+  iex> Timecode.timecode(timecode)
+  "01:00:00:00"
+  ```
   """
   @spec timecode(t(), opts :: [round: round()]) :: String.t()
   def timecode(timecode, opts \\ []), do: timecode |> TimecodeStr.from_timecode(opts) |> then(& &1.in)
 
+  @doc section: :convert
   @doc """
   Runtime Returns the true, real-world runtime of `timecode` in HH:MM:SS.FFFFFFFFF
   format.
 
-  Arguments
+  Trailing zeroes are trimmed from the end of the return value. If the entire fractal
+  seconds value would be trimmed, '.0' is used.
+
+  ## Options
 
   - `precision`: The number of places to round to. Extra trailing 0's will still be
-    trimmed.
+    trimmed. Default: `9`.
+
+  - `trim_zeros?`: Whether to trim trailing zeroes. Default: `true`.
 
   ## What it is
 
@@ -957,10 +988,19 @@ defmodule Vtc.Timecode do
   actual runtime. For instance, <01:00:00;00 <29.97 NTSC DF>> has a true runtime of
   '00:59:59.9964', and <01:00:00:00 <23.98 NTSC>> has a true runtime of
   '01:00:03.6'
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.runtime(timecode)
+  "01:00:03.6"
+  ```
   """
   @spec runtime(t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: String.t()
   def runtime(timecode, opts \\ []), do: timecode |> RuntimeStr.from_timecode(opts) |> then(& &1.in)
 
+  @doc section: :convert
   @doc """
   Returns the number of elapsed ticks `timecode` represents in Adobe Premiere Pro.
 
@@ -990,6 +1030,14 @@ defmodule Vtc.Timecode do
     ...
     </clipitem>
     ```
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.premiere_ticks(timecode)
+  915372057600000
+  ```
   """
   @spec premiere_ticks(t(), opts :: [round: round()]) :: integer()
   def premiere_ticks(timecode, opts \\ []) do
@@ -1000,6 +1048,7 @@ defmodule Vtc.Timecode do
     end
   end
 
+  @doc section: :convert
   @doc """
   Returns the number of physical film feet and frames `timecode` represents if shot
   on film.
@@ -1033,6 +1082,36 @@ defmodule Vtc.Timecode do
   - Sound turnover change lists.
 
   For more information on individual film formats, see the `Vtc.FilmFormat` module.
+
+  ## Examples
+
+  Defaults to 35mm, 4perf:
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.feet_and_frames(timecode) |> inspect()
+  "<5400+00 :ff35mm_4perf>"
+  ```
+
+  Use `String.Chars` to convert the resulting struct to a traditional F=F string:
+
+  ```elixir
+  iex> alias Vtc.Source.Frames.FeetAndFrames
+  iex>
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.feet_and_frames(timecode) |> String.Chars.to_string()
+  "5400+00"
+  ```
+
+  Outputting as a different film format:
+
+  ## Examples
+
+  ```elixir
+  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Timecode.feet_and_frames(timecode, film_format: :ff16mm) |> inspect()
+  "<4320+00 :ff16mm>"
+  ```
   """
   @spec feet_and_frames(t(), opts :: [fiim_format: FilmFormat.t(), round: round()]) :: FeetAndFrames.t()
   def feet_and_frames(timecode, opts \\ []), do: FeetAndFrames.from_timecode(timecode, opts)

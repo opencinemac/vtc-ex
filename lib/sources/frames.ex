@@ -8,11 +8,17 @@ defprotocol Vtc.Source.Frames do
   Out of the box, this protocol is implemented for the following types:
 
   - `Integer`
-  - `String` & 'BitString'
+
+  - `String` & `BitString`
+
     - timecode ("01:00:00:00")
+
     - integer ("86400")
+
     - Feet+Frames ("5400+00")
+
   - `Vtc.Source.Frames.TimecodeStr`
+
   - `Vtc.Source.Frames.FeetAndFrames`
   """
 
