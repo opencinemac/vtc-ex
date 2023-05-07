@@ -9,14 +9,14 @@ test:
 
 .PHONY: lint
 lint:
-	-mix style --check-formatted
+	-mix format --check-formatted
 	-mix dialyzer
 	-mix credo --strict
 	-find . -type f | grep -e "\.ex$$" -e "\.exs$$" | grep -v zdevelop/ | grep -v _build | grep -v deps | xargs misspell -error
 
 .PHONY: format
 format:
-	-mix style
+	-mix format
 
 .PHONY: doc
 doc:
