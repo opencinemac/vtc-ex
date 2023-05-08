@@ -24,7 +24,6 @@ formats, from timecodes, to frame counts, to film length measured in feet and fr
 ```elixir
 iex> Timecode.with_seconds!(1.5, Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
-iex>
 iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98())
 "<17:23:00:02 <23.98 NTSC>>"
 ```
@@ -36,7 +35,6 @@ formats:
 ```elixir
 iex> Timecode.frames(tc)
 1501922
-iex>
 iex> Timecode.feet_and_frames(tc)
 "<93889+10 :ff35mm_4perf>"
 ```
@@ -48,15 +46,13 @@ supported, with many helper functions for specific comparisons:
 ```elixir
 iex> Timecode.compare(tc, "02:00:00:00")
 :gt
-iex>
 iex> Timecode.gt?(tc, "02:00:00:00")
 true
-iex>
 iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 iex> data_01 = %{id: 2, tc: tc_01}
 iex> data_02 = %{id: 1, tc: tc_02}
-iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+iex> [data_02, data_01] |> Enum.sort_by(& &1.tc, Timecode) |> inspect()
 "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
 ```
 
@@ -85,11 +81,9 @@ as finding the overlapping area between two ranges:
 iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a = Range.new!(a_in, "02:00:00:00")
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
-iex>
 iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
 iex> b = Range.new!(b_in, "02:30:00:00")
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
-iex>
 iex> Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```

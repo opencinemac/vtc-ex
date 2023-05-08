@@ -18,8 +18,8 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
 
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
-  iex>
-  iex> %FeetAndFrames{feet: 10, frames: 4} |> String.Chars.to_string()
+  iex> 
+  iex> String.Chars.to_string(%FeetAndFrames{feet: 10, frames: 4})
   "10+04"
   ```
   """

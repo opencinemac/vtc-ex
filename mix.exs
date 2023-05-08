@@ -63,7 +63,8 @@ defmodule Vtc.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
-      {:styler, "~> 0.5", only: [:dev, :test], runtime: false}
+      {:styler, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:examples_styler, "~> 0.1", only: [:dev, :test], runtime: false}
     ]
   end
 
