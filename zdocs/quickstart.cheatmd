@@ -1,6 +1,7 @@
 # Quickstart
 
-Let's take a little peek at what `Vtc` can do, for you!
+Let's take a little peek at what `Vtc` can do, for you! Note that printing calls like
+`inspect/1` have been elided from these examples.
 
 These are the three main modules that make up the `Vtc` API:
 
@@ -17,7 +18,7 @@ far, is `23.98 NTSC`, which is shorthand for video footage running at `24000/100
 frames-per-second.
 
 ```elixir
-iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98()) |> inspect()
+iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98())
 "<17:23:00:02 <23.98 NTSC>>"
 ```
 
@@ -44,7 +45,7 @@ iex> Timecode.frames(tc)
 #### [seconds](Vtc.Timecode.html#module-struct-fields)
 
 ```elixir
-iex> tc.seconds |> inspect()
+iex> tc.seconds
 "Ratio.new(751711961, 12000)"
 ```
 
@@ -66,7 +67,7 @@ iex> Timecode.premiere_ticks(tc)
 #### physical film length in [feet_and_frames/2](`Vtc.Timecode.feet_and_frames/2`)
 
 ```elixir
-iex> Timecode.feet_and_frames(tc) |> inspect()
+iex> Timecode.feet_and_frames(tc)
 "<93889+10 :ff35mm_4perf>"
 ```
 
@@ -83,7 +84,7 @@ iex> tc.rate.ntsc
 #### [playback](Vtc.Framerate.html#module-struct-fields) speed
 
 ```elixir
-iex> tc.rate.playback |> inspect()
+iex> tc.rate.playback
 "Ratio.new(24000, 1001)"
 ```
 
@@ -114,32 +115,28 @@ played back at the timecode's rate.
 #### timecode
 
 ```elixir
-iex> tc = Timecode.with_frames!("3:12", Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_frames!("3:12", Rates.f23_98())
 "<03:00:00:12 <23.98 NTSC>>"
 ```
 
 #### malformed timecode
 
 ```elixir
-iex> tc = Timecode.with_frames!("3:12", Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_frames!("3:12", Rates.f23_98())
 "<03:00:00:12 <23.98 NTSC>>"
 ```
 
 #### frame count
 
 ```elixir
-iex> tc = Timecode.with_frames!(24, Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_frames!(24, Rates.f23_98())
 "<00:00:01:00 <23.98 NTSC>>"
 ```
 
 #### physical film length in feet+frames
 
 ```elixir
-iex> tc = Timecode.with_frames!("1+08", Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_frames!("1+08", Rates.f23_98())
 "<00:00:01:00 <23.98 NTSC>>"
 ```
 
@@ -148,24 +145,21 @@ iex> inspect(tc)
 #### seconds
 
 ```elixir
-iex> tc = Timecode.with_seconds!(1.5, Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_seconds!(1.5, Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
 ```
 
 #### runtime
 
 ```elixir
-iex> tc = Timecode.with_seconds!("00:05:23.5", Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_seconds!("00:05:23.5", Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
 ```
 
 #### malformed runtime
 
 ```elixir
-iex> tc = Timecode.with_seconds!("5:23.5", Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_seconds!("5:23.5", Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
 ```
 
@@ -173,8 +167,7 @@ iex> inspect(tc)
 
 ```elixir
 iex> input = %PremiereTicks{in: 254_016_000_000}
-iex> tc = Timecode.with_seconds!(input, Rates.f23_98())
-iex> inspect(tc)
+iex> Timecode.with_seconds!(input, Rates.f23_98())
 "<00:00:01:00 <23.98 NTSC>>"
 ```
 
@@ -187,9 +180,10 @@ By default, feet+frames is interpreted as 35mm, 4perf film. You can use the
 
 ```elixir
 iex> alias Vtc.Source.Frames.FeetAndFrames
-iex>
+iex> 
 iex> {:ok, feet_and_frames} = FeetAndFrames.from_string("5400+00", film_format: :ff16mm)
-iex> Timecode.with_frames(feet_and_frames, Rates.f23_98()) |> inspect()
+iex> 
+iex> Timecode.with_frames(feet_and_frames, Rates.f23_98())
 "{:ok, <01:15:00:00 <23.98 NTSC>>}"
 ```
 
@@ -203,31 +197,29 @@ iex> Timecode.with_frames(feet_and_frames, Rates.f23_98()) |> inspect()
 ```elixir
 iex> a = Timecode.with_frames!("18:23:13:02", Rates.f23_98())
 iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-iex> tc = Timecode.add(a, b) |> inspect()
+iex> 
+iex> tc = Timecode.add(a, b)
 "<18:23:13:02 <23.98 NTSC>>"
 ```
 
 #### [add/3](`Vtc.Timecode.add/3`) with string
 
 ```elixir
-iex> tc = Timecode.add(tc, "00:10:00:00")
-iex> inspect(tc)
+iex> Timecode.add(tc, "00:10:00:00")
 "<18:33:13:02 <23.98 NTSC>>"
 ```
 
 #### [add/3](`Vtc.Timecode.add/3`) with ints means adding frames
 
 ```elixir
-iex> tc = Timecode.add(tc, 38)
-iex> inspect(tc)
+iex> Timecode.add(tc, 38)
 "<18:33:14:16 <23.98 NTSC>>"
 ```
 
 #### [sub/3](`Vtc.Timecode.sub/3`)
 
 ```elixir
-iex> tc = Timecode.sub(tc, "01:00:00:00")
-iex> inspect(tc)
+iex> Timecode.sub(tc, "01:00:00:00")
 "<17:33:14:16 <23.98 NTSC>>"
 ```
 
@@ -236,32 +228,28 @@ iex> inspect(tc)
 #### [minus/1](`Vtc.Timecode.minus/1`)
 
 ```elixir
-iex> tc = Timecode.minus(tc)
-iex> inspect(tc)
+iex> Timecode.minus(tc)
 "<-17:33:14:16 <23.98 NTSC>>"
 ```
 
 #### [abs/1](`Vtc.Timecode.abs/1`)
 
 ```elixir
-iex> tc = Timecode.abs(tc)
-iex> inspect(tc)
+iex> Timecode.abs(tc)
 "<17:33:14:16 <23.98 NTSC>>"
 ```
 
 #### [mult/3](`Vtc.Timecode.mult/3`)
 
 ```elixir
-iex> tc = Timecode.mult(tc, 2)
-iex> inspect(tc)
+iex> Timecode.mult(tc, 2)
 "<35:06:29:08 <23.98 NTSC>>"
 ```
 
 #### [div/3](`Vtc.Timecode.div/3`)
 
 ```elixir
-iex> tc = Timecode.div(tc, 2)
-iex> inspect(tc)
+iex> Timecode.div(tc, 2)
 "<17:33:14:16 <23.98 NTSC>>"
 ```
 
@@ -269,7 +257,7 @@ iex> inspect(tc)
 
 ```elixir
 iex> {dividend, remainder} = Timecode.divrem(tc, 3)
-iex> inspect({dividend, remainder})
+iex> {dividend, remainder}
 "{<05:51:04:21 <23.98 NTSC>>, <00:00:00:01 <23.98 NTSC>>}"
 ```
 
@@ -281,16 +269,14 @@ Special `Timecode.eval do` blocks let us use native operators.
 
 ```elixir
 iex> require Timecode
-iex>
+iex> 
 iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
 iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
-iex>
-iex> result = Timecode.eval do
+iex> 
+iex> Timecode.eval do
 iex>   a + b * 2 - c
 iex> end
-iex>
-iex> inspect(result)
 "<01:45:00:00 <23.98 NTSC>>"
 ```
 
@@ -299,11 +285,9 @@ Or even do some quick scratch calculations in a given framerate:
 #### scratch calculation
 
 ```elixir
-iex> result = Timecode.eval at: 23.98 do
+iex> Timecode.eval at: 23.98 do
 iex>   "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
 iex> end
-iex>
-iex> inspect(result)
 "<01:45:00:00 <23.98 NTSC>>"
 ```
 
@@ -315,8 +299,7 @@ framerates.
 #### drop-frame
 
 ```elixir
-iex> drop_frame = Timecode.with_frames!(15000, Rates.f29_97_df())
-iex> inspect(drop_frame)
+iex> Timecode.with_frames!(15_000, Rates.f29_97_df())
 "<00:08:20;18 <29.97 NTSC DF>>"
 ```
 
@@ -325,7 +308,7 @@ We can make new timecodes with arbitrary framerates if we want.
 #### non-ntsc
 
 ```elixir
-iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(240, nil)) |> inspect()
+iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(240, nil))
 "<01:00:00:00 <240.0 fps>>"
 ```
 
@@ -335,7 +318,7 @@ timebases to the correct speed.
 #### non-drop coersion
 
 ```elixir
-iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop)) |> inspect()
+iex> Timecode.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop))
 "<01:00:00:00 <47.95 NTSC>>"
 ```
 
@@ -344,7 +327,7 @@ We can also rebase the frames using a new framerate!
 #### rebase
 
 ```elixir
-iex> Timecode.rebase(tc, Rates.f23_98()) |> inspect()
+iex> Timecode.rebase(tc, Rates.f23_98())
 "<02:00:00:00 <23.98 NTSC>>"
 ```
 
@@ -357,6 +340,7 @@ It's easy to compare two timecodes.
 ```elixir
 iex> a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
 iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> 
 iex> Timecode.compare(a, b)
 :lt
 ```
@@ -388,9 +372,11 @@ Sorting is suported through the [compare/2](`Vtc.Timecode.compare/2`) function.
 ```elixir
 iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> 
 iex> data_01 = %{id: 2, tc: tc_01}
 iex> data_02 = %{id: 1, tc: tc_02}
-iex> Enum.sort_by([data_02, data_01], &(&1.tc), Timecode) |> inspect()
+iex> 
+iex> Enum.sort_by([data_02, data_01], & &1.tc, Timecode)
 "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
 ```
 
@@ -404,8 +390,8 @@ those up.
 ```elixir
 iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+iex> 
 iex> a = Range.new!(a_in, a_out)
-iex> inspect(a)
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
@@ -420,8 +406,8 @@ Just like addition, we can write a bare timecode string as the out value if we w
 
 ```elixir
 iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
+iex> 
 iex> b = Range.new!(b_in, "02:30:00:00")
-iex> inspect(b)
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
 ```
 
@@ -430,7 +416,7 @@ We can get the duration of a range.
 #### [duration/1](`Vtc.Range.duration/1`)
 
 ```elixir
-iex> Range.duration(b) |> inspect()
+iex> Range.duration(b)
 iex> "<00:45:00:00 <23.98 NTSC>>"
 ```
 
@@ -439,7 +425,7 @@ iex> "<00:45:00:00 <23.98 NTSC>>"
 #### [overlaps?/2](`Vtc.Range.overlaps?/2`)
 
 ```elixir
-iex> Range.overlaps?(a, b) |> inspect()
+iex> Range.overlaps?(a, b)
 iex> true
 ```
 
@@ -448,6 +434,6 @@ We can even get the overlapping area as its own range!
 #### [intersection/2](`Vtc.Range.intersection/2`)
 
 ```elixir
-iex> Range.intersection!(a, b) |> inspect()
+iex> Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
