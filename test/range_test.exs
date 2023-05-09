@@ -2,7 +2,7 @@ defmodule Vtc.RangeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Vtc.TestUtils
+  import Vtc.TestSetups
 
   alias Vtc.Framerate
   alias Vtc.Range
@@ -18,7 +18,7 @@ defmodule Vtc.RangeTest do
   Timecodes should be specified in strings and the setup will choose a framerate to
   apply.
   """
-  @type range_shorthand() :: {String.t(), String.t()}
+  @type range_shorthand() :: {String.t(), String.t()} | {String.t(), String.t(), Range.out_type()}
 
   describe "new/3" do
     test "successfully creates a new range" do
@@ -486,6 +486,147 @@ defmodule Vtc.RangeTest do
     end
   end
 
+  describe "#contains/2?" do
+    setup [:setup_timecodes, :setup_ranges, :setup_negates]
+
+    @describetag timecodes: [:timecode]
+    @describetag ranges: [:range]
+
+    test_cases = [
+      %{
+        name: "range.in < tc < range.out | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "01:30:00:00",
+        expected: true
+      },
+      %{
+        name: "tc == range.in | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "01:00:00:00",
+        expected: true,
+        expected_negative: false
+      },
+      %{
+        name: "tc == range.out - 1 | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "01:59:59:23",
+        expected: true
+      },
+      %{
+        name: "tc == range.in - 1 | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "00:59:59:23",
+        expected: false
+      },
+      %{
+        name: "tc == range.out | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "02:00:00:00",
+        expected: false,
+        expected_negative: true
+      },
+      %{
+        name: "tc < range.in | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "00:30:00:00",
+        expected: false
+      },
+      %{
+        name: "tc < range.in | sign flipped | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "-01:30:00:00",
+        expected: false
+      },
+      %{
+        name: "tc > range.out | :exclusive",
+        range: {"01:00:00:00", "02:00:00:00"},
+        timecode: "02:30:00:00",
+        expected: false
+      },
+      %{
+        name: "range.in < tc < range.out | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "01:30:00:00",
+        expected: true
+      },
+      %{
+        name: "tc == range.in | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "01:00:00:00",
+        expected: true
+      },
+      %{
+        name: "tc == range.out - 1 | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "01:59:59:23",
+        expected: true
+      },
+      %{
+        name: "tc == range.in - 1 | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "00:59:59:23",
+        expected: false
+      },
+      %{
+        name: "tc == range.out | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "02:00:00:00",
+        expected: true
+      },
+      %{
+        name: "tc == range.out + 1 | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "02:00:00:01",
+        expected: false
+      },
+      %{
+        name: "tc < range.in | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "00:30:00:00",
+        expected: false
+      },
+      %{
+        name: "tc < range.in | sign flipped | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "-01:30:00:00",
+        expected: false
+      },
+      %{
+        name: "tc > range.out | :inclusive",
+        range: {"01:00:00:00", "02:00:00:00", :inclusive},
+        timecode: "02:30:00:00",
+        expected: false
+      }
+    ]
+
+    for test_case <- test_cases do
+      @tag test_id: test_id(test_case.name)
+      @tag test_case: test_case
+      test test_case.name, context do
+        %{timecode: timecode, range: range, test_case: %{expected: expected}} = context
+        assert Range.contains?(range, timecode) == expected
+      end
+
+      name = "#{test_case.name} | negative"
+
+      @tag test_id: test_id(name)
+      @tag test_case: test_case
+      @tag negate: [:range]
+      test name, context do
+        %{timecode: timecode, range: range, test_case: test_case} = context
+
+        expected =
+          case test_case do
+            %{expected_negative: expected} -> expected
+            %{expected: expected} -> expected
+          end
+
+        timecode = Timecode.mult(timecode, -1)
+        assert Range.contains?(range, timecode) == expected
+      end
+    end
+  end
+
   describe "#overlaps?/2" do
     setup [:setup_ranges, :setup_negates]
 
@@ -493,55 +634,55 @@ defmodule Vtc.RangeTest do
 
     test_cases = [
       %{
-        name: "1.a == 2.a and 1.b == 2.b",
+        name: "a.in == b.in and a.out == b.out",
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a == 2.a and 1.b < 2.b",
+        name: "a.in == b.in and a.out < b.out",
         a: {"01:00:00:00", "01:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a == 2.a and 1.b > 2.b",
+        name: "a.in == b.in and a.out > b.out",
         a: {"01:00:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b == 2.b",
+        name: "a.in < b.in and a.out == b.out",
         a: {"00:30:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b < 2.b",
+        name: "a.in < b.in and a.out < b.out",
         a: {"00:30:00:00", "01:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a < 2.a and 1.b > 2.b",
+        name: "a.in < b.in and a.out > b.out",
         a: {"00:30:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b == 2.b",
+        name: "a.in > b.in and a.out == b.out",
         a: {"01:30:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b < 2.b",
+        name: "a.in > b.in and a.out < b.out",
         a: {"01:15:00:00", "01:45:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
       },
       %{
-        name: "1.a > 2.a and 1.b > 2.b",
+        name: "a.in > b.in and a.out > b.out",
         a: {"01:30:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: true
@@ -559,13 +700,13 @@ defmodule Vtc.RangeTest do
         expected: false
       },
       %{
-        name: "1.b & 2.a at boundary",
+        name: "a.out & b.in at boundary",
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: false
       },
       %{
-        name: "1.a & 2.b at boundary",
+        name: "a.in & b.out at boundary",
         a: {"03:00:00:00", "04:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: false
@@ -655,55 +796,55 @@ defmodule Vtc.RangeTest do
 
     test_cases = [
       %{
-        name: "1.a == 2.a and 1.b == 2.b",
+        name: "a.in == b.in and a.out == b.out",
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
-        name: "1.a == 2.a and 1.b < 2.b",
+        name: "a.in == b.in and a.out < b.out",
         a: {"01:00:00:00", "01:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "01:30:00:00"}
       },
       %{
-        name: "1.a == 2.a and 1.b > 2.b",
+        name: "a.in == b.in and a.out > b.out",
         a: {"01:00:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
-        name: "1.a < 2.a and 1.b == 2.b",
+        name: "a.in < b.in and a.out == b.out",
         a: {"00:30:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
-        name: "1.a < 2.a and 1.b < 2.b",
+        name: "a.in < b.in and a.out < b.out",
         a: {"00:30:00:00", "01:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "01:30:00:00"}
       },
       %{
-        name: "1.a < 2.a and 1.b > 2.b",
+        name: "a.in < b.in and a.out > b.out",
         a: {"00:30:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:00:00:00", "02:00:00:00"}
       },
       %{
-        name: "1.a > 2.a and 1.b == 2.b",
+        name: "a.in > b.in and a.out == b.out",
         a: {"01:30:00:00", "02:00:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:30:00:00", "02:00:00:00"}
       },
       %{
-        name: "1.a > 2.a and 1.b < 2.b",
+        name: "a.in > b.in and a.out < b.out",
         a: {"01:15:00:00", "01:45:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:15:00:00", "01:45:00:00"}
       },
       %{
-        name: "1.a > 2.a and 1.b > 2.b",
+        name: "a.in > b.in and a.out > b.out",
         a: {"01:30:00:00", "02:30:00:00"},
         b: {"01:00:00:00", "02:00:00:00"},
         expected: {"01:30:00:00", "02:00:00:00"}
@@ -721,13 +862,13 @@ defmodule Vtc.RangeTest do
         expected: {:error, :none}
       },
       %{
-        name: "1.b & 2.a at boundary",
+        name: "a.out & b.in at boundary",
         a: {"01:00:00:00", "02:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: {:error, :none}
       },
       %{
-        name: "1.a & 2.b at boundary",
+        name: "a.in & b.out at boundary",
         a: {"03:00:00:00", "04:00:00:00"},
         b: {"02:00:00:00", "03:00:00:00"},
         expected: {:error, :none}
@@ -1045,12 +1186,17 @@ defmodule Vtc.RangeTest do
           Range.t() | {:error, any()}
   defp setup_range(values, rate \\ Rates.f23_98())
 
+  defp setup_range({in_tc, out_tc, out_type}, rate) do
+    in_tc = Timecode.with_frames!(in_tc, rate)
+    out_tc = Timecode.with_frames!(out_tc, rate)
+
+    %Range{in: in_tc, out: out_tc, out_type: out_type}
+  end
+
   defp setup_range({in_tc, out_tc}, rate) when is_binary(in_tc) and is_binary(out_tc) do
     in_tc = Timecode.with_frames!(in_tc, rate)
     out_tc = Timecode.with_frames!(out_tc, rate)
-    range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-
-    range
+    %Range{in: in_tc, out: out_tc, out_type: :exclusive}
   end
 
   defp setup_range(value, _), do: value

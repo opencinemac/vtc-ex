@@ -3,7 +3,7 @@ defmodule Vtc.FramerateTest do
 
   use ExUnit.Case, async: true
 
-  import Vtc.TestUtils
+  import Vtc.TestSetups
 
   alias Vtc.Framerate
   alias Vtc.Rates

@@ -41,7 +41,7 @@ defmodule Vtc.TimecodeTest.Parse do
 
   use ExUnit.Case, async: true
 
-  import Vtc.TestUtils
+  import Vtc.TestSetups
   import Vtc.TimecodeTest.Helpers
 
   alias Vtc.Rates

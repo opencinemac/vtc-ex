@@ -240,12 +240,7 @@ defmodule Vtc.Range do
   ```
   """
   @spec with_inclusive_out(t()) :: t()
-  def with_inclusive_out(%{out_type: :inclusive} = range), do: range
-
-  def with_inclusive_out(range) do
-    new_out = Timecode.sub(range.out, 1, round: :off)
-    %__MODULE__{range | out: new_out, out_type: :inclusive}
-  end
+  def with_inclusive_out(range), do: with_out_type(range, :inclusive)
 
   @doc section: :manipulate
   @doc """
@@ -263,9 +258,18 @@ defmodule Vtc.Range do
   ```
   """
   @spec with_exclusive_out(t()) :: t()
-  def with_exclusive_out(%{out_type: :exclusive} = range), do: range
+  def with_exclusive_out(range), do: with_out_type(range, :exclusive)
 
-  def with_exclusive_out(range) do
+  # Adjusts `range` to have `out_type`.
+  @spec with_out_type(t(), out_type()) :: t()
+  defp with_out_type(%{out_type: out_type} = range, out_type), do: range
+
+  defp with_out_type(range, :inclusive) do
+    new_out = Timecode.sub(range.out, 1, round: :off)
+    %__MODULE__{range | out: new_out, out_type: :inclusive}
+  end
+
+  defp with_out_type(range, :exclusive) do
     new_out = adjust_out_exclusive(range.out, :inclusive)
     %__MODULE__{range | out: new_out, out_type: :exclusive}
   end
@@ -298,6 +302,36 @@ defmodule Vtc.Range do
 
   @doc section: :compare
   @doc """
+  Returns `true` if `range` contains `timecode`. `timecode` may be any value that
+  implements [Frames](`Vtc.Source.Frames`).
+
+  ## Examples
+
+  ```elixir
+  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(tc_in, "01:30:00:00")
+  iex> 
+  iex> Range.contains?(range, "01:10:00:00")
+  true
+  iex> Range.contains?(range, "01:40:00:00")
+  false
+  ```
+  """
+  @spec contains?(t(), Timecode.t() | Frames.t()) :: boolean()
+  def contains?(range, %Timecode{} = timecode) do
+    calc_with_exclusive([range], fn range ->
+      cond do
+        Timecode.lt?(timecode, range.in) -> false
+        Timecode.gte?(timecode, range.out) -> false
+        true -> true
+      end
+    end)
+  end
+
+  def contains?(range, frames), do: contains?(range, Timecode.with_frames!(frames, range.in.rate))
+
+  @doc section: :compare
+  @doc """
   Returns `true` if there is overlap between `a` and `b`.
 
   ## Examples
@@ -323,22 +357,14 @@ defmodule Vtc.Range do
   ```
   """
   @spec overlaps?(t(), t()) :: boolean()
-  def overlaps?(%{out_type: :inclusive} = a, b) do
-    a = with_exclusive_out(a)
-    overlaps?(a, b)
-  end
-
-  def overlaps?(a, %{out_type: :inclusive} = b) do
-    b = with_exclusive_out(b)
-    overlaps?(a, b)
-  end
-
-  def overlaps?(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b) do
-    cond do
-      Timecode.compare(a.in, b.out) in [:gt, :eq] -> false
-      Timecode.compare(a.out, b.in) in [:lt, :eq] -> false
-      true -> true
-    end
+  def overlaps?(a, b) do
+    calc_with_exclusive([a, b], fn a, b ->
+      cond do
+        Timecode.compare(a.in, b.out) in [:gt, :eq] -> false
+        Timecode.compare(a.out, b.in) in [:lt, :eq] -> false
+        true -> true
+      end
+    end)
   end
 
   @doc section: :compare
@@ -486,37 +512,53 @@ defmodule Vtc.Range do
   # Returns the amount of intersection or separation between `a` and `b`, or `nil` if
   # `return_nil?` returns `true`.
   @spec calc_overlap(t(), t(), return_nil? :: (t(), t() -> nil)) :: {:ok, t()} | {:error, :none}
-  defp calc_overlap(a, %{out_type: :inclusive} = b, do_calc?) do
-    b = with_exclusive_out(b)
-    calc_overlap(a, b, do_calc?)
-  end
+  defp calc_overlap(a, b, do_calc?) do
+    result =
+      calc_with_exclusive([a, b], fn a, b ->
+        if do_calc?.(a, b) do
+          result_rate = a.in.rate
 
-  defp calc_overlap(%{out_type: :inclusive} = a, b, do_calc?) do
-    a = with_exclusive_out(a)
+          overlap_in = Enum.max([a.in, b.in], Timecode)
+          overlap_in = Timecode.with_seconds!(overlap_in.seconds, result_rate)
 
-    with {:ok, overlap} <- calc_overlap(a, b, do_calc?) do
-      {:ok, with_inclusive_out(overlap)}
+          overlap_out = Enum.min([a.out, b.out], Timecode)
+          overlap_out = Timecode.with_seconds!(overlap_out.seconds, result_rate)
+
+          # These values will be flipped when calulcating separation range, so we need to
+          # sort them.
+          [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Timecode)
+          %__MODULE__{a | in: overlap_in, out: overlap_out}
+        else
+          {:error, :none}
+        end
+      end)
+
+    with %__MODULE__{} <- result do
+      {:ok, result}
     end
   end
 
-  defp calc_overlap(%{out_type: :exclusive} = a, %{out_type: :exclusive} = b, do_calc?) do
-    if do_calc?.(a, b) do
-      result_rate = a.in.rate
+  # Runs a calculation, converting any ranges in `args` to excusive out points then,
+  # if the result is also a range, casting it's out point to the same type as the first
+  # Range argument in `args`.
+  @spec calc_with_exclusive([t() | any()], (... -> result)) :: result when result: any()
+  defp calc_with_exclusive(args, calc) do
+    out_type =
+      Enum.find_value(args, :exclusive, fn
+        %__MODULE__{out_type: out_type} -> out_type
+        _ -> nil
+      end)
 
-      overlap_in = Enum.max([a.in, b.in], Timecode)
-      overlap_in = Timecode.with_seconds!(overlap_in.seconds, result_rate)
-
-      overlap_out = Enum.min([a.out, b.out], Timecode)
-      overlap_out = Timecode.with_seconds!(overlap_out.seconds, result_rate)
-
-      # These values will be flipped when calulcating separation range, so we need to
-      # sort them.
-      [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Timecode)
-      overlap = %__MODULE__{a | in: overlap_in, out: overlap_out}
-      {:ok, overlap}
-    else
-      {:error, :none}
-    end
+    args
+    |> Enum.map(fn
+      %__MODULE__{} = range -> with_exclusive_out(range)
+      value -> value
+    end)
+    |> then(&apply(calc, &1))
+    |> then(fn
+      %__MODULE__{} = range -> with_out_type(range, out_type)
+      value -> value
+    end)
   end
 end
 
