@@ -420,6 +420,15 @@ iex> Range.duration(b)
 iex> "<00:45:00:00 <23.98 NTSC>>"
 ```
 
+... see if a specific timecode is in a range:
+
+#### [contains?/2](`Vtc.Range.contains?/2`)
+
+```elixir
+iex> Range.contains?(b, "02:00:00:00")
+iex> true
+```
+
 ... or see if it overlaps with another range.
 
 #### [overlaps?/2](`Vtc.Range.overlaps?/2`)

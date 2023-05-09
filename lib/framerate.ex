@@ -158,9 +158,10 @@ defmodule Vtc.Framerate do
   # validates that a rate is a proper drop-frame framerate.
   @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
   defp validate_drop(rate, :drop) do
-    case DropFrame.drop_allowed?(rate) do
-      true -> :ok
-      false -> {:error, %ParseError{reason: :bad_drop_rate}}
+    if DropFrame.drop_allowed?(rate) do
+      :ok
+    else
+      {:error, %ParseError{reason: :bad_drop_rate}}
     end
   end
 

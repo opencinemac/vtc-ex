@@ -3,11 +3,9 @@ defmodule Vtc.TimecodeTest.Ops do
 
   use ExUnit.Case, async: true
 
-  import Vtc.TestUtils
+  import Vtc.TestSetups
 
-  alias Vtc.Framerate
   alias Vtc.Rates
-  alias Vtc.Source.Frames
   alias Vtc.Timecode
 
   setup [:setup_test_case]
@@ -1072,16 +1070,4 @@ defmodule Vtc.TimecodeTest.Ops do
       end
     end
   end
-
-  @spec setup_timecodes(map()) :: Keyword.t()
-  defp setup_timecodes(context) do
-    timecode_fields = Map.get(context, :timecodes, [])
-    timecodes = Map.take(context, timecode_fields)
-
-    Enum.map(timecodes, fn {field_name, value} -> {field_name, setup_timecode(value)} end)
-  end
-
-  @spec setup_timecode(Frames.t() | {Frames.t(), Framerate.t()}) :: Timecode.t()
-  defp setup_timecode({frames, rate}), do: Timecode.with_frames!(frames, rate)
-  defp setup_timecode(frames), do: setup_timecode({frames, Rates.f23_98()})
 end
