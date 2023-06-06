@@ -30,7 +30,10 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
           false -> nil
         end)
       },
-      fn {rate, ntsc} -> Framerate.new!(rate, ntsc: ntsc) end
+      fn
+        {rate, :non_drop} -> Framerate.new!(rate, ntsc: :non_drop, coerce_ntsc?: true)
+        {rate, nil} -> Framerate.new!(rate, ntsc: nil)
+      end
     )
   end
 
@@ -101,7 +104,7 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
     property "timecode | ntsc | drop" do
       check all(
               rate_multiplier <- integer(1..10),
-              rate <- (30 * rate_multiplier) |> Framerate.new!(ntsc: :drop) |> constant(),
+              rate <- (30 * rate_multiplier) |> Framerate.new!(ntsc: :drop, coerce_ntsc?: true) |> constant(),
               timecode_values <- timecode_gen(rate),
               max_runs: 100
             ) do
@@ -205,16 +208,16 @@ defmodule Vtc.TimecodeTest.Properties.Rebase do
     check all(
             frames <- integer(),
             original_rate_x <- integer(1..240),
-            original_ntsc <- boolean(),
+            original_ntsc? <- boolean(),
             target_rate_x <- integer(1..240),
-            target_ntsc <- boolean(),
+            target_ntsc? <- boolean(),
             max_runs: 20
           ) do
-      original_ntsc = if original_ntsc, do: :non_drop, else: nil
-      origina_rate = Framerate.new!(original_rate_x, ntsc: original_ntsc)
+      original_ntsc = if original_ntsc?, do: :non_drop, else: nil
+      origina_rate = Framerate.new!(original_rate_x, ntsc: original_ntsc, coerce_ntsc?: original_ntsc?)
 
-      target_ntsc = if target_ntsc, do: :non_drop, else: nil
-      target_rate = Framerate.new!(target_rate_x, ntsc: target_ntsc)
+      target_ntsc = if target_ntsc?, do: :non_drop, else: nil
+      target_rate = Framerate.new!(target_rate_x, ntsc: target_ntsc, coerce_ntsc?: target_ntsc?)
 
       original = Timecode.with_frames!(frames, origina_rate)
 
@@ -394,11 +397,11 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
     check all(
             [a_frames, b_frames] <- list_of(integer(), length: 2),
             rate_x <- integer(1..240),
-            ntsc <- boolean(),
+            ntsc? <- boolean(),
             max_runs: 100
           ) do
-      ntsc = if ntsc, do: :non_drop, else: nil
-      rate = Framerate.new!(rate_x, ntsc: ntsc)
+      ntsc = if ntsc?, do: :non_drop, else: nil
+      rate = Framerate.new!(rate_x, ntsc: ntsc, coerce_ntsc?: ntsc?)
 
       a = Timecode.with_frames!(a_frames, rate)
       b = Timecode.with_frames!(b_frames, rate)

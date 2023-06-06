@@ -875,8 +875,8 @@ defmodule Vtc.Timecode do
   "<01:45:00:00 <23.98 NTSC>>"
   ```
 
-  `ntsc: :non_drop` is assumed by default, but you can set a different value with the
-  `:ntsc` option:
+  `ntsc: :non_drop, coerce_ntsc?: true` is assumed by default, but you can set a
+  different value with the `:ntsc` option:
 
   ```elixir
   iex> result =
