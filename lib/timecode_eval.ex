@@ -111,7 +111,11 @@ defmodule Vtc.Timecode.Eval do
   @spec setup_rate(Framerate.t() | number() | Ratio.t() | nil, ntsc: Framerate.ntsc()) :: Framerate.t() | nil
   def setup_rate(nil, _), do: nil
   def setup_rate(%Framerate{} = rate, _), do: rate
-  def setup_rate(rate, opts), do: Framerate.new!(rate, opts)
+
+  def setup_rate(rate, opts) do
+    opts = if is_float(rate), do: Keyword.put_new(opts, :coerce_ntsc?, true), else: opts
+    Framerate.new!(rate, opts)
+  end
 
   # Escapes a timecode function name for use in an ast.
   @spec timecode_func(atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()

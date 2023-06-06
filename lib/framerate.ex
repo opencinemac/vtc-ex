@@ -46,7 +46,7 @@ defmodule Vtc.Framerate do
   @typedoc """
   Type of [Framerate](`Vtc.Framerate`)
   """
-  @type t :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
+  @type t() :: %__MODULE__{playback: Ratio.t(), ntsc: ntsc()}
 
   @doc section: :inspect
   @doc """
@@ -77,7 +77,7 @@ defmodule Vtc.Framerate do
   @typedoc """
   Options for `new/2` and `new!/2`.
   """
-  @type new_opts() :: [ntsc: ntsc(), invert?: boolean()]
+  @type new_opts() :: [ntsc: ntsc(), coerce_ntsc?: boolean(), invert?: boolean()]
 
   @doc section: :parse
   @doc """
@@ -96,6 +96,11 @@ defmodule Vtc.Framerate do
   - `invert?`: If `true`, the resulting rational `rate` value will be flipped so that
     `1/24`  becomes `24/1`. This can be helpeful when you are parsing a rate given in
     seconds-per-frame rather than frames-per-second. Default: `false`.
+
+  - `coerce_ntsc?`: If true -- and `ntsc` is non-nil -- values will be coerced to the
+    nearest valid NTSC rate. So `24` would be coerced to `24000/1001`, as would
+    `23.98`. This option must be set to true when `ntsc` is non-nil and a float is
+    passed. Default: `false`
 
   > #### Float Precision {: .warning}
   >
@@ -172,13 +177,14 @@ defmodule Vtc.Framerate do
   defp new_core(rate, opts) do
     ntsc = Keyword.get(opts, :ntsc, :non_drop)
     invert? = Keyword.get(opts, :invert, false)
+    coerce_ntsc? = Keyword.get(opts, :coerce_ntsc?, false)
 
     # validate that our ntsc atom is one of the acceptable values.
     with :ok <- validate_float(rate, ntsc),
          :ok <- validate_ntsc(ntsc),
          rate = Ratio.new(rate),
          rate = if(invert?, do: Ratio.new(rate.denominator, rate.numerator), else: rate),
-         rate <- coerce_ntsc_rate(rate, ntsc),
+         {:ok, rate} <- coerce_ntsc_rate(rate, ntsc, coerce_ntsc?),
          :ok <- validate_drop(rate, ntsc) do
       {:ok, %__MODULE__{playback: rate, ntsc: ntsc}}
     end
@@ -200,11 +206,16 @@ defmodule Vtc.Framerate do
   defp validate_ntsc(ntsc) when ntsc in [:drop, :non_drop, nil], do: :ok
   defp validate_ntsc(_), do: {:error, %ParseError{reason: :invalid_ntsc}}
 
-  # coerces a rate to the closest proper NTSC playback rate.
-  @spec coerce_ntsc_rate(Ratio.t(), ntsc()) :: Ratio.t()
-  defp coerce_ntsc_rate(rate, nil), do: rate
-  defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _), do: rate
-  defp coerce_ntsc_rate(rate, _), do: rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
+  # coerces a rate to the closest proper NTSC playback rate if the option is set.
+  @spec coerce_ntsc_rate(Ratio.t(), ntsc(), coerce? :: boolean()) :: {:ok, Ratio.t()} | {:error, ParseError.t()}
+  defp coerce_ntsc_rate(rate, nil, false), do: {:ok, rate}
+  defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _, _), do: {:ok, rate}
+  defp coerce_ntsc_rate(_, _, false), do: {:error, %ParseError{reason: :invalid_ntsc_rate}}
+
+  defp coerce_ntsc_rate(rate, _, true) do
+    rate = rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
+    {:ok, rate}
+  end
 end
 
 defimpl Inspect, for: Vtc.Framerate do

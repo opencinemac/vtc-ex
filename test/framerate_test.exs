@@ -6,6 +6,7 @@ defmodule Vtc.FramerateTest do
   import Vtc.TestSetups
 
   alias Vtc.Framerate
+  alias Vtc.Framerate.ParseError
   alias Vtc.Rates
 
   setup [:setup_test_case]
@@ -29,6 +30,7 @@ defmodule Vtc.FramerateTest do
           "24000/1001"
         ],
         ntsc: :non_drop,
+        coerce_ntsc?: true,
         playback: Ratio.new(24_000, 1001),
         timebase: Ratio.new(24, 1)
       },
@@ -47,6 +49,7 @@ defmodule Vtc.FramerateTest do
           "30000/1001"
         ],
         ntsc: :drop,
+        coerce_ntsc?: true,
         playback: Ratio.new(30_000, 1001),
         timebase: Ratio.new(30, 1)
       },
@@ -65,6 +68,7 @@ defmodule Vtc.FramerateTest do
           "60000/1001"
         ],
         ntsc: :drop,
+        coerce_ntsc?: true,
         playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60, 1)
       },
@@ -78,6 +82,7 @@ defmodule Vtc.FramerateTest do
           "24.0"
         ],
         ntsc: nil,
+        coerce_ntsc?: false,
         playback: Ratio.new(24, 1),
         timebase: Ratio.new(24, 1)
       },
@@ -90,6 +95,7 @@ defmodule Vtc.FramerateTest do
           "29"
         ],
         ntsc: :drop,
+        coerce_ntsc?: true,
         err: %Framerate.ParseError{reason: :bad_drop_rate},
         err_msg: "drop-frame rates must be divisible by 30000/1001"
       },
@@ -99,6 +105,7 @@ defmodule Vtc.FramerateTest do
           "notarate"
         ],
         ntsc: :drop,
+        coerce_ntsc?: true,
         err: %Framerate.ParseError{reason: :unrecognized_format},
         err_msg: "framerate string format not recognized"
       },
@@ -108,6 +115,7 @@ defmodule Vtc.FramerateTest do
           24
         ],
         ntsc: :NotAnNtsc,
+        coerce_ntsc?: false,
         err: %Framerate.ParseError{reason: :invalid_ntsc},
         err_msg: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
       },
@@ -118,6 +126,7 @@ defmodule Vtc.FramerateTest do
           "23.98"
         ],
         ntsc: nil,
+        coerce_ntsc?: false,
         err: %Framerate.ParseError{reason: :imprecise},
         err_msg: "non-whole floats are not precise enough to create a non-NTSC Framerate"
       }
@@ -130,9 +139,9 @@ defmodule Vtc.FramerateTest do
         @tag test_case: this_case
         @tag input: input_case
         test "#{case_name} - #{i}: #{inspect(input_case)} - new", context do
-          %{test_case: test_case, input: input, ntsc: ntsc} = context
+          %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = context
 
-          case Framerate.new(input, ntsc: ntsc) do
+          case Framerate.new(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) do
             {:ok, rate} ->
               check_parsed(test_case, rate)
 
@@ -153,16 +162,34 @@ defmodule Vtc.FramerateTest do
         @tag test_case: this_case
         @tag input: input_case
         test "#{case_name} - #{i}: #{inspect(input_case)} - new!", context do
-          %{test_case: test_case, input: input, ntsc: ntsc} = context
+          %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = context
 
           if is_map_key(test_case, :err) do
-            function = fn -> Framerate.new!(input, ntsc: ntsc) end
+            function = fn -> Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) end
             assert_raise Framerate.ParseError, function
           else
-            rate = Framerate.new!(input, ntsc: ntsc)
+            rate = Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?)
             check_parsed(test_case, rate)
           end
         end
+      end
+    end
+
+    test_cases = [
+      %{input: Ratio.new(24_000, 1002)},
+      %{input: 24},
+      %{input: 24_000 / 1002},
+      %{input: 24_000 / 1001}
+    ]
+
+    for this_case <- test_cases do
+      @tag test_case: this_case
+      test "coerce_ntsc?: error on #{inspect(this_case.input)}", context do
+        %{input: input} = context
+
+        assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
+        assert error.reason == :invalid_ntsc_rate
+        assert ParseError.message(error) == "NTSC rates must be divisible by 1001 when :coerce_ntsc? is false"
       end
     end
 
