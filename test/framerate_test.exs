@@ -198,10 +198,11 @@ defmodule Vtc.FramerateTest do
       @tag test_case: this_case
       test "coerce_ntsc?: error on #{inspect(this_case.input)}", context do
         %{input: input} = context
+        expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
         assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
         assert error.reason == :invalid_ntsc_rate
-        assert ParseError.message(error) == "NTSC rates must be divisible by 1001 when :coerce_ntsc? is false"
+        assert ParseError.message(error) == expected_message
       end
     end
 
