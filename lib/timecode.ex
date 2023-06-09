@@ -349,7 +349,7 @@ defmodule Vtc.Timecode do
   iex> :gt = Timecode.compare(a, b)
   ```
 
-  Using a timcode and a bare string:
+  Using a timecode and a bare string:
 
   ```elixir
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
@@ -485,7 +485,7 @@ defmodule Vtc.Timecode do
   "<01:00:00:01 <23.98 NTSC>>"
   ```
 
-  Using a timcode and a bare string:
+  Using a timecode and a bare string:
 
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
@@ -551,7 +551,7 @@ defmodule Vtc.Timecode do
   "<01:00:00:01 <23.98 NTSC>>"
   ```
 
-  Using a timcode and a bare string:
+  Using a timecode and a bare string:
 
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
