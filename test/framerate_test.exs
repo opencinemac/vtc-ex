@@ -212,6 +212,16 @@ defmodule Vtc.FramerateTest do
       assert test_case.timebase == Framerate.timebase(parsed)
       assert test_case.ntsc == parsed.ntsc
     end
+
+    property "parse NTSC, non-drop rates" do
+      check all(timebase <- StreamData.positive_integer()) do
+        playback = Ratio.new(timebase * 1000, 1001)
+
+        assert {:ok, framerate} = Framerate.new(playback, ntsc: :non_drop)
+        assert framerate.playback == playback
+        assert framerate.ntsc == :non_drop
+      end
+    end
   end
 
   describe "#consts" do
