@@ -187,7 +187,7 @@ iex> Timecode.with_frames(feet_and_frames, Rates.f23_98())
 "{:ok, <01:15:00:00 <23.98 NTSC>>}"
 ```
 
-## Arithmatic
+## Arithmetic
 {: .col-2}
 
 ### .
@@ -356,7 +356,7 @@ iex> Timecode.lt?(a, b)
 true
 ```
 
-Like arithmatic, we can compare directly with a timecode string:
+Like arithmetic, we can compare directly with a timecode string:
 
 #### [compare/2](`Vtc.Timecode.compare/2`) with string
 

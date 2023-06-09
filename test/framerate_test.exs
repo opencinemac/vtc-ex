@@ -2,6 +2,7 @@ defmodule Vtc.FramerateTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   import Vtc.TestSetups
 
@@ -71,6 +72,17 @@ defmodule Vtc.FramerateTest do
         coerce_ntsc?: true,
         playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60, 1)
+      },
+      %{
+        name: "11000/1001 NTSC",
+        inputs: [
+          Ratio.new(11_000, 1001),
+          "11000/1001"
+        ],
+        ntsc: :non_drop,
+        coerce_ntsc?: false,
+        playback: Ratio.new(11_000, 1001),
+        timebase: Ratio.new(11, 1)
       },
       %{
         name: "24 fps",
@@ -186,10 +198,11 @@ defmodule Vtc.FramerateTest do
       @tag test_case: this_case
       test "coerce_ntsc?: error on #{inspect(this_case.input)}", context do
         %{input: input} = context
+        expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
         assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
         assert error.reason == :invalid_ntsc_rate
-        assert ParseError.message(error) == "NTSC rates must be divisible by 1001 when :coerce_ntsc? is false"
+        assert ParseError.message(error) == expected_message
       end
     end
 
@@ -198,6 +211,16 @@ defmodule Vtc.FramerateTest do
       assert test_case.playback == parsed.playback
       assert test_case.timebase == Framerate.timebase(parsed)
       assert test_case.ntsc == parsed.ntsc
+    end
+
+    property "parse NTSC, non-drop rates" do
+      check all(timebase <- StreamData.positive_integer()) do
+        playback = Ratio.new(timebase * 1000, 1001)
+
+        assert {:ok, framerate} = Framerate.new(playback, ntsc: :non_drop)
+        assert framerate.playback == playback
+        assert framerate.ntsc == :non_drop
+      end
     end
   end
 
