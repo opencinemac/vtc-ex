@@ -2,6 +2,7 @@ defmodule Vtc.FramerateTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   import Vtc.TestSetups
 
@@ -71,6 +72,17 @@ defmodule Vtc.FramerateTest do
         coerce_ntsc?: true,
         playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60, 1)
+      },
+      %{
+        name: "11000/1001 NTSC",
+        inputs: [
+          Ratio.new(11_000, 1001),
+          "11000/1001"
+        ],
+        ntsc: :non_drop,
+        coerce_ntsc?: false,
+        playback: Ratio.new(11_000, 1001),
+        timebase: Ratio.new(11, 1)
       },
       %{
         name: "24 fps",

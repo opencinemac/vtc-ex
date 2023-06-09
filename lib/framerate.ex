@@ -209,12 +209,20 @@ defmodule Vtc.Framerate do
   # coerces a rate to the closest proper NTSC playback rate if the option is set.
   @spec coerce_ntsc_rate(Ratio.t(), ntsc(), coerce? :: boolean()) :: {:ok, Ratio.t()} | {:error, ParseError.t()}
   defp coerce_ntsc_rate(rate, nil, false), do: {:ok, rate}
-  defp coerce_ntsc_rate(%Ratio{denominator: 1001} = rate, _, _), do: {:ok, rate}
-  defp coerce_ntsc_rate(_, _, false), do: {:error, %ParseError{reason: :invalid_ntsc_rate}}
 
   defp coerce_ntsc_rate(rate, _, true) do
     rate = rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
     {:ok, rate}
+  end
+
+  defp coerce_ntsc_rate(rate, _, false) do
+    whole_frame = Rational.round(rate)
+
+    if Ratio.new(whole_frame * 1000, 1001) == rate do
+      {:ok, rate}
+    else
+      {:error, %ParseError{reason: :invalid_ntsc_rate}}
+    end
   end
 end
 
