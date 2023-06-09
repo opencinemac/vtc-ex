@@ -228,7 +228,7 @@ defmodule Vtc.TimecodeTest.Properties.Rebase do
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.Arithmatic do
+defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   @moduledoc false
 
   use ExUnit.Case, async: true

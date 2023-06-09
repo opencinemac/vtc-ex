@@ -56,7 +56,7 @@ iex> [data_02, data_01] |> Enum.sort_by(& &1.tc, Timecode) |> inspect()
 "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
 ```
 
-All sensible [arithmatic](https://hexdocs.pm/vtc/Vtc.Timecode.html#arithmatic) 
+All sensible [arithmetic](https://hexdocs.pm/vtc/Vtc.Timecode.html#arithmetic) 
 operations are provided, such as addition, subtraction, and multiplication:
 
 ```elixir

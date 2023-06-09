@@ -41,7 +41,7 @@ defmodule Vtc.Timecode do
   "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
   ```
 
-  ## Arithmatic Autocasting
+  ## Arithmetic Autocasting
 
   For operators that take two `timecode values`, likt `add/3` or `compare/2`, as long as
   one argument is a [Timecode](`Vtc.Timecode`) value, `a` or `b` May be any value that
@@ -446,7 +446,7 @@ defmodule Vtc.Timecode do
   @spec gte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
   def gte?(a, b), do: compare(a, b) in [:gt, :eq]
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Add two timecodes.
 
@@ -501,7 +501,7 @@ defmodule Vtc.Timecode do
     a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
   end
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Subtract `b` from `a`.
 
@@ -575,7 +575,7 @@ defmodule Vtc.Timecode do
   defp cast_op_args(%__MODULE__{} = a, b), do: {a, with_frames!(b, a.rate)}
   defp cast_op_args(a, %__MODULE__{} = b), do: {with_frames!(a, b.rate), b}
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Scales `a` by `b`.
 
@@ -606,7 +606,7 @@ defmodule Vtc.Timecode do
   @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
   def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(Ratio.new(b)) |> with_seconds!(a.rate, opts)
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Divides `dividend` by `divisor`.
 
@@ -645,7 +645,7 @@ defmodule Vtc.Timecode do
     dividend.seconds |> Ratio.div(Ratio.new(divisor)) |> with_seconds!(dividend.rate, opts)
   end
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Divides the total frame count of `dividend` by `divisor` and returns both a quotient
   and a remainder.
@@ -696,7 +696,7 @@ defmodule Vtc.Timecode do
     end
   end
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Devides the total frame count of `dividend` by `devisor`, and returns the remainder.
 
@@ -727,7 +727,7 @@ defmodule Vtc.Timecode do
         ) :: t()
   def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(Ratio.new(divisor), opts) |> elem(1)
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   As the kernel `-/1` function.
 
@@ -755,7 +755,7 @@ defmodule Vtc.Timecode do
   @spec minus(t()) :: t()
   def minus(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Returns the absolute value of `tc`.
 
@@ -780,7 +780,7 @@ defmodule Vtc.Timecode do
   @spec abs(t()) :: t()
   def abs(tc), do: %{tc | seconds: Ratio.abs(tc.seconds)}
 
-  @doc section: :arithmatic
+  @doc section: :arithmetic
   @doc """
   Evalutes timecode mathematical expressions in a `do` block.
 
@@ -834,7 +834,7 @@ defmodule Vtc.Timecode do
   ```
 
   Just like the regular [Timecode](`Vtc.Timecode`) functions, only one value in an
-  arithmatic expression needs to be a [Timecode](`Vtc.Timecode`) value. In the case
+  arithmetic expression needs to be a [Timecode](`Vtc.Timecode`) value. In the case
   above, since multiplication happens first, that's `b`:
 
   ```elixir

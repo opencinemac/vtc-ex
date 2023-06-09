@@ -29,7 +29,7 @@ defmodule Vtc.MixProject do
           Manipulate: &(&1[:section] == :manipulate),
           Inspect: &(&1[:section] == :inspect),
           Compare: &(&1[:section] == :compare),
-          Arithmatic: &(&1[:section] == :arithmatic),
+          Arithmetic: &(&1[:section] == :arithmetic),
           Convert: &(&1[:section] == :convert),
           Consts: &(&1[:section] == :consts),
           Perfs: &(&1[:section] == :perfs)
