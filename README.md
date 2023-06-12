@@ -97,7 +97,7 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
 ## Goals
 
 - Offer a comprehensive set of tools for parsing, manipulating and rendering timecode
-  in with all it's quirks and incarnations.
+  with all it's quirks and incarnations.
 
 - Define an intuitive, idiomatic Elixir API.
 
@@ -172,7 +172,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.8"}
+    {:vtc, "~> 0.9"}
   ]
 end
 ```

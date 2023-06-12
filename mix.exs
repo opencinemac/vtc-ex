@@ -16,7 +16,13 @@ defmodule Vtc.MixProject do
         # The main page in the docs
         main: "readme",
         logo: "zdocs/source/logo1.svg",
-        extras: ["README.md", "zdocs/quickstart.cheatmd", "zdocs/history.md"],
+        extras: [
+          "README.md",
+          "zdocs/quickstart.cheatmd",
+          "zdocs/history.md",
+          "zdocs/framerate_vs_timebase.md",
+          "zdocs/the_rational_rationale.md"
+        ],
         groups_for_modules: [
           "Core API": [Vtc.Timecode, Vtc.Framerate, Vtc.Range],
           Data: [Vtc.Timecode.Sections, Vtc.Rates, Vtc.FilmFormat],

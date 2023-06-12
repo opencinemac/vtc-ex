@@ -5,6 +5,8 @@ But first: what is timecode?
 If you're already familiar with timecode, it's history, and it's flavors, feel free to
 skip this section.
 
+## How we got here
+
 Back in the days of film, a running strip of numbers ran along the edge of the film
 stock to uniquely identify each frame, called
 [keycode](https://en.wikipedia.org/wiki/Keykode)
@@ -33,7 +35,9 @@ re-assembled using a digital cutlist on a powerful machine for finishing out the
 
 In film, we referenced *keycode* to know exactly what frame was being displayed on
 screen at any given time. In digital video, we reference the *timecode* of a given
-frame.
+frame, as defined by the SMPTE Timecode standard.
+
+## Further Reading
 
 For a technical deep-dive into the many flavors of timecode, check out
 [Frame.io's](frame.io)

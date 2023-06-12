@@ -51,6 +51,58 @@ defmodule Vtc.Timecode do
 
   If parsing the value fails during casting, the function raises a
   `Vtc.Timecode.ParseError`.
+
+  ## Parsing: Seconds.t() or Frames.t()
+
+  Parsing functions preappend `with_` to their name. When you give a value to a parsing
+  function, it is the same value that would be returned by the euivalent unit
+  conversion. So a value passed to [with_frames](`Vtc.Timecode.with_frames/2`) is the
+  same value [frames](`Vtc.Timecode.frames/1`) would return:
+
+  ```elixir
+  iex> {:ok, timecode} = Timecode.with_frames(24, Rates.f23_98())
+  iex> inspect(timecode)
+  "<00:00:01:00 <23.98 NTSC>>"
+  iex> Timecode.frames(timecode)
+  24
+  ```
+
+  The `Timecode` module only has two basic construction / parsing methods:
+  [with_seconds](`Vtc.Timecode.with_seconds/2`) and
+  [with_frames](`Vtc.Timecode.with_frames/2`).
+
+  At first blush, this may seem... odd. Where is `with_timecode/2`? Or
+  `with_premiere_ticks/2`? We can render these formats, so why isn't there a parser for
+  them? Well there is, sort of: the two functions above.
+
+  One of the major conceits of Vtc is that all of the various ways of representing a
+  video frame's timestamp boil down to EITHER:
+
+  - a) A representation of an index number for that frame
+
+  OR
+
+  - b) A representation of the real-world seconds the frame occurred at.
+
+  Timecode is really a human-readable way to represent a frame number. Same with film
+  feet+frames.
+
+  Premiere Ticks, on the other hand, represents a real-world seconds value, as broken
+  down in `1/254_016_000_000ths` of a second.
+
+  Instead of polluting the module's namespace with a range of constructors, Vtc declares
+  a [Frames](`Vtc.Source.Frames`) protocol for types that represent a frame count, and a
+  [Seconds](`Vtc.Source.Seconds`) protocol for types that represent a time-scalar.
+
+  All timecode representations eventually get funnelled through one of these protocols.
+  For instance, when the `String` implementation of the protocol detects a SMPTE
+  timecode string, it wraps the value in a [TimecodeStr](`Vtc.Source.Frames.TimecodeStr`)
+  struct which handles converting that string to a frame number thorough implementing
+  the [Frames](`Vtc.Source.Frames`) protocol. That frame number is then taken by
+  [with_frames](`Vtc.Timecode.with_frames/2`) and converted to a rational seconds value.
+
+  Going through protocols allows callers to define their own types that work with Vtc's
+  parsing functions directly.
   """
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
@@ -451,7 +503,7 @@ defmodule Vtc.Timecode do
   Add two timecodes.
 
   Uses the real-world seconds representation. When the rates of `a` and `b` are not
-  equal, the result will inheret the framerat of `a` and be rounded to the seconds
+  equal, the result will inheret the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
   [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
@@ -506,7 +558,7 @@ defmodule Vtc.Timecode do
   Subtract `b` from `a`.
 
   Uses their real-world seconds representation. When the rates of `a` and `b` are not
-  equal, the result will inheret the framerat of `a` and be rounded to the seconds
+  equal, the result will inheret the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
   [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
@@ -579,7 +631,7 @@ defmodule Vtc.Timecode do
   @doc """
   Scales `a` by `b`.
 
-  The result will inheret the framerat of `a` and be rounded to the seconds
+  The result will inheret the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame based on the `:round` option.
 
   ## Options
