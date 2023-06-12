@@ -1,8 +1,9 @@
 defmodule Vtc.Framerate do
   @moduledoc """
-  The rate at which a video file frames are played back.
-
-  Framerate is measured in frames-per-second (24/1 = 24 frames-per-second).
+  The rate at which a video file frames are played back, measured in frames-per-second
+  (24/1 = 24 frames-per-second). For more on framerate and why Vtc chooses to represent
+  it as a rational number, see [NTSC: Framerate vs timebase](framerate_vs_timebase.html)
+  and [The Rational Rationale](the_rational_rationale.html)
 
   ## Struct Fields
 
@@ -11,15 +12,6 @@ defmodule Vtc.Framerate do
 
   - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
 
-  ## Playback vs Timebase
-
-  For NTSC timecode, the timebase always runs at a whole number of frames-per-second,
-  which the timecode pretends in the playback speed of the Media. This makes timecode
-  string calculations clean and accurate, rather than having partial frames at second
-  and minute boundaries.
-
-  So for footage shot at 23.98 NTSC, Timecode is caculated as-if the footage were
-  running at 24fps, which `Vtc` calls the 'timebase'.
   """
   alias Vtc.Framerate.ParseError
   alias Vtc.Utils.DropFrame
@@ -50,7 +42,9 @@ defmodule Vtc.Framerate do
 
   @doc section: :inspect
   @doc """
-  The rational representation of the timecode's 'logical speed'.
+  The rational representation of the SMPTE timecode's 'logical speed'. For more on
+  timebase and it's relationship to framerate, see:
+  [NTSC: Framerate vs timebase](framerate_vs_timebase.html).
 
   Returned value is in frames-per-second.
   """

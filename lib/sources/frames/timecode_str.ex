@@ -102,14 +102,14 @@ defimpl Vtc.Source.Frames, for: Vtc.Source.Frames.TimecodeStr do
 
       seconds_for_minutes = Ratio.new(sections.minutes * Consts.seconds_per_minute())
       seconds_for_hours = Ratio.new(sections.hours * Consts.seconds_per_hour())
-      frames_rat = Ratio.new(sections.frames)
+      frames_ratio = Ratio.new(sections.frames)
 
       sections.seconds
       |> Ratio.new()
       |> Ratio.add(seconds_for_minutes)
       |> Ratio.add(seconds_for_hours)
       |> Ratio.mult(frames_per_second)
-      |> Ratio.add(frames_rat)
+      |> Ratio.add(frames_ratio)
       |> Ratio.add(Ratio.new(adjustment))
       |> Rational.round()
       |> then(fn frames -> if sections.negative?, do: -frames, else: frames end)
