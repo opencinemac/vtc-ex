@@ -38,3 +38,4 @@ extends:
     publishDocs: false
     publishToHexPM: true
     timeoutInMinutes: 20
+    testPostgres: true
