@@ -2,7 +2,7 @@ defmodule Vtc.RangeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Vtc.TestSetups
+  import Vtc.Test.Support.Setups
 
   alias Vtc.Framerate
   alias Vtc.Range

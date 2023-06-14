@@ -3,7 +3,7 @@ defmodule Vtc.TimecodeTest.Ops do
 
   use ExUnit.Case, async: true
 
-  import Vtc.TestSetups
+  import Vtc.Test.Support.Setups
 
   alias Vtc.Rates
   alias Vtc.Timecode

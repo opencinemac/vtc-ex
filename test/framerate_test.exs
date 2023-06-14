@@ -4,7 +4,7 @@ defmodule Vtc.FramerateTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import Vtc.TestSetups
+  import Vtc.Test.Support.Setups
 
   alias Vtc.Framerate
   alias Vtc.Framerate.ParseError
