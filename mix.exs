@@ -11,6 +11,7 @@ defmodule Vtc.MixProject do
       description: "A SMPTE timecode library for Elixir",
       source_url: "https://github.com/opencinemac/vtc-ex",
       elixir: "~> 1.12",
+      elixirc_paths: elixirc_paths(Mix.env()),
       test_coverage: [tool: :covertool],
       docs: [
         # The main page in the docs
@@ -48,10 +49,12 @@ defmodule Vtc.MixProject do
     ]
   end
 
+  # Specifies which paths to compile per environment.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
   # Run "mix help compile.app" to learn about applications.
-  def application do
-    []
-  end
+  def application, do: []
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
@@ -59,6 +62,9 @@ defmodule Vtc.MixProject do
       # Library Dependencies
       {:decimal, "~> 2.0"},
       {:ratio, "~> 3.0"},
+      {:ecto, "~> 3.10", optional: true},
+      {:ecto_sql, "~> 3.10", optional: true},
+      {:postgrex, ">= 0.0.0", optional: true},
 
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},

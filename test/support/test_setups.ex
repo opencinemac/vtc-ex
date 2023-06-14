@@ -1,4 +1,4 @@
-defmodule Vtc.TestSetups do
+defmodule Vtc.Test.Support.Setups do
   @moduledoc false
 
   alias Vtc.Framerate
