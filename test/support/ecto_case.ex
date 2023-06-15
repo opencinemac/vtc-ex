@@ -8,6 +8,9 @@ defmodule Vtc.Test.Support.EctoCase do
   using do
     quote do
       alias Vtc.Test.Support.Repo
+
+      @moduletag :ecto
+      @moduletag :postgres
     end
   end
 
