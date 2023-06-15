@@ -446,3 +446,14 @@ We can even get the overlapping area as its own range!
 iex> Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
+
+## Postgres Types
+
+To use Postgres types with Ecto. Add the following into you applications configuration
+file:
+
+```elixir
+config :vtc,
+  env: config_env(),
+  postgres_types?: true
+```

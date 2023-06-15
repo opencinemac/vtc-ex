@@ -153,6 +153,20 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
     - [X] Overlap between ranges
     - [X] Distance between ranges
     - [X] Inclusive and exclusive ranges
+- [X] Postgres Composite Types with Ecto and Postgrex:
+    - Rational[X]
+      - [ ] Native comparison operators
+      - [ ] Native arithmatic operators
+      - [ ] Native indexing support
+    - Framerate[ ]
+    - Timecode[ ]
+      - [ ] Native comparison operators
+      - [ ] Native arithmatic operators
+      - [ ] Native indexing Support
+      - [ ] Native inspection functions
+    - Range
+      - [ ] Native indexing support
+      - [ ] Native inspection functions
 
 ## Attributions
 
@@ -172,7 +186,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.9"}
+    {:vtc, "~> 0.10"}
   ]
 end
 ```

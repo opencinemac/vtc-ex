@@ -1,0 +1,249 @@
+use Ecto.Postgres.Module
+
+defpgmodule Vtc.Ecto.Postgres.PgRational do
+  @moduledoc """
+  Defines a composite type for storing rational values as dual int64s. These values
+  are cast to `%Ratio()` structs for use in application code, provided by the `Ratio`
+  library.
+
+  The composite type is defined as follows:
+
+  ```sql
+  CREATE TYPE public.rational as (
+    numerator bigint,
+    denominator bigint
+  )
+  ```
+
+  Rational values can be intatiated in raw SQL queries like so:
+
+  ```sql
+  SELECT (1, 2)::rational
+  ```
+
+  ## Casting PgRational in Changesets
+
+  Rational values can be cast from the following values in changesets:
+
+  - `%Ratio{}` structs.
+
+  - `[numerator, denominator]` integer arrays. Useful for non-text JSON values that can
+    be set in a single field.
+
+  - Strings formatted as `'numerator/denominator'` Useful for casting from JSON string
+    values.
+
+  ## Field migrations
+
+  You can create a field as a rational during a migration like so:
+
+  ```elixir
+  create table("rationals") do
+    add(:a, PgRational.type())
+    add(:b, PgRational.type())
+  end
+  ```
+
+  ## Schema fields
+
+  Then in your schema module:
+
+  ```elixir
+  defmodule MyApp.Rationals do
+  @moduledoc false
+  use Ecto.Schema
+
+  alias Vtc.Ecto.Postgres.PgRational
+
+  @type t() :: %__MODULE__{
+          a: Ratio.t(),
+          b: Ratio.t()
+        }
+
+  schema "rationals_01" do
+    field(:a, PgRational)
+    field(:b, PgRational)
+  end
+  ```
+
+  ... notice that the schema field type is `PgRational`, but the type-spec field uses
+  `Ratio.t()`, the type that our DB fields will be deserialized into.
+
+  ## Changesets
+
+  With the above setup, changesets should just work:
+
+  ```elixir
+  def changeset(schema, attrs) do
+    schema
+    |> Changeset.cast(attrs, [:a, :b])
+    |> Changeset.validate_required([:a, :b])
+  end
+  ```
+  """
+
+  use Ecto.Type
+
+  @doc section: :ecto_migrations
+  @doc """
+  The database type for `PgRational`.
+
+  Can be used in migrations as the fields type.
+  """
+  @impl Ecto.Type
+  def type, do: :rational
+
+  @typedoc """
+  Type of the raw composite value that will be sent to / received from the database.
+  """
+  @type db_record() :: {non_neg_integer(), pos_integer()}
+
+  # Casts values for changesets functions.
+  @doc false
+  @impl Ecto.Type
+  @spec cast(Ratio.t() | String.t() | [non_neg_integer()]) :: {:ok, Ratio.t()} | :error
+  def cast(%Ratio{} = ratio), do: {:ok, ratio}
+  def cast([num, denom]) when is_integer(num) and is_integer(denom), do: {:ok, Ratio.new(num, denom)}
+
+  def cast(fraction) when is_binary(fraction) do
+    with [num_str, denom_str] <- String.split(fraction, "/"),
+         {num, ""} <- Integer.parse(num_str),
+         {denom, ""} <- Integer.parse(denom_str) do
+      {:ok, Ratio.new(num, denom)}
+    else
+      _ -> :error
+    end
+  end
+
+  def cast(_), do: :error
+
+  # Handles converting database values into Timecode structs to be used by the
+  # application.
+  @doc false
+  @impl Ecto.Type
+  @spec load(db_record()) :: {:ok, Ratio.t()} | :error
+  def load({num, denom}) when is_integer(num) and is_integer(denom), do: {:ok, Ratio.new(num, denom)}
+  def load(_), do: :error
+
+  # Handles converting database values into Timecode structs to be used by the
+  # application.
+  @doc false
+  @impl Ecto.Type
+  @spec dump(Ratio.t()) :: {:ok, db_record()} | :error
+  def dump(%Ratio{} = rational), do: {:ok, {rational.numerator, rational.denominator}}
+  def dump(_), do: :error
+
+  @doc section: :ecto_queries
+  @doc """
+  Serialize `Ratio` for use in query fragment.
+
+  The fragment must explicitly cast the value to a `::rational` type.
+
+  ## Examples
+
+  ```elixir
+  alias Ecto.Query
+  require Ecto.Query
+
+  rational = Ratio.new(1, 2)
+  rational_sql = PgRational.dump!(rational)
+
+  Query.from(f in fragment("SELECT ?::rational as r", ^rational_sql), select: f.r)
+  ```
+  """
+  @spec dump!(Ratio.t()) :: db_record()
+  def dump!(rational) do
+    {:ok, db_record} = dump(rational)
+    db_record
+  end
+
+  @doc section: :ecto_migrations
+  @doc """
+  Adds raw SQL queries to a migration for for creating the database types, associated
+  functions, casts, operators, and operator families.
+
+  Safe to run multiple times when new functionality is added in updates to this library.
+  Existing values will be skipped.
+
+  ## Types Created
+
+  Calling this macro creates the following type definitions:
+
+  ```sql
+  CREATE TYPE public.rational AS (
+    numerator bigint,
+    denominator bigint
+  );
+  ```
+
+  ## Examples
+
+  ```elixir
+  defmodule MyMigration do
+    use Ecto.Migration
+
+    alias Vtc.Ecto.Postgres.PgRational
+    require PgRational
+
+    def change do
+      PgRational.migration_add_type()
+    end
+  end
+  ```
+  """
+  @spec migration_add_type() :: Macro.t()
+  defmacro migration_add_type do
+    quote do
+      execute("""
+        DO $$ BEGIN
+          CREATE TYPE rational AS (
+            numerator bigint,
+            denominator bigint
+          );
+          EXCEPTION WHEN duplicate_object
+            THEN null;
+        END $$;
+      """)
+    end
+  end
+
+  @doc section: :ecto_migrations
+  @doc """
+  Creates basic constraints for a `PgRational` database field.
+
+  ## Constraints created:
+
+  - `{field_name}_denominator_positive`: Checks that the denominator of the field is
+    positive.
+
+  ## Examples
+
+  ```elixir
+  create table("rationals", primary_key: false) do
+    add(:id, :uuid, primary_key: true, null: false)
+    add(:a, PgRational.type())
+    add(:b, PgRational.type())
+  end
+
+  PgRational.migration_add_field_constraints(:rationals, :a)
+  PgRational.migration_add_field_constraints(:rationals, :b)
+  ```
+  """
+  @spec migration_add_field_constraints(atom(), atom()) :: Macro.t()
+  defmacro migration_add_field_constraints(table, field_name) do
+    quote do
+      field_name = unquote(field_name)
+      table = unquote(table)
+
+      create(
+        constraint(
+          table,
+          "#{field_name}_denominator_positive",
+          check: """
+          (#{field_name}).denominator > 0
+          """
+        )
+      )
+    end
+  end
+end
