@@ -184,46 +184,32 @@ defmodule Vtc.TimecodeTest.Properties.Rebase do
   import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
+  alias Vtc.TestUtls.StreamDataVtc
   alias Vtc.Timecode
 
   describe "#rebase/2" do
     property "round trip rebases do not lose accuracy" do
-      run_rebase_property_test(fn timecode, new_rate ->
+      check all(
+              timecode <- StreamDataVtc.timecode(),
+              new_rate <- StreamDataVtc.framerate(),
+              max_runs: 20
+            ) do
         assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
-        rebased
-      end)
+        assert {:ok, ^timecode} = Timecode.rebase(rebased, timecode.rate)
+      end
     end
   end
 
   describe "#rebase!/2" do
     property "round trip rebases do not lose accuracy" do
-      run_rebase_property_test(fn timecode, new_rate ->
-        Timecode.rebase!(timecode, new_rate)
-      end)
-    end
-  end
-
-  @spec run_rebase_property_test((Timecode.t(), Framerate.t() -> Timecode.t())) :: term()
-  defp run_rebase_property_test(do_reabase) do
-    check all(
-            frames <- integer(),
-            original_rate_x <- integer(1..240),
-            original_ntsc? <- boolean(),
-            target_rate_x <- integer(1..240),
-            target_ntsc? <- boolean(),
-            max_runs: 20
-          ) do
-      original_ntsc = if original_ntsc?, do: :non_drop, else: nil
-      origina_rate = Framerate.new!(original_rate_x, ntsc: original_ntsc, coerce_ntsc?: original_ntsc?)
-
-      target_ntsc = if target_ntsc?, do: :non_drop, else: nil
-      target_rate = Framerate.new!(target_rate_x, ntsc: target_ntsc, coerce_ntsc?: target_ntsc?)
-
-      original = Timecode.with_frames!(frames, origina_rate)
-
-      rebased = do_reabase.(original, target_rate)
-      round_trip = do_reabase.(rebased, origina_rate)
-      assert round_trip == original
+      check all(
+              timecode <- StreamDataVtc.timecode(),
+              new_rate <- StreamDataVtc.framerate(),
+              max_runs: 20
+            ) do
+        assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
+        assert {:ok, ^timecode} = Timecode.rebase(rebased, timecode.rate)
+      end
     end
   end
 end
@@ -238,20 +224,17 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
   alias Vtc.Framerate
   alias Vtc.Rates
+  alias Vtc.TestUtls.StreamDataVtc
   alias Vtc.Timecode
 
   property "add/sub symmetry" do
     check all(
-            rate <- frame_rate_gen(),
-            a_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-            b_info <- rate |> timecode_gen() |> filter(&(not &1.negative?))
+            rate <- StreamDataVtc.framerate(),
+            a <- StreamDataVtc.timecode(non_negative?: true, rate: rate),
+            b <- StreamDataVtc.timecode(non_negative?: true, rate: rate)
           ) do
-      %{timecode_string: a_string} = a_info
-      %{timecode_string: b_string} = b_info
-      a = Timecode.with_frames!(a_string, rate)
-      b = Timecode.with_frames!(b_string, rate)
-
       added = Timecode.add(a, b)
+
       assert Timecode.compare(added, a) == :gt
       assert Timecode.compare(added, b) == :gt
 
@@ -263,12 +246,10 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#mult/2" do
     property "always returns frame-rounded" do
       check all(
-              rate <- frame_rate_gen(),
-              timecode_values <- timecode_gen(rate),
+              a <- StreamData.filter(StreamDataVtc.timecode(), &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))),
               multiplier <- float()
             ) do
-        %{timecode_string: timecode_string} = timecode_values
-        a = Timecode.with_frames!(timecode_string, rate)
+        %{rate: rate} = a
 
         assert %Timecode{rate: ^rate} = result = Timecode.mult(a, multiplier)
         assert_frame_rounded(result)
@@ -277,12 +258,10 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
     property "basic comparisons" do
       check all(
-              rate <- frame_rate_gen(),
-              tc_info <- Rates.f23_98() |> timecode_gen() |> filter(&(not &1.negative?)),
-              scalar <- ratio()
+              rate <- StreamDataVtc.framerate(),
+              original <- StreamDataVtc.timecode(non_negative?: true, rate: rate),
+              scalar <- StreamDataVtc.rational()
             ) do
-        %{timecode_string: tc_string} = tc_info
-        original = Timecode.with_frames!(tc_string, rate)
         multiplied = Timecode.mult(original, scalar)
 
         case {Ratio.compare(scalar, 0), Ratio.compare(scalar, 1)} do
@@ -298,12 +277,10 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#div/2" do
     property "always returns frame-rounded" do
       check all(
-              rate <- frame_rate_gen(),
-              timecode_values <- timecode_gen(rate),
+              a <- StreamData.filter(StreamDataVtc.timecode(), &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))),
               multiplier <- filter(float(), &(&1 != 0))
             ) do
-        %{timecode_string: timecode_string} = timecode_values
-        a = Timecode.with_frames!(timecode_string, rate)
+        %{rate: rate} = a
 
         assert %Timecode{rate: ^rate} = result = Timecode.div(a, multiplier)
         assert_frame_rounded(result)
@@ -333,13 +310,13 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#divrem/2" do
     property "quotient returns same as div/3 with :floor" do
       check all(
-              rate <- frame_rate_gen(),
-              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
+              dividend <-
+                StreamData.filter(
+                  StreamDataVtc.timecode(non_negative?: true),
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                ),
+              divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
-        %{timecode_string: tc_string} = tc_info
-        dividend = Timecode.with_frames!(tc_string, rate)
-
         div_result = Timecode.div(dividend, divisor, round: :floor)
         {divrem_result, _} = Timecode.divrem(dividend, divisor)
 
@@ -351,13 +328,13 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#rem/2" do
     property "returns same as divrem/3" do
       check all(
-              rate <- frame_rate_gen(),
-              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?)),
-              divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
+              dividend <-
+                StreamData.filter(
+                  StreamDataVtc.timecode(non_negative?: true),
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                ),
+              divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
-        %{timecode_string: tc_string} = tc_info
-        dividend = Timecode.with_frames!(tc_string, rate)
-
         {_, divrem_result} = Timecode.divrem(dividend, divisor)
         rem_result = Timecode.rem(dividend, divisor)
 
@@ -368,15 +345,8 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
   describe "#abs/2" do
     property "returns input of negate/1" do
-      check all(
-              rate <- frame_rate_gen(),
-              tc_info <- rate |> timecode_gen() |> filter(&(not &1.negative?))
-            ) do
-        %{timecode_string: tc_string} = tc_info
-
-        positive = Timecode.with_frames!(tc_string, rate)
+      check all(positive <- StreamDataVtc.timecode(non_negative?: true)) do
         negative = Timecode.minus(positive)
-
         assert Timecode.abs(positive) == Timecode.abs(negative)
       end
     end

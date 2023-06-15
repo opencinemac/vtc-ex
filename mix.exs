@@ -29,7 +29,8 @@ defmodule Vtc.MixProject do
           Data: [Vtc.Timecode.Sections, Vtc.Rates, Vtc.FilmFormat],
           "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
-          "Source Protocols": [Seconds, Frames]
+          "Source Protocols": [Seconds, Frames],
+          "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],
         groups_for_docs: [
           Parse: &(&1[:section] == :parse),
@@ -68,7 +69,7 @@ defmodule Vtc.MixProject do
 
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},
-      {:stream_data, "~> 0.5.0", only: [:test]},
+      {:stream_data, "~> 0.5.0", only: [:dev, :test]},
       {:junit_formatter, "~> 3.1", only: [:test]},
 
       # Dev dependencies
