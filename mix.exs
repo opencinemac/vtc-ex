@@ -22,7 +22,8 @@ defmodule Vtc.MixProject do
           "zdocs/quickstart.cheatmd",
           "zdocs/history.md",
           "zdocs/framerate_vs_timebase.md",
-          "zdocs/the_rational_rationale.md"
+          "zdocs/the_rational_rationale.md",
+          "CONTRIBUTING.md"
         ],
         groups_for_modules: [
           "Core API": [Vtc.Timecode, Vtc.Framerate, Vtc.Range],
