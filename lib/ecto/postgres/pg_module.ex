@@ -33,7 +33,7 @@ defmodule Vtc.Ecto.Postgres.Module do
   @spec enforce_dep(module(), atom()) :: :ok
   def enforce_dep(module, name) do
     if not Code.ensure_loaded?(module) do
-      throw("vtc: `:postgres_types` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies")
+      throw("vtc: `:postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies")
     end
 
     :ok
