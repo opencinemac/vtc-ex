@@ -21,18 +21,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   SELECT (1, 2)::rational
   ```
 
-  ## Casting PgRational in Changesets
-
-  Rational values can be cast from the following values in changesets:
-
-  - `%Ratio{}` structs.
-
-  - `[numerator, denominator]` integer arrays. Useful for non-text JSON values that can
-    be set in a single field.
-
-  - Strings formatted as `'numerator/denominator'` Useful for casting from JSON string
-    values.
-
   ## Field migrations
 
   You can create a field as a rational during a migration like so:
@@ -80,6 +68,17 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
     |> Changeset.validate_required([:a, :b])
   end
   ```
+
+  Rational values can be cast from the following values in changesets:
+
+  - `%Ratio{}` structs.
+
+  - `[numerator, denominator]` integer arrays. Useful for non-text JSON values that can
+    be set in a single field.
+
+  - Strings formatted as `'numerator/denominator'` Useful for casting from JSON string
+    values.
+
   """
 
   use Ecto.Type
@@ -117,7 +116,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
 
   def cast(_), do: :error
 
-  # Handles converting database values into Timecode structs to be used by the
+  # Handles converting database records into Ratio structs to be used by the
   # application.
   @doc false
   @impl Ecto.Type
@@ -125,8 +124,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   def load({num, denom}) when is_integer(num) and is_integer(denom), do: {:ok, Ratio.new(num, denom)}
   def load(_), do: :error
 
-  # Handles converting database values into Timecode structs to be used by the
-  # application.
+  # Handles converting Ratio structs into database records.
   @doc false
   @impl Ecto.Type
   @spec dump(Ratio.t()) :: {:ok, db_record()} | :error
