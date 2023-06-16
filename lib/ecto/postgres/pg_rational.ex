@@ -1,4 +1,4 @@
-use Ecto.Postgres.Module
+use Vtc.Ecto.Postgres.Module
 
 defpgmodule Vtc.Ecto.Postgres.PgRational do
   @moduledoc """
