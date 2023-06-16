@@ -1,4 +1,4 @@
-defmodule Ecto.Postgres.Module do
+defmodule Vtc.Ecto.Postgres.Module do
   @moduledoc false
 
   ## Exposes a macro for defining modules that will only be compiled if the caller
