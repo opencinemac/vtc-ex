@@ -13,7 +13,7 @@ defmodule Vtc.Ecto.Postgres.Module do
     end
   end
 
-  # Wraps defmodule, conditionally declaring the module during compilation 
+  # Wraps defmodule, conditionally declaring the module during compilation
   # based on caller configuration.
   @spec defpgmodule(module(), do: Macro.t()) :: Macro.t()
   defmacro defpgmodule(name, do: body) do
@@ -33,7 +33,9 @@ defmodule Vtc.Ecto.Postgres.Module do
   @spec enforce_dep(module(), atom()) :: :ok
   def enforce_dep(module, name) do
     if not Code.ensure_loaded?(module) do
-      throw("vtc: `:postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies")
+      throw(
+        "vtc: `:postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
+      )
     end
 
     :ok
