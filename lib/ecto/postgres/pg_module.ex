@@ -7,9 +7,9 @@ defmodule Vtc.Ecto.Postgres.Module do
   @spec __using__(Keyword.t()) :: Macro.t()
   defmacro __using__(_) do
     quote do
-      import Ecto.Postgres.Module
+      import Vtc.Ecto.Postgres.Module
 
-      require Ecto.Postgres.Module
+      require Vtc.Ecto.Postgres.Module
     end
   end
 
