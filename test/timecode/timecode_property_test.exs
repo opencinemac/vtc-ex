@@ -246,7 +246,11 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#mult/2" do
     property "always returns frame-rounded" do
       check all(
-              a <- StreamData.filter(StreamDataVtc.timecode(), &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))),
+              a <-
+                StreamData.filter(
+                  StreamDataVtc.timecode(rate_opts: [type: [:whole, :drop, :non_drop]]),
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                ),
               multiplier <- float()
             ) do
         %{rate: rate} = a
@@ -277,7 +281,11 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#div/2" do
     property "always returns frame-rounded" do
       check all(
-              a <- StreamData.filter(StreamDataVtc.timecode(), &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))),
+              a <-
+                StreamData.filter(
+                  StreamDataVtc.timecode(rate_opts: [type: [:whole, :drop, :non_drop]]),
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                ),
               multiplier <- filter(float(), &(&1 != 0))
             ) do
         %{rate: rate} = a

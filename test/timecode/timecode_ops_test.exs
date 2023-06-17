@@ -1,9 +1,6 @@
 defmodule Vtc.TimecodeTest.Ops do
   @moduledoc false
-
-  use ExUnit.Case, async: true
-
-  import Vtc.Test.Support.Setups
+  use Vtc.Test.Support.TestCase
 
   alias Vtc.Rates
   alias Vtc.Timecode
@@ -43,8 +40,7 @@ defmodule Vtc.TimecodeTest.Ops do
     @describetag timecodes: [:original, :expected]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{inspect(test_case.original)} -> #{inspect(test_case.new_rate)}", context do
+      table_test "#{inspect(test_case.original)} -> #{inspect(test_case.new_rate)}", test_case, context do
         %{original: original, new_rate: new_rate, expected: expected} = context
         assert {:ok, rebased} = Timecode.rebase(original, new_rate)
         assert rebased == expected
@@ -60,8 +56,7 @@ defmodule Vtc.TimecodeTest.Ops do
     @describetag timecodes: [:original, :expected]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{inspect(test_case.original)} -> #{inspect(test_case.new_rate)}", context do
+      table_test "#{inspect(test_case.original)} -> #{inspect(test_case.new_rate)}", test_case, context do
         %{original: original, new_rate: new_rate, expected: expected} = context
         assert %Timecode{} = rebased = Timecode.rebase!(original, new_rate)
         assert rebased == expected
@@ -135,8 +130,9 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)}", context do
+      name = "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)}"
+
+      table_test name, test_case, context do
         %{a: a, b: b, expected: expected} = context
         assert Timecode.compare(a, b) == expected
       end
@@ -144,8 +140,7 @@ defmodule Vtc.TimecodeTest.Ops do
       if is_binary(test_case.a) and is_binary(test_case.b) do
         name = "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)} | b = tc string"
 
-        @tag test_case: test_case
-        test name, context do
+        table_test name, test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.timecode(b)
 
@@ -154,8 +149,7 @@ defmodule Vtc.TimecodeTest.Ops do
 
         name = "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)} | a = tc string"
 
-        @tag test_case: test_case
-        test name, context do
+        table_test name, test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.timecode(a)
 
@@ -164,8 +158,7 @@ defmodule Vtc.TimecodeTest.Ops do
 
         name = "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)} | b = frames int"
 
-        @tag test_case: test_case
-        test name, context do
+        table_test name, test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.frames(b)
 
@@ -174,8 +167,7 @@ defmodule Vtc.TimecodeTest.Ops do
 
         name = "#{inspect(test_case.a)} is #{inspect(test_case.expected)} #{inspect(test_case.b)} | a = frames int"
 
-        @tag test_case: test_case
-        test name, context do
+        table_test name, test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.frames(a)
 
@@ -336,39 +328,36 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{inspect(test_case.a)} + #{inspect(test_case.b)} == #{inspect(test_case.expected)}", context do
+      table_test "#{inspect(test_case.a)} + #{inspect(test_case.b)} == #{inspect(test_case.expected)}",
+                 test_case,
+                 context do
         %{a: a, b: b, expected: expected} = context
         assert Timecode.add(a, b) == expected
       end
 
       if is_binary(test_case.a) and is_binary(test_case.b) do
-        @tag test_case: test_case
-        test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | integer b", context do
+        table_test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | integer b", test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.frames(b)
 
           assert Timecode.add(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | integer a", context do
+        table_test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | integer a", test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.frames(a)
 
           assert Timecode.add(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | string b", context do
+        table_test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | string b", test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.timecode(b)
 
           assert Timecode.add(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | string a", context do
+        table_test "#{test_case.a} + #{test_case.b} == #{test_case.expected} | string a", test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.timecode(a)
 
@@ -469,39 +458,36 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{inspect(test_case.a)} - #{inspect(test_case.b)} == #{inspect(test_case.expected)}", context do
+      name = "#{inspect(test_case.a)} - #{inspect(test_case.b)} == #{inspect(test_case.expected)}"
+
+      table_test name, test_case, context do
         %{a: a, b: b, expected: expected} = context
         assert Timecode.sub(a, b) == expected
       end
 
       if is_binary(test_case.a) and is_binary(test_case.b) do
-        @tag test_case: test_case
-        test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | integer b", context do
+        table_test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | integer b", test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.frames(b)
 
           assert Timecode.sub(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | integer a", context do
+        table_test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | integer a", test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.frames(a)
 
           assert Timecode.sub(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | string b", context do
+        table_test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | string b", test_case, context do
           %{a: a, b: b, expected: expected} = context
           b = Timecode.timecode(b)
 
           assert Timecode.sub(a, b) == expected
         end
 
-        @tag test_case: test_case
-        test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | string a", context do
+        table_test "#{test_case.a} - #{test_case.b} == #{test_case.expected} | string a", test_case, context do
           %{a: a, b: b, expected: expected} = context
           a = Timecode.timecode(a)
 
@@ -592,8 +578,7 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{test_case.a} * #{inspect(test_case.b)} == #{test_case.expected}", context do
+      table_test "#{test_case.a} * #{inspect(test_case.b)} == #{test_case.expected}", test_case, context do
         %{a: a, b: b, expected: expected} = context
         assert Timecode.mult(a, b) == expected
       end
@@ -676,8 +661,7 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{test_case.a} * #{inspect(test_case.b)} == #{test_case.expected}", context do
+      table_test "#{test_case.a} * #{inspect(test_case.b)} == #{test_case.expected}", test_case, context do
         %{a: a, b: b, expected: expected} = context
         assert Timecode.div(a, b) == expected
       end
@@ -815,8 +799,7 @@ defmodule Vtc.TimecodeTest.Ops do
       test_name =
         "#{inspect(test_case.dividend)} /% #{inspect(test_case.divisor)} == {#{inspect(test_case.expected_quotient)}, #{inspect(test_case.expected_remainder)}}"
 
-      @tag test_case: test_case
-      test test_name, context do
+      table_test test_name, test_case, context do
         %{
           dividend: dividend,
           divisor: divisor,
@@ -926,8 +909,7 @@ defmodule Vtc.TimecodeTest.Ops do
     for test_case <- test_cases do
       name = "#{inspect(test_case.dividend)} % #{inspect(test_case.divisor)} == #{inspect(test_case.expected_remainder)}"
 
-      @tag test_case: test_case
-      test name, context do
+      table_test name, test_case, context do
         %{
           dividend: dividend,
           divisor: divisor,
@@ -1037,8 +1019,7 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{test_case.input} negated == #{test_case.expected}", context do
+      table_test "#{test_case.input} negated == #{test_case.expected}", test_case, context do
         %{input: input, expected: expected} = context
 
         assert Timecode.minus(input) == expected
@@ -1063,8 +1044,7 @@ defmodule Vtc.TimecodeTest.Ops do
     ]
 
     for test_case <- test_cases do
-      @tag test_case: test_case
-      test "#{test_case.input} negated == #{test_case.expected}", context do
+      table_test "#{test_case.input} negated == #{test_case.expected}", test_case, context do
         %{input: input, expected: expected} = context
         assert Timecode.abs(input) == expected
       end
