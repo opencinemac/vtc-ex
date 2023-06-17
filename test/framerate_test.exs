@@ -151,8 +151,8 @@ defmodule Vtc.FramerateTest do
       end)
 
     for test_case <- test_cases do
-      table_test "new/1 | #{test_case.name}", test_case, context do
-        %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = context
+      table_test "new/1 | #{test_case.name}", test_case do
+        %{input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
 
         case Framerate.new(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) do
           {:ok, rate} ->
@@ -160,20 +160,20 @@ defmodule Vtc.FramerateTest do
 
           {:error, err} ->
             expected_reason =
-              case context do
+              case test_case do
                 %{err: %{reason: reason}} -> reason
                 _ -> "no error expected"
               end
 
-            expected_message = Map.get(context, :err_msg, nil)
+            expected_message = Map.get(test_case, :err_msg, nil)
 
             assert err.reason == expected_reason
             assert Framerate.ParseError.message(err) == expected_message
         end
       end
 
-      table_test "new!/1 | #{test_case.name}", test_case, context do
-        %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = context
+      table_test "new!/1 | #{test_case.name}", test_case do
+        %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
 
         if is_map_key(test_case, :err) do
           function = fn -> Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) end
@@ -193,8 +193,8 @@ defmodule Vtc.FramerateTest do
     ]
 
     for test_case <- test_cases do
-      table_test "coerce_ntsc?: error on #{inspect(test_case.input)}", test_case, context do
-        %{input: input} = context
+      table_test "coerce_ntsc?: error on #{inspect(test_case.input)}", test_case do
+        %{input: input} = test_case
         expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
         assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
@@ -290,8 +290,8 @@ defmodule Vtc.FramerateTest do
     ]
 
     for test_case <- test_cases do
-      table_test "#{test_case.const} const", test_case, context do
-        %{ntsc: ntsc, playback: playback, timebase: timebase, const: const} = context
+      table_test "#{test_case.const} const", test_case do
+        %{ntsc: ntsc, playback: playback, timebase: timebase, const: const} = test_case
 
         assert ntsc == const.ntsc
         assert playback == const.playback

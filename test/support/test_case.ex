@@ -21,8 +21,14 @@ defmodule Vtc.Test.Support.TestCase do
 
   # Common utilities for ExUnit tests.
 
-  @spec test_id(String.t()) :: String.t()
-  def test_id(test_name), do: :md5 |> :crypto.hash(test_name) |> Base.encode16(case: :lower) |> String.slice(0..16)
+  @doc """
+  Generates an id for a test case by hashing it's name + data.
+  """
+  @spec test_id(String.t(), map()) :: String.t()
+  def test_id(name, test_case) do
+    test_case_binary = :erlang.term_to_binary(test_case)
+    :md5 |> :crypto.hash(name <> test_case_binary) |> Base.encode16(case: :lower) |> String.slice(0..16)
+  end
 
   @doc """
   Extracts a map in `:test_case` and merges it into the top-level context.
@@ -47,7 +53,11 @@ defmodule Vtc.Test.Support.TestCase do
   defp setup_timecode({frames, rate}), do: Timecode.with_frames!(frames, rate)
   defp setup_timecode(frames), do: setup_timecode({frames, Rates.f23_98()})
 
-  # Negates secified ranges built by setup_ranges.
+  @doc """
+  Mathematically negates a list of keys in the context.
+
+  Pass keys to a test by decorating it with `@tag negate: [keys]`
+  """
   @spec setup_negates(%{optional(:negate) => [Map.key()]}) :: Keyword.t()
   def setup_negates(%{negate: attrs} = context) do
     context
@@ -75,15 +85,31 @@ defmodule Vtc.Test.Support.TestCase do
   defp setup_negate(string) when is_binary(string), do: "-#{string}"
   defp setup_negate({:error, _} = value), do: value
 
-  @spec table_test(String.t(), Macto.t(), Macro.t(), do: Macro.t()) :: Macro.t()
-  defmacro table_test(name, test_case, context, do: body) do
+  @doc """
+  Sets up a test for running a table-test by:
+
+  - Adding a `@tag test_case: test_case` aboce the test to pass the test case into the
+    context using `setup`.
+
+  - Adding a `@tag test_id: {unique_id}` above the test to make running an individual
+    test easier.
+
+  - Adding the test_id to the end of the name of the test.
+  """
+  @spec table_test(String.t(), Macto.t(), do: Macro.t()) :: Macro.t()
+  defmacro table_test(name, test_case, do: body) do
+    case test_case do
+      {name, _, nil} = var when is_atom(name) -> var
+      _ -> throw("`test_case` must be map var loaded with test data")
+    end
+
     quote do
       name = "#{unquote(name)}"
-      id = test_id(name)
+      id = test_id(unquote(name), unquote(test_case))
 
       @tag test_case: unquote(test_case)
       @tag test_id: id
-      test "#{name} | id: #{id}", unquote(context) do
+      test "#{name} | id: #{id}", unquote(test_case) do
         unquote(body)
       end
     end
