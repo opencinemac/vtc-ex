@@ -1,55 +1,13 @@
-defmodule Vtc.TimecodeTest.Helpers do
-  @moduledoc false
-
-  alias Vtc.Source.Frames.FeetAndFrames
-  alias Vtc.Source.Seconds.PremiereTicks
-  alias Vtc.Timecode
-
-  # Functions used during macro expansion compilation cannot be declared in the same
-  # module, so these helpers need to live here.
-
-  @spec make_negative_case(map()) :: map()
-  def make_negative_case(%{frames: 0} = test_case), do: test_case
-
-  def make_negative_case(test_case) do
-    %{
-      test_case
-      | seconds: Ratio.minus(test_case.seconds),
-        frames: -test_case.frames,
-        timecode: "-" <> test_case.timecode,
-        runtime: "-" <> test_case.runtime,
-        premiere_ticks: -test_case.premiere_ticks,
-        feet_and_frames_35mm_4perf: "-" <> test_case.feet_and_frames_35mm_4perf,
-        feet_and_frames_35mm_2perf: "-" <> test_case.feet_and_frames_35mm_2perf,
-        feet_and_frames_16mm: "-" <> test_case.feet_and_frames_16mm
-    }
-  end
-
-  @spec make_negative_input(input) :: input when input: String.t() | Ratio.t()
-  def make_negative_input(input) when is_binary(input), do: "-" <> input
-  def make_negative_input(%Ratio{} = input), do: Ratio.minus(input)
-  def make_negative_input(%PremiereTicks{in: val}), do: %PremiereTicks{in: -val}
-
-  def make_negative_input(%FeetAndFrames{feet: feet, frames: frames} = val),
-    do: %FeetAndFrames{val | feet: -feet, frames: -frames}
-
-  def make_negative_input(input), do: -input
-end
-
 defmodule Vtc.TimecodeTest.Parse do
   @moduledoc false
-
-  use ExUnit.Case, async: true
-
-  import Vtc.Test.Support.Setups
-  import Vtc.TimecodeTest.Helpers
+  use Vtc.Test.Support.TestCase
 
   alias Vtc.Rates
   alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
 
-  parse_cases = [
+  parse_table = [
     # 23.98 NTSC #########################
     ######################################
     %{
@@ -474,33 +432,61 @@ defmodule Vtc.TimecodeTest.Parse do
     }
   ]
 
-  describe "#with_seconds/3" do
-    for {test_case, test_index} <- Enum.with_index(parse_cases) do
-      for {input_case, case_index} <- Enum.with_index(test_case.seconds_inputs) do
-        @tag test_case: test_case
-        @tag input_case: input_case
-        @tag case: :"with_seconds_#{test_index}_#{case_index}"
-        test "#{test_case.name} | #{test_index}-#{case_index} | #{inspect(input_case)} | #{test_case.rate}", context do
-          %{test_case: test_case, input_case: input_case} = context
+  # The fields test case fields we should negate when we are testing on negative values.
+  @negate_fields [
+    :seconds,
+    :frames,
+    :timecode,
+    :runtime,
+    :premiere_ticks,
+    :feet_and_frames_35mm_4perf,
+    :feet_and_frames_35mm_2perf,
+    :feet_and_frames_16mm,
+    :input_case
+  ]
 
-          input_case
-          |> Timecode.with_seconds(test_case.rate)
-          |> check_parsed(test_case)
-        end
-
-        name = "#{test_case.name} | #{test_index}-#{case_index} | #{inspect(input_case)} | #{test_case.rate} | negative"
-
-        @tag test_case: make_negative_case(test_case)
-        @tag input_case: make_negative_input(input_case)
-        @tag case: :"with_seconds_#{test_index}_#{case_index}_negative"
-        test name, context do
-          %{test_case: test_case, input_case: input_case} = context
-
-          input_case
-          |> Timecode.with_seconds(test_case.rate)
-          |> check_parsed(test_case)
-        end
+  seconds_table =
+    parse_table
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {test_case, test_index} ->
+      for {input_case, input_index} <- Enum.with_index(test_case.seconds_inputs) do
+        test_case
+        |> Map.put(:index, test_index)
+        |> Map.put(:input_case, input_case)
+        |> Map.put(:input_index, input_index)
       end
+    end)
+
+  frames_table =
+    parse_table
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {test_case, test_index} ->
+      for {input_case, input_index} <- Enum.with_index(test_case.frames_inputs) do
+        test_case
+        |> Map.put(:index, test_index)
+        |> Map.put(:input_case, input_case)
+        |> Map.put(:input_index, input_index)
+      end
+    end)
+
+  describe "#with_seconds/3" do
+    setup context, do: TestCase.setup_negates(context)
+
+    table_test "<%= name %> | <%= input_case %> | <%= rate %>", seconds_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
+
+      input_case
+      |> Timecode.with_seconds(rate)
+      |> check_parsed(test_case)
+    end
+
+    @tag negate: @negate_fields
+    table_test "<%= name %> | <%= input_case %> | <%= rate %> | negative", seconds_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
+
+      input_case
+      |> Timecode.with_seconds(rate)
+      |> check_parsed(test_case)
     end
 
     test "round | :closest | implied" do
@@ -542,28 +528,24 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#with_seconds!/3" do
-    for test_case <- parse_cases do
-      for input_case <- test_case.seconds_inputs do
-        @tag test_case: test_case
-        @tag input_case: input_case
-        test "#{test_case.name} | #{inspect(input_case)} | #{test_case.rate}", context do
-          %{test_case: test_case, input_case: input_case} = context
+    setup context, do: TestCase.setup_negates(context)
 
-          input_case
-          |> Timecode.with_seconds!(test_case.rate)
-          |> check_parsed!(test_case)
-        end
+    table_test "<%= name %> | <%= input_case %> | <%= rate %>", seconds_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
 
-        @tag test_case: make_negative_case(test_case)
-        @tag input_case: make_negative_input(input_case)
-        test "#{test_case.name}! | #{inspect(input_case)} | #{test_case.rate} | negative", context do
-          %{test_case: test_case, input_case: input_case} = context
+      input_case
+      |> Timecode.with_seconds!(rate)
+      |> check_parsed!(test_case)
+    end
 
-          input_case
-          |> Timecode.with_seconds!(test_case.rate)
-          |> check_parsed!(test_case)
-        end
-      end
+    @tag negate: @negate_fields
+    @tag :some_tag
+    table_test "<%= name %>! | <%= input_case %> | <%= rate %> | negative", seconds_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
+
+      input_case
+      |> Timecode.with_seconds!(rate)
+      |> check_parsed!(test_case)
     end
 
     test "round | :closest | implied" do
@@ -604,32 +586,21 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#with_frames/2" do
-    for {test_case, case_index} <- Enum.with_index(parse_cases) do
-      for {input_case, input_index} <- Enum.with_index(test_case.frames_inputs) do
-        @tag test_case: test_case
-        @tag input_case: input_case
-        @tag case: :"with_frames_#{case_index}_#{input_index}"
-        test "#{test_case.name} | #{case_index}:#{input_index} | #{inspect(input_case)} | #{test_case.rate}", context do
-          %{test_case: test_case, input_case: input_case} = context
+    table_test "#{test_case.name} | #{inspect(test_case.input_case)} | #{test_case.rate}", frames_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
 
-          input_case
-          |> Timecode.with_frames(test_case.rate)
-          |> check_parsed(test_case)
-        end
+      input_case
+      |> Timecode.with_frames(rate)
+      |> check_parsed(test_case)
+    end
 
-        name = "#{test_case.name}! | #{case_index}:#{input_index} | #{inspect(input_case)} | #{test_case.rate} | negative"
+    @tag negate: @negate_fields
+    table_test "<%= name %>! | <%= input_case %> | <%= rate %> | negative", frames_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
 
-        @tag test_case: make_negative_case(test_case)
-        @tag input_case: make_negative_input(input_case)
-        @tag case: :"with_frames_#{case_index}_#{input_index}_negative"
-        test name, context do
-          %{test_case: test_case, input_case: input_case} = context
-
-          input_case
-          |> Timecode.with_frames(test_case.rate)
-          |> check_parsed(test_case)
-        end
-      end
+      input_case
+      |> Timecode.with_frames(rate)
+      |> check_parsed(test_case)
     end
 
     test "ParseTimecodeError - Format" do
@@ -650,32 +621,21 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#with_frames!/2" do
-    for {test_case, case_index} <- Enum.with_index(parse_cases) do
-      for {input_case, input_index} <- Enum.with_index(test_case.frames_inputs) do
-        @tag test_case: test_case
-        @tag input_case: input_case
-        @tag case: :"with_frames!_#{case_index}_#{input_index}"
-        test "#{test_case.name} | #{case_index}:#{input_index} | #{input_case} | #{test_case.rate}", context do
-          %{test_case: test_case, input_case: input_case} = context
+    table_test "<%= name %>! | <%= input_case %> | <%= rate %>", frames_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
 
-          input_case
-          |> Timecode.with_frames!(test_case.rate)
-          |> check_parsed!(test_case)
-        end
+      input_case
+      |> Timecode.with_frames!(rate)
+      |> check_parsed!(test_case)
+    end
 
-        name = "#{test_case.name}! | #{case_index}:#{input_index} | #{input_case} | #{test_case.rate} | negative"
+    @tag negate: @negate_fields
+    table_test "<%= name %>! | <%= input_case %> | <%= rate %> | negative", frames_table, test_case do
+      %{rate: rate, input_case: input_case} = test_case
 
-        @tag test_case: make_negative_case(test_case)
-        @tag input_case: make_negative_input(input_case)
-        @tag case: :"with_frames!_#{case_index}_#{input_index}_negative"
-        test name, context do
-          %{test_case: test_case, input_case: input_case} = context
-
-          input_case
-          |> Timecode.with_frames!(test_case.rate)
-          |> check_parsed!(test_case)
-        end
-      end
+      input_case
+      |> Timecode.with_frames!(rate)
+      |> check_parsed!(test_case)
     end
 
     test "ParseTimecodeError throws" do
@@ -771,24 +731,19 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#frames/2" do
-    setup [:setup_test_case]
+    table_test "<%= name %>", parse_table, test_case do
+      %{seconds: seconds, frames: frames, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-    for test_case <- parse_cases do
-      @tag test_case: test_case
-      test "#{test_case.name}", context do
-        %{seconds: seconds, frames: frames, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      assert Timecode.frames(input) == frames
+    end
 
-        assert Timecode.frames(input) == frames
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | negative", parse_table, test_case do
+      %{seconds: seconds, frames: frames, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | negative", context do
-        %{seconds: seconds, frames: frames, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
-        assert Timecode.frames(input) == frames
-      end
+      assert Timecode.frames(input) == frames
     end
 
     test "round | :closest | implied" do
@@ -825,26 +780,19 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#timecode/2" do
-    setup [:setup_test_case]
+    table_test "<%= name %>", parse_table, test_case do
+      %{seconds: seconds, timecode: timecode, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-    for {test_case, case_index} <- Enum.with_index(parse_cases) do
-      @tag test_case: test_case
-      @tag case: :"timecode_#{case_index}"
-      test "#{test_case.name} | #{case_index}", context do
-        %{seconds: seconds, timecode: timecode, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      assert Timecode.timecode(input) == timecode
+    end
 
-        assert Timecode.timecode(input) == timecode
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | negative", parse_table, test_case do
+      %{seconds: seconds, timecode: timecode, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      @tag case: :"timecode_#{case_index}_negative"
-      test "#{test_case.name} | #{case_index} | negative", context do
-        %{seconds: seconds, timecode: timecode, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
-        assert Timecode.timecode(input) == timecode
-      end
+      assert Timecode.timecode(input) == timecode
     end
 
     test "round | :closest | implied" do
@@ -881,24 +829,19 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#runtime/2" do
-    setup [:setup_test_case]
+    table_test "<%= name %>", parse_table, test_case do
+      %{seconds: seconds, runtime: runtime, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-    for test_case <- parse_cases do
-      @tag test_case: test_case
-      test "#{test_case.name}", context do
-        %{seconds: seconds, runtime: runtime, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      assert Timecode.runtime(input) == runtime
+    end
 
-        assert Timecode.runtime(input) == runtime
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | negative", parse_table, test_case do
+      %{seconds: seconds, runtime: runtime, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | negative", context do
-        %{seconds: seconds, runtime: runtime, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
-        assert Timecode.runtime(input) == runtime
-      end
+      assert Timecode.runtime(input) == runtime
     end
 
     test ":precision respected" do
@@ -936,24 +879,19 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#premiere_ticks/2" do
-    setup [:setup_test_case]
+    table_test "<%= name %>", parse_table, test_case do
+      %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-    for test_case <- parse_cases do
-      @tag test_case: test_case
-      test "#{test_case.name}", context do
-        %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      assert Timecode.premiere_ticks(input) == premiere_ticks
+    end
 
-        assert Timecode.premiere_ticks(input) == premiere_ticks
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | negative", parse_table, test_case do
+      %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | negative", context do
-        %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
-        assert Timecode.premiere_ticks(input) == premiere_ticks
-      end
+      assert Timecode.premiere_ticks(input) == premiere_ticks
     end
 
     @one_quarter_tick Ratio.new(1, PremiereTicks.per_second() * 4)
@@ -1017,80 +955,72 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#feet_and_frames/2" do
-    setup [:setup_test_case]
+    table_test "<%= name %> | 35mm, 4perf", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-    for test_case <- parse_cases do
-      @tag test_case: test_case
-      test "#{test_case.name} | 35mm, 4perf", context do
-        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
-        assert result == expected
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | 35mm, 4perf | negative", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | 35mm, 4perf | negative", context do
-        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
-        assert result == expected
-      end
+    table_test "<%= name %> | 35mm, 4perf | explicit", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: test_case
-      test "#{test_case.name} | 35mm, 4perf | explicit", context do
-        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
-        assert result == expected
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | 35mm, 4perf | explicit | negative", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | 35mm, 4perf | explicit | negative", context do
-        %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
-        assert result == expected
-      end
+    table_test "<%= name %> | 35mm, 2perf", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: test_case
-      test "#{test_case.name} | 35mm, 2perf", context do
-        %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
-        assert result == expected
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | 35mm, 2perf | negative", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | 35mm, 2perf | negative", context do
-        %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
-        assert result == expected
-      end
+    table_test "<%= name %> | 16mm", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: test_case
-      test "#{test_case.name} | 16mm", context do
-        %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
+      result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+      assert result == expected
+    end
 
-        result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
-        assert result == expected
-      end
+    @tag negate: @negate_fields
+    table_test "<%= name %> | 16mm | negative", parse_table, test_case do
+      %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = test_case
+      input = %Timecode{seconds: seconds, rate: rate}
 
-      @tag test_case: make_negative_case(test_case)
-      test "#{test_case.name} | 16mm | negative", context do
-        %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = context
-        input = %Timecode{seconds: seconds, rate: rate}
-
-        result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
-        assert result == expected
-      end
+      result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+      assert result == expected
     end
 
     test "round | :closest | implied" do
@@ -1137,9 +1067,7 @@ defmodule Vtc.TimecodeTest.Parse do
   end
 
   describe "#with_frames/2 - malformed tc" do
-    setup [:setup_test_case]
-
-    @test_cases [
+    malformed_tc_table = [
       %{
         val_in: "00:59:59:24",
         expected: "01:00:00:00"
@@ -1178,21 +1106,16 @@ defmodule Vtc.TimecodeTest.Parse do
       }
     ]
 
-    for test_case <- @test_cases do
-      @tag test_case: test_case
-      test "#{test_case.val_in} == #{test_case.expected}", context do
-        %{val_in: val_in, expected: expected} = context
+    table_test "<%= val_in %> == <%= expected %>", malformed_tc_table, test_case do
+      %{val_in: val_in, expected: expected} = test_case
 
-        parsed = Timecode.with_frames!(val_in, Rates.f23_98())
-        assert Timecode.timecode(parsed) == expected
-      end
+      parsed = Timecode.with_frames!(val_in, Rates.f23_98())
+      assert Timecode.timecode(parsed) == expected
     end
   end
 
   describe "#with_frames/2 - partial tc" do
-    setup [:setup_test_case]
-
-    @test_cases [
+    partial_tc_table = [
       %{
         val_in: "1:02:03:04",
         expected: "01:02:03:04"
@@ -1223,21 +1146,16 @@ defmodule Vtc.TimecodeTest.Parse do
       }
     ]
 
-    for test_case <- @test_cases do
-      @tag test_case: test_case
-      test "#{test_case.val_in} == #{test_case.expected}", context do
-        %{val_in: val_in, expected: expected} = context
+    table_test "<%= val_in %> == <%= expected %>", partial_tc_table, test_case do
+      %{val_in: val_in, expected: expected} = test_case
 
-        parsed = Timecode.with_frames!(val_in, Rates.f23_98())
-        assert expected == Timecode.timecode(parsed)
-      end
+      parsed = Timecode.with_frames!(val_in, Rates.f23_98())
+      assert expected == Timecode.timecode(parsed)
     end
   end
 
   describe "#with_seconds/3 - partial runtime" do
-    setup [:setup_test_case]
-
-    @test_cases [
+    partial_runtime_table = [
       %{
         val_in: "1:02:03.5",
         expected: "01:02:03.5"
@@ -1264,14 +1182,11 @@ defmodule Vtc.TimecodeTest.Parse do
       }
     ]
 
-    for test_case <- @test_cases do
-      @tag test_case: test_case
-      test "#{test_case.val_in} == #{test_case.expected}", context do
-        %{val_in: val_in, expected: expected} = context
+    table_test "<%= val_in %> == <%= expected %>", partial_runtime_table, test_case do
+      %{val_in: val_in, expected: expected} = test_case
 
-        parsed = Timecode.with_seconds!(val_in, Rates.f24())
-        assert expected == Timecode.runtime(parsed)
-      end
+      parsed = Timecode.with_seconds!(val_in, Rates.f24())
+      assert expected == Timecode.runtime(parsed)
     end
   end
 
