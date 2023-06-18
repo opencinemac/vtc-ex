@@ -7,8 +7,6 @@ defmodule Vtc.RangeTest do
   alias Vtc.Rates
   alias Vtc.Timecode
 
-  setup [:setup_test_case]
-
   @typedoc """
   Shorthand way to specify a {timecode_in, timecode_out} in a test case for a
   setup function to build the timecodes and ranges.
@@ -485,12 +483,14 @@ defmodule Vtc.RangeTest do
   end
 
   describe "#contains/2?" do
-    setup [:setup_timecodes, :setup_ranges, :setup_negates]
+    setup context, do: TestCase.setup_timecodes(context)
+    setup [:setup_ranges]
+    setup context, do: TestCase.setup_negates(context)
 
     @describetag timecodes: [:timecode]
     @describetag ranges: [:range]
 
-    test_cases = [
+    contains_table = [
       %{
         name: "range.in < tc < range.out | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
@@ -597,36 +597,33 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- test_cases do
-      table_test test_case.name, test_case do
-        %{timecode: timecode, range: range, test_case: %{expected: expected}} = test_case
-        assert Range.contains?(range, timecode) == expected
-      end
+    table_test test_case.name, contains_table, test_case do
+      %{timecode: timecode, range: range, expected: expected} = test_case
+      assert Range.contains?(range, timecode) == expected
+    end
 
-      name = "#{test_case.name} | negative"
+    @tag negate: [:range]
+    table_test "<%= name %> | negative", contains_table, test_case do
+      %{timecode: timecode, range: range, test_case: test_case} = test_case
 
-      @tag negate: [:range]
-      table_test name, test_case do
-        %{timecode: timecode, range: range, test_case: test_case} = test_case
+      expected =
+        case test_case do
+          %{expected_negative: expected} -> expected
+          %{expected: expected} -> expected
+        end
 
-        expected =
-          case test_case do
-            %{expected_negative: expected} -> expected
-            %{expected: expected} -> expected
-          end
-
-        timecode = Timecode.mult(timecode, -1)
-        assert Range.contains?(range, timecode) == expected
-      end
+      timecode = Timecode.mult(timecode, -1)
+      assert Range.contains?(range, timecode) == expected
     end
   end
 
   describe "#overlaps?/2" do
-    setup [:setup_ranges, :setup_negates]
+    setup [:setup_ranges]
+    setup context, do: TestCase.setup_negates(context)
 
     @describetag ranges: [:a, :b]
 
-    test_cases = [
+    overlaps_table = [
       %{
         name: "a.in == b.in and a.out == b.out",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -707,80 +704,79 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- test_cases do
-      table_test "#{test_case.name} | :exclusive", test_case do
-        %{a: a, b: b, test_case: %{expected: expected}} = test_case
-        assert Range.overlaps?(a, b) == expected
-      end
+    table_test "<%= name %> | :exclusive", overlaps_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.overlaps?(a, b) == expected
+    end
 
-      @tag out_type: :inclusive
-      table_test "#{test_case.name} | :inclusive", test_case do
-        %{a: a, b: b, test_case: %{expected: expected}} = test_case
+    @tag out_type: :inclusive
+    table_test "<%= name %> | :inclusive", overlaps_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
 
-        a = Range.with_inclusive_out(a)
-        b = Range.with_inclusive_out(b)
+      a = Range.with_inclusive_out(a)
+      b = Range.with_inclusive_out(b)
 
-        assert Range.overlaps?(a, b) == expected
-      end
+      assert Range.overlaps?(a, b) == expected
+    end
 
-      @tag negate: [:a, :b]
-      table_test "#{test_case.name} | :exclusive | negative", test_case do
-        %{a: a, b: b, test_case: %{expected: expected}} = test_case
-        assert Range.overlaps?(a, b) == expected
-      end
+    @tag negate: [:a, :b]
+    table_test "<%= name %> | :exclusive | negative", overlaps_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.overlaps?(a, b) == expected
+    end
 
-      @tag out_type: :inclusive
-      @tag negate: [:a, :b]
-      table_test "#{test_case.name} | :inclusive | negative", test_case do
-        %{a: a, b: b, test_case: %{expected: expected}} = test_case
+    @tag out_type: :inclusive
+    @tag negate: [:a, :b]
+    table_test "<%= name %> | :inclusive | negative", overlaps_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
 
-        a = Range.with_inclusive_out(a)
-        b = Range.with_inclusive_out(b)
+      a = Range.with_inclusive_out(a)
+      b = Range.with_inclusive_out(b)
 
-        assert Range.overlaps?(a, b) == expected
-      end
+      assert Range.overlaps?(a, b) == expected
+    end
 
-      if test_case.a != test_case.b do
-        table_test "#{test_case.name} | :exclusive | flipped", test_case do
-          %{a: a, b: b, test_case: %{expected: expected}} = test_case
-          assert Range.overlaps?(b, a) == expected
-        end
+    table_test "<%= name %> | :exclusive | flipped", overlaps_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.overlaps?(b, a) == expected
+    end
 
-        @tag out_type: :inclusive
-        table_test "#{test_case.name} | :inclusive | flipped", test_case do
-          %{a: a, b: b, test_case: %{expected: expected}} = test_case
+    @tag out_type: :inclusive
+    table_test "<%= name %> | :inclusive | flipped", overlaps_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
 
-          a = Range.with_inclusive_out(a)
-          b = Range.with_inclusive_out(b)
+      a = Range.with_inclusive_out(a)
+      b = Range.with_inclusive_out(b)
 
-          assert Range.overlaps?(b, a) == expected
-        end
+      assert Range.overlaps?(b, a) == expected
+    end
 
-        @tag negate: [:a, :b]
-        table_test "#{test_case.name} | :exclusive | flipped | negative", test_case do
-          %{a: a, b: b, test_case: %{expected: expected}} = test_case
-          assert Range.overlaps?(b, a) == expected
-        end
+    @tag negate: [:a, :b]
+    table_test "<%= name %> | :exclusive | flipped | negative", overlaps_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.overlaps?(b, a) == expected
+    end
 
-        @tag out_type: :inclusive
-        @tag negate: [:a, :b]
-        table_test "#{test_case.name} | :inclusive | flipped | negative", test_case do
-          %{a: a, b: b, test_case: %{expected: expected}} = test_case
+    @tag out_type: :inclusive
+    @tag negate: [:a, :b]
+    table_test "<%= name %> | :inclusive | flipped | negative", overlaps_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
 
-          a = Range.with_inclusive_out(a)
-          b = Range.with_inclusive_out(b)
+      a = Range.with_inclusive_out(a)
+      b = Range.with_inclusive_out(b)
 
-          assert Range.overlaps?(b, a) == expected
-        end
-      end
+      assert Range.overlaps?(b, a) == expected
     end
   end
 
   describe "intersection/2" do
-    setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
+    setup [:setup_ranges, :setup_inclusives]
+    setup context, do: TestCase.setup_negates(context)
+    setup [:setup_overlap_expected]
+
     @describetag ranges: [:a, :b, :expected]
 
-    test_cases = [
+    intersection_table = [
       %{
         name: "a.in == b.in and a.out == b.out",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -861,56 +857,54 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- test_cases do
-      table_test "#{test_case.name} | :exclusive", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.intersection(a, b) == expected
-      end
+    table_test "<%= name %> | :exclusive", intersection_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b) == expected
+    end
 
-      @tag negate: [:a, :b, :expected]
-      table_test "#{test_case.name} | :exclusive | negative", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.intersection(a, b) == expected
-      end
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | negative", intersection_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b) == expected
+    end
 
-      @tag inclusive: [:a, :b, :expected]
-      table_test "#{test_case.name} | :inclusive", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.intersection(a, b) == expected
-      end
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive", intersection_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b) == expected
+    end
 
-      @tag inclusive: [:a, :b, :expected]
-      @tag negate: [:a, :b, :expected]
-      table_test "#{test_case.name} | :inclusive | negative", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.intersection(a, b) == expected
-      end
+    @tag inclusive: [:a, :b, :expected]
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive | negative", intersection_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b) == expected
+    end
 
-      if test_case.a != test_case.b do
-        table_test "#{test_case.name} | :exclusive | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.intersection(b, a) == expected
-        end
+    table_test "<%= name %> | :exclusive | flipped", intersection_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a) == expected
+    end
 
-        @tag negate: [:a, :b, :expected]
-        table_test "#{test_case.name} | :exclusive | negative | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.intersection(b, a) == expected
-        end
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | negative | flipped", intersection_table, test_case,
+      if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a) == expected
+    end
 
-        @tag inclusive: [:a, :b, :expected]
-        table_test "#{test_case.name} | :inclusive | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.intersection(b, a) == expected
-        end
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive | flipped", intersection_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a) == expected
+    end
 
-        @tag inclusive: [:a, :b, :expected]
-        @tag negate: [:a, :b, :expected]
-        table_test "#{test_case.name} | :inclusive | negative | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.intersection(b, a) == expected
-        end
-      end
+    @tag inclusive: [:a, :b, :expected]
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive | negative | flipped", intersection_table, test_case,
+      if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a) == expected
     end
 
     test "inherets a's rate in mixed rate operations" do
@@ -976,10 +970,13 @@ defmodule Vtc.RangeTest do
   end
 
   describe "separation/2" do
-    setup [:setup_ranges, :setup_inclusives, :setup_negates, :setup_overlap_expected]
+    setup [:setup_ranges, :setup_inclusives]
+    setup context, do: TestCase.setup_negates(context)
+    setup [:setup_overlap_expected]
+
     @describetag ranges: [:a, :b, :expected]
 
-    test_cases = [
+    separation_table = [
       %{
         name: "a < b",
         a: {"01:00:00:00", "02:00:00:00"},
@@ -994,56 +991,54 @@ defmodule Vtc.RangeTest do
       }
     ]
 
-    for test_case <- test_cases do
-      table_test "#{test_case.name} | :exclusive", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.separation(a, b) == expected
-      end
+    table_test "<%= name %> | :exclusive", separation_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(a, b) == expected
+    end
 
-      @tag negate: [:a, :b, :expected]
-      table_test "#{test_case.name} | :exclusive | negative", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.separation(a, b) == expected
-      end
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | negative", separation_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(a, b) == expected
+    end
 
-      @tag inclusive: [:a, :b, :expected]
-      table_test "#{test_case.name} | :inclusive", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.separation(a, b) == expected
-      end
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive", separation_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(a, b) == expected
+    end
 
-      @tag inclusive: [:a, :b, :expected]
-      @tag negate: [:a, :b, :expected]
-      table_test "#{test_case.name} | :inclusive | negative", test_case do
-        %{a: a, b: b, expected: expected} = test_case
-        assert Range.separation(a, b) == expected
-      end
+    @tag inclusive: [:a, :b, :expected]
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive | negative", separation_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(a, b) == expected
+    end
 
-      if test_case.a != test_case.b do
-        table_test "#{test_case.name} | :exclusive  | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.separation(b, a) == expected
-        end
+    table_test "<%= name %> | :exclusive  | flipped", separation_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(b, a) == expected
+    end
 
-        @tag negate: [:a, :b, :expected]
-        table_test "#{test_case.name} | :exclusive | flipped | negative", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.separation(b, a) == expected
-        end
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | flipped | negative", separation_table, test_case,
+      if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(b, a) == expected
+    end
 
-        @tag inclusive: [:a, :b, :expected]
-        table_test "#{test_case.name} | :inclusive  | flipped", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.separation(b, a) == expected
-        end
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive  | flipped", separation_table, test_case, if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(b, a) == expected
+    end
 
-        @tag inclusive: [:a, :b, :expected]
-        @tag negate: [:a, :b, :expected]
-        table_test "#{test_case.name} | :inclusive  | flipped | negative", test_case do
-          %{a: a, b: b, expected: expected} = test_case
-          assert Range.separation(b, a) == expected
-        end
-      end
+    @tag inclusive: [:a, :b, :expected]
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive  | flipped | negative", separation_table, test_case,
+      if: test_case.a != test_case.b do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.separation(b, a) == expected
     end
 
     test "inherets a's rate in mixed rate operations" do

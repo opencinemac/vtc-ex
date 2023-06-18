@@ -320,7 +320,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
       check all(
               dividend <-
                 StreamData.filter(
-                  StreamDataVtc.timecode(non_negative?: true),
+                  StreamDataVtc.timecode(non_negative?: true, rate_opts: [type: [:whole, :drop, :non_drop]]),
                   &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
                 ),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))

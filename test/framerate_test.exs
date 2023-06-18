@@ -7,10 +7,8 @@ defmodule Vtc.FramerateTest do
   alias Vtc.Framerate.ParseError
   alias Vtc.Rates
 
-  setup [:setup_test_case]
-
   describe "#parse" do
-    test_cases = [
+    parse_table = [
       %{
         name: "23.98 NTSC",
         inputs: [
@@ -141,8 +139,8 @@ defmodule Vtc.FramerateTest do
       }
     ]
 
-    test_cases =
-      Enum.flat_map(test_cases, fn test_case ->
+    new_table =
+      Enum.flat_map(parse_table, fn test_case ->
         for {input, index} <- Enum.with_index(test_case.inputs) do
           test_case
           |> Map.put(:input, input)
@@ -150,57 +148,53 @@ defmodule Vtc.FramerateTest do
         end
       end)
 
-    for test_case <- test_cases do
-      table_test "new/1 | #{test_case.name}", test_case do
-        %{input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
+    table_test "new/1 | <%= name %>", new_table, test_case do
+      %{input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
 
-        case Framerate.new(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) do
-          {:ok, rate} ->
-            check_parsed(test_case, rate)
-
-          {:error, err} ->
-            expected_reason =
-              case test_case do
-                %{err: %{reason: reason}} -> reason
-                _ -> "no error expected"
-              end
-
-            expected_message = Map.get(test_case, :err_msg, nil)
-
-            assert err.reason == expected_reason
-            assert Framerate.ParseError.message(err) == expected_message
-        end
-      end
-
-      table_test "new!/1 | #{test_case.name}", test_case do
-        %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
-
-        if is_map_key(test_case, :err) do
-          function = fn -> Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) end
-          assert_raise Framerate.ParseError, function
-        else
-          rate = Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?)
+      case Framerate.new(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) do
+        {:ok, rate} ->
           check_parsed(test_case, rate)
-        end
+
+        {:error, err} ->
+          expected_reason =
+            case test_case do
+              %{err: %{reason: reason}} -> reason
+              _ -> "no error expected"
+            end
+
+          expected_message = Map.get(test_case, :err_msg, nil)
+
+          assert err.reason == expected_reason
+          assert Framerate.ParseError.message(err) == expected_message
       end
     end
 
-    test_cases = [
+    table_test "new!/1 | <%= name %>", new_table, test_case do
+      %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
+
+      if is_map_key(test_case, :err) do
+        function = fn -> Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) end
+        assert_raise Framerate.ParseError, function
+      else
+        rate = Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?)
+        check_parsed(test_case, rate)
+      end
+    end
+
+    coerce_ntsc_table = [
       %{input: Ratio.new(24_000, 1002)},
       %{input: 24},
       %{input: 24_000 / 1002},
       %{input: 24_000 / 1001}
     ]
 
-    for test_case <- test_cases do
-      table_test "coerce_ntsc?: error on #{inspect(test_case.input)}", test_case do
-        %{input: input} = test_case
-        expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
+    table_test "coerce_ntsc?: error on <%= input %>", coerce_ntsc_table, test_case do
+      %{input: input} = test_case
+      expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
-        assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
-        assert error.reason == :invalid_ntsc_rate
-        assert ParseError.message(error) == expected_message
-      end
+      assert {:error, error} = Framerate.new(input, ntsc: :non_drop)
+      assert error.reason == :invalid_ntsc_rate
+      assert ParseError.message(error) == expected_message
     end
 
     @spec check_parsed(map(), Framerate.t()) :: nil
@@ -226,7 +220,7 @@ defmodule Vtc.FramerateTest do
 
     alias Vtc.Rates
 
-    test_cases = [
+    consts_table = [
       %{
         const: Rates.f23_98(),
         ntsc: :non_drop,
@@ -289,14 +283,12 @@ defmodule Vtc.FramerateTest do
       }
     ]
 
-    for test_case <- test_cases do
-      table_test "#{test_case.const} const", test_case do
-        %{ntsc: ntsc, playback: playback, timebase: timebase, const: const} = test_case
+    table_test "<%= const %>", consts_table, test_case do
+      %{ntsc: ntsc, playback: playback, timebase: timebase, const: const} = test_case
 
-        assert ntsc == const.ntsc
-        assert playback == const.playback
-        assert timebase == Framerate.timebase(const)
-      end
+      assert ntsc == const.ntsc
+      assert playback == const.playback
+      assert timebase == Framerate.timebase(const)
     end
   end
 
