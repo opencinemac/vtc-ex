@@ -31,7 +31,7 @@ defmodule Vtc.MixProject do
           "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames],
-          "Ecto Types": [Vtc.Ecto.Postgres.PgRational],
+          "Ecto Types": [Vtc.Ecto.Postgres.PgRational, Vtc.Ecto.Postgres.PgRational.Migrations],
           "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],
         groups_for_docs: [
@@ -43,8 +43,11 @@ defmodule Vtc.MixProject do
           Convert: &(&1[:section] == :convert),
           Consts: &(&1[:section] == :consts),
           Perfs: &(&1[:section] == :perfs),
-          Migrations: &(&1[:section] == :ecto_migrations),
-          Queries: &(&1[:section] == :ecto_queries)
+          Queries: &(&1[:section] == :ecto_queries),
+          Full: &(&1[:section] == :migrations_full),
+          PgConstraints: &(&1[:section] == :migrations_constraints),
+          PgTypes: &(&1[:section] == :migrations_types),
+          PgFunctions: &(&1[:section] == :migrations_functions)
         ]
       ],
       build_embedded: Mix.env() == :prod,

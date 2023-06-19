@@ -4,9 +4,9 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddRationalType do
 
   alias Vtc.Ecto.Postgres.PgRational
 
-  require PgRational
+  require PgRational.Migrations
 
   def change do
-    PgRational.migration_add_type()
+    PgRational.Migrations.create_all()
   end
 end

@@ -4,7 +4,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddRationalSchemas do
 
   alias Vtc.Ecto.Postgres.PgRational
 
-  require PgRational
+  require PgRational.Migrations
 
   def change do
     create table("rationals_01", primary_key: false) do
@@ -19,7 +19,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddRationalSchemas do
       add(:b, PgRational.type())
     end
 
-    PgRational.migration_add_field_constraints(:rationals_02, :a)
-    PgRational.migration_add_field_constraints(:rationals_02, :b)
+    PgRational.Migrations.create_field_constraints(:rationals_02, :a)
+    PgRational.Migrations.create_field_constraints(:rationals_02, :b)
   end
 end

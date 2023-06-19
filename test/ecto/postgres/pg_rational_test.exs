@@ -261,6 +261,74 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
+  describe "Postgres Helper functions" do
+    gcd_cases = [
+      %{a: 2, b: 4, expected: 2},
+      %{a: 21, b: 14, expected: 7},
+      %{a: 23, b: 14, expected: 1},
+      %{a: 1000, b: 70, expected: 10}
+    ]
+
+    table_test "rationals.greatest_common_denominator(<%= a %>, <%= b %>) == <%= expected %>", gcd_cases, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(#{a}, #{b})")
+      assert [[^expected]] = rows
+    end
+
+    table_test "rationals.greatest_common_denominator(-<%= a %>, <%= b %>) == <%= expected %>", gcd_cases, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(-#{a}, #{b})")
+      assert [[^expected]] = rows
+    end
+
+    table_test "rationals.greatest_common_denominator(<%= a %>, -<%= b %>) == <%= expected %>", gcd_cases, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(#{a}, -#{b})")
+      assert [[^expected]] = rows
+    end
+
+    table_test "rationals.greatest_common_denominator(-<%= a %>, -<%= b %>) == <%= expected %>", gcd_cases, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(-#{a}, -#{b})")
+      assert [[^expected]] = rows
+    end
+
+    simplify_cases = [
+      %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
+      %{numerator: 10, denominator: 100, expected: Ratio.new(1, 10)},
+      %{numerator: 3, denominator: 39, expected: Ratio.new(1, 13)},
+      %{numerator: 4, denominator: 9, expected: Ratio.new(4, 9)}
+    ]
+
+    table_test "rationals.simplify(<%= numerator %>/<%= denominator %>) == <%= expected %>", simplify_cases, test_case do
+      %{numerator: numerator, denominator: denominator, expected: expected} = test_case
+
+      assert %Postgrex.Result{rows: [[db_record]]} =
+               Repo.query!("SELECT rationals.simplify((#{numerator}, #{denominator})::rational)")
+
+      assert db_record == {expected.numerator, expected.denominator}
+    end
+
+    property "rationals.simplify mirrors Ratio.new" do
+      check all(
+              numerator <- StreamData.integer(),
+              denominator <- StreamData.filter(StreamData.integer(), &(&1 != 0))
+            ) do
+        expected = Ratio.new(numerator, denominator)
+
+        assert %Postgrex.Result{rows: [[{db_numerator, db_denominator}]]} =
+                 Repo.query!("SELECT rationals.simplify((#{numerator}, #{denominator})::rational)")
+
+        assert db_numerator == expected.numerator
+        assert db_denominator == expected.denominator
+      end
+    end
+  end
+
   def setup_record_01(%{skip_setup_record_01?: true}), do: []
 
   def setup_record_01(_) do
