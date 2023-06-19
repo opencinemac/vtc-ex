@@ -133,7 +133,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
 
   @doc section: :ecto_queries
   @doc """
-  Serialize `Ratio` for use in query fragment.
+  Serialize `Ratio` for use in a query fragment.
 
   The fragment must explicitly cast the value to a `::rational` type.
 
