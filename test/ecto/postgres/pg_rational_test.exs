@@ -262,14 +262,14 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "#Postgres rationals_helpers.greatest_common_denominator/2" do
-    gcd_cases = [
+    gcd_table = [
       %{a: 2, b: 4, expected: 2},
       %{a: 21, b: 14, expected: 7},
       %{a: 23, b: 14, expected: 1},
       %{a: 1000, b: 70, expected: 10}
     ]
 
-    table_test "<%= a %>, <%= b %> == <%= expected %>", gcd_cases, test_case do
+    table_test "<%= a %>, <%= b %> == <%= expected %>", gcd_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
@@ -278,7 +278,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       assert [[^expected]] = rows
     end
 
-    table_test "-<%= a %>, <%= b %> == <%= expected %>", gcd_cases, test_case do
+    table_test "-<%= a %>, <%= b %> == <%= expected %>", gcd_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
@@ -287,7 +287,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       assert [[^expected]] = rows
     end
 
-    table_test "<%= a %>, -<%= b %> == <%= expected %>", gcd_cases, test_case do
+    table_test "<%= a %>, -<%= b %> == <%= expected %>", gcd_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
@@ -296,7 +296,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       assert [[^expected]] = rows
     end
 
-    table_test "-<%= a %>, -<%= b %> == <%= expected %>", gcd_cases, test_case do
+    table_test "-<%= a %>, -<%= b %> == <%= expected %>", gcd_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
@@ -307,7 +307,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "#Postgres rationals_helpers.simplify/1" do
-    simplify_cases = [
+    simplify_table = [
       %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
       %{numerator: -2, denominator: 4, expected: Ratio.new(-1, 2)},
       %{numerator: 2, denominator: -4, expected: Ratio.new(-1, 2)},
@@ -317,7 +317,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{numerator: 4, denominator: 9, expected: Ratio.new(4, 9)}
     ]
 
-    table_test "<%= numerator %>/<%= denominator %> == <%= expected %>", simplify_cases, test_case do
+    table_test "<%= numerator %>/<%= denominator %> == <%= expected %>", simplify_table, test_case do
       %{numerator: numerator, denominator: denominator, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: [[db_record]]} =
@@ -342,9 +342,9 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  def setup_record_01(%{skip_setup_record_01?: true}), do: []
+  defp setup_record_01(%{skip_setup_record_01?: true}), do: []
 
-  def setup_record_01(_) do
+  defp setup_record_01(_) do
     {:ok, record_01} =
       %RationalsSchema01{}
       |> RationalsSchema01.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(3, 4)})
