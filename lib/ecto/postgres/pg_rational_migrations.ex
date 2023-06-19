@@ -1,6 +1,10 @@
 use Vtc.Ecto.Postgres.Utils
 
 defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
+  @moduledoc """
+  Migrations for adding rational types, functions and constraints to a
+  Postgres database.
+  """
   alias Vtc.Ecto.Postgres
 
   @doc section: :migrations_full
