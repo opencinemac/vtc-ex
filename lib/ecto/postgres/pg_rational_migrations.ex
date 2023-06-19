@@ -24,6 +24,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   );
   ```
 
+  ## Schemas Creates
+
+  Two schemas are created to house our native rational functions:
+
+  - `rationals`: Holds "public", user-facing functions.
+  - `rationals_helpers`: Holds "private" helper functions our "public" functions in the
+    `rationals` schema rely on.
+
   ## Functions Creates
 
   See `ecto_functions` section of these docs for details on native database functions
@@ -54,8 +62,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Adds `rational` composite type and `rationals` schema to namespace functions created
-  by this module.
+  Adds:
+
+  - `rational` composite type
+  - `rationals` schema
+  - `rationals_helpers` schema
   """
   @spec create_type() :: Macro.t()
   defmacro create_type do
@@ -79,13 +90,61 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       END $$;
       """)
 
+      execute("""
+      DO $$ BEGIN
+        CREATE SCHEMA rationals_helpers;
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+      """)
+    end
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Adds `rationals_helpers.greatest_common_denominator(a, b)` function that finds the
+  greatest common denominator between two bigint values.
+  """
+  @spec create_greatest_common_denominator() :: Macro.t()
+  defmacro create_greatest_common_denominator do
+    quote do
       execute(
-        Postgres.Utils.plpgsql_add_function(
-          :"rationals.simplify",
+        Postgres.Utils.create_plpgsql_function(
+          :"rationals_helpers.greatest_common_denominator",
+          args: [a: :bigint, b: :bigint],
+          returns: :bigint,
+          declares: [result: :bigint],
+          body: """
+          SELECT (
+            CASE
+              WHEN b = 0 THEN ABS(a)
+              WHEN a = 0 THEN ABS(b)
+              ELSE rationals_helpers.greatest_common_denominator(b, a % b)
+            END
+          ) INTO result;
+
+          RETURN result;
+          """
+        )
+      )
+    end
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Adds `rationals_helpers.simplify(rat)` function that simplifies a rational. Used at
+  the end of every rational operation to avoid overflows.
+  """
+  @spec create_simplify() :: Macro.t()
+  defmacro create_simplify do
+    quote do
+      execute(
+        Postgres.Utils.create_plpgsql_function(
+          :"rationals_helpers.simplify",
           args: [input: :rational],
           returns: :rational,
           declares: [
-            gcd: {:bigint, "rationals.greatest_common_denominator(input.numerator, input.denominator)"},
+            gcd: {:bigint, "rationals_helpers.greatest_common_denominator(input.numerator, input.denominator)"},
             denominator: {:bigint, "ABS(input.denominator / gcd)"},
             numerator: {:bigint, "input.numerator / gcd"}
           ],
@@ -98,66 +157,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
           ) INTO numerator;
 
           RETURN (numerator, denominator)::rational;
-          """
-        )
-      )
-    end
-  end
-
-  @doc section: :migrations_functions
-  @doc """
-  Adds `rational.greatest_common_denominator(a, b)` function that finds the greatest
-  common denominator between two bigint values.
-  """
-  @spec create_greatest_common_denominator() :: Macro.t()
-  defmacro create_greatest_common_denominator do
-    quote do
-      execute(
-        Postgres.Utils.plpgsql_add_function(
-          :"rationals.greatest_common_denominator",
-          args: [a: :bigint, b: :bigint],
-          returns: :bigint,
-          declares: [result: :bigint],
-          body: """
-          SELECT (
-            CASE
-              WHEN b = 0 THEN ABS(a)
-              WHEN a = 0 THEN ABS(b)
-              ELSE rationals.greatest_common_denominator(b, a % b)
-            END
-          ) INTO result;
-
-          RETURN result;
-          """
-        )
-      )
-    end
-  end
-
-  @doc section: :migrations_functions
-  @doc """
-  Adds `rational.simplify(rat)` function that simplifies a rational. Used at the end
-  of every rational operation to avoid overflows.
-  """
-  @spec create_simplify() :: Macro.t()
-  defmacro create_simplify do
-    quote do
-      execute(
-        Postgres.Utils.plpgsql_add_function(
-          :"rationals.greatest_common_denominator",
-          args: [a: :bigint, b: :bigint],
-          returns: :bigint,
-          declares: [result: :bigint],
-          body: """
-          SELECT (
-            CASE
-              WHEN b = 0 THEN ABS(a)
-              WHEN a = 0 THEN ABS(b)
-              ELSE rationals.greatest_common_denominator(b, a % b)
-            END
-          ) INTO result;
-
-          RETURN result;
           """
         )
       )

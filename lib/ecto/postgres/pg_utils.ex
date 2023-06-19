@@ -44,7 +44,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @typedoc """
   Options type for `plpgsql_add_function/2`
   """
-  @type add_function_opt() :: {:returns, atom()} | {:declare, Keyword.t(atom())} | {:body, String.t()}
+  @type create_func_opt() :: {:returns, atom()} | {:declare, Keyword.t(atom())} | {:body, String.t()}
 
   @doc """
   Builds a [plpgsql](https://www.postgresql.org/docs/current/plpgsql.html) function,
@@ -67,8 +67,8 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   - `body`: The function body.
   """
-  @spec plpgsql_add_function(String.t(), [add_function_opt()]) :: String.t()
-  def plpgsql_add_function(name, opts) do
+  @spec create_plpgsql_function(String.t(), [create_func_opt()]) :: String.t()
+  def create_plpgsql_function(name, opts) do
     args = Keyword.get(opts, :args, [])
     returns = Keyword.fetch!(opts, :returns)
     declares = Keyword.get(opts, :declares, nil)

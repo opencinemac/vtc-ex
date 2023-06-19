@@ -261,7 +261,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "Postgres Helper functions" do
+  describe "#Postgres rationals_helpers.greatest_common_denominator/2" do
     gcd_cases = [
       %{a: 2, b: 4, expected: 2},
       %{a: 21, b: 14, expected: 7},
@@ -269,34 +269,44 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{a: 1000, b: 70, expected: 10}
     ]
 
-    table_test "rationals.greatest_common_denominator(<%= a %>, <%= b %>) == <%= expected %>", gcd_cases, test_case do
+    table_test "<%= a %>, <%= b %> == <%= expected %>", gcd_cases, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
-      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(#{a}, #{b})")
+      assert %Postgrex.Result{rows: rows} =
+               Repo.query!("SELECT rationals_helpers.greatest_common_denominator(#{a}, #{b})")
+
       assert [[^expected]] = rows
     end
 
-    table_test "rationals.greatest_common_denominator(-<%= a %>, <%= b %>) == <%= expected %>", gcd_cases, test_case do
+    table_test "-<%= a %>, <%= b %> == <%= expected %>", gcd_cases, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
-      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(-#{a}, #{b})")
+      assert %Postgrex.Result{rows: rows} =
+               Repo.query!("SELECT rationals_helpers.greatest_common_denominator(-#{a}, #{b})")
+
       assert [[^expected]] = rows
     end
 
-    table_test "rationals.greatest_common_denominator(<%= a %>, -<%= b %>) == <%= expected %>", gcd_cases, test_case do
+    table_test "<%= a %>, -<%= b %> == <%= expected %>", gcd_cases, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
-      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(#{a}, -#{b})")
+      assert %Postgrex.Result{rows: rows} =
+               Repo.query!("SELECT rationals_helpers.greatest_common_denominator(#{a}, -#{b})")
+
       assert [[^expected]] = rows
     end
 
-    table_test "rationals.greatest_common_denominator(-<%= a %>, -<%= b %>) == <%= expected %>", gcd_cases, test_case do
+    table_test "-<%= a %>, -<%= b %> == <%= expected %>", gcd_cases, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
-      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rationals.greatest_common_denominator(-#{a}, -#{b})")
+      assert %Postgrex.Result{rows: rows} =
+               Repo.query!("SELECT rationals_helpers.greatest_common_denominator(-#{a}, -#{b})")
+
       assert [[^expected]] = rows
     end
+  end
 
+  describe "#Postgres rationals_helpers.simplify/1" do
     simplify_cases = [
       %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
       %{numerator: -2, denominator: 4, expected: Ratio.new(-1, 2)},
@@ -307,16 +317,16 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{numerator: 4, denominator: 9, expected: Ratio.new(4, 9)}
     ]
 
-    table_test "rationals.simplify(<%= numerator %>/<%= denominator %>) == <%= expected %>", simplify_cases, test_case do
+    table_test "<%= numerator %>/<%= denominator %> == <%= expected %>", simplify_cases, test_case do
       %{numerator: numerator, denominator: denominator, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: [[db_record]]} =
-               Repo.query!("SELECT rationals.simplify((#{numerator}, #{denominator})::rational)")
+               Repo.query!("SELECT rationals_helpers.simplify((#{numerator}, #{denominator})::rational)")
 
       assert db_record == {expected.numerator, expected.denominator}
     end
 
-    property "rationals.simplify mirrors Ratio.new" do
+    property "mirrors Ratio.new" do
       check all(
               numerator <- StreamData.integer(),
               denominator <- StreamData.filter(StreamData.integer(), &(&1 != 0))
@@ -324,7 +334,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
         expected = Ratio.new(numerator, denominator)
 
         assert %Postgrex.Result{rows: [[{db_numerator, db_denominator}]]} =
-                 Repo.query!("SELECT rationals.simplify((#{numerator}, #{denominator})::rational)")
+                 Repo.query!("SELECT rationals_helpers.simplify((#{numerator}, #{denominator})::rational)")
 
         assert db_numerator == expected.numerator
         assert db_denominator == expected.denominator
