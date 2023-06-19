@@ -97,7 +97,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   """
   @type db_record() :: {non_neg_integer(), pos_integer()}
 
-  # Casts values for changesets functions.
+  # Handles casting PgRational fields in `Ecto.Changeset`s.
   @doc false
   @impl Ecto.Type
   @spec cast(Ratio.t() | String.t() | [non_neg_integer()]) :: {:ok, Ratio.t()} | :error
