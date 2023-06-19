@@ -76,8 +76,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   - `[numerator, denominator]` integer arrays. Useful for non-text JSON values that can
     be set in a single field.
 
-  - Strings formatted as `'numerator/denominator'` Useful for casting from JSON string
-    values.
+  - Strings formatted as `'numerator/denominator'`. Useful for casting from a JSON
+    string.
 
   """
 
