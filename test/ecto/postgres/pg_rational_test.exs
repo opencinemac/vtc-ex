@@ -299,6 +299,9 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
     simplify_cases = [
       %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
+      %{numerator: -2, denominator: 4, expected: Ratio.new(-1, 2)},
+      %{numerator: 2, denominator: -4, expected: Ratio.new(-1, 2)},
+      %{numerator: -2, denominator: -4, expected: Ratio.new(1, 2)},
       %{numerator: 10, denominator: 100, expected: Ratio.new(1, 10)},
       %{numerator: 3, denominator: 39, expected: Ratio.new(1, 13)},
       %{numerator: 4, denominator: 9, expected: Ratio.new(4, 9)}
