@@ -12,7 +12,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  This migration included all migraitons under the `PgTypes` and `PgFunctions` headings.
+  This migration included all migraitons under the
+  [PgTypes](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgtypes) and
+  [PgFunctions](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgfunctions)
+  headings.
 
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
