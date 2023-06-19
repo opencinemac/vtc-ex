@@ -15,7 +15,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   )
   ```
 
-  Rational values can be intatiated in raw SQL queries like so:
+  Rational values can be cast in SQL expressions like so:
 
   ```sql
   SELECT (1, 2)::rational
