@@ -2,7 +2,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @moduledoc false
 
   ## Exposes a macro for defining modules that will only be compiled if the caller
-  ## has set `:vtc, :postgres_types?` to `true` in their application config.
+  ## has set `:vtc, :include_postgres_types?` to `true` in their application config.
 
   @spec __using__(Keyword.t()) :: Macro.t()
   defmacro __using__(_) do
@@ -18,7 +18,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @spec defpgmodule(module(), do: Macro.t()) :: Macro.t()
   defmacro defpgmodule(name, do: body) do
     quote do
-      if Application.get_env(:vtc, :postgres_types?, false) do
+      if Application.get_env(:vtc, :include_postgres_types?, false) do
         :ok = unquote(__MODULE__).enforce_dep(Ecto, :ecto)
         :ok = unquote(__MODULE__).enforce_dep(Postgrex, :postgrex)
 
@@ -34,7 +34,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   def enforce_dep(module, name) do
     if not Code.ensure_loaded?(module) do
       throw(
-        "vtc: `:postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
+        "vtc: `:include_postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
       )
     end
 

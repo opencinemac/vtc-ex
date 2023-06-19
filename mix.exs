@@ -67,7 +67,7 @@ defmodule Vtc.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    postgres_types? = not Application.get_env(:vtc, :postgres_types?, false)
+    postgres_types? = not Application.get_env(:vtc, :include_postgres_types?, false)
 
     [
       # Library Dependencies
