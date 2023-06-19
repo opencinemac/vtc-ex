@@ -3,7 +3,7 @@ use Vtc.Ecto.Postgres.Utils
 defpgmodule Vtc.Ecto.Postgres.PgRational do
   @moduledoc """
   Defines a composite type for storing rational values as dual int64s. These values
-  are cast to `%Ratio()` structs for use in application code, provided by the `Ratio`
+  are cast to `%Ratio{}` structs for use in application code, provided by the `Ratio`
   library.
 
   The composite type is defined as follows:
