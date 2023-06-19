@@ -9,7 +9,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_full
   @doc """
-  Adds raw SQL queries to a migration for for creating the database types, associated
+  Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
   This migration included all migraitons under the `PgTypes` and `PgFunctions` headings.
