@@ -5,7 +5,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Migrations for adding rational types, functions and constraints to a
   Postgres database.
   """
+  alias Ecto.Migration
   alias Vtc.Ecto.Postgres
+
+  require Ecto.Migration
 
   @doc section: :migrations_full
   @doc """
@@ -59,12 +62,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   end
   ```
   """
-  defmacro create_all do
-    quote do
-      unquote(__MODULE__).create_type()
-      unquote(__MODULE__).create_greatest_common_denominator()
-      unquote(__MODULE__).create_simplify()
-    end
+  @spec create_all() :: :ok
+  def create_all do
+    :ok = create_type()
+    :ok = create_greatest_common_denominator()
+    :ok = create_simplify()
+
+    :ok
   end
 
   @doc section: :migrations_types
@@ -75,10 +79,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   - `rationals` schema
   - `rationals_helpers` schema
   """
-  @spec create_type() :: Macro.t()
-  defmacro create_type do
-    quote do
-      execute("""
+  @spec create_type() :: :ok
+  def create_type do
+    :ok =
+      Migration.execute("""
         DO $$ BEGIN
           CREATE TYPE rational AS (
             numerator bigint,
@@ -89,22 +93,25 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         END $$;
       """)
 
-      execute("""
-      DO $$ BEGIN
-        CREATE SCHEMA rationals;
-        EXCEPTION WHEN duplicate_object
-          THEN null;
-      END $$;
+    :ok =
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA rationals;
+          EXCEPTION WHEN duplicate_object
+            THEN null;
+        END $$;
       """)
 
-      execute("""
-      DO $$ BEGIN
-        CREATE SCHEMA rationals_helpers;
-        EXCEPTION WHEN duplicate_object
-          THEN null;
-      END $$;
+    :ok =
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA rationals_helpers;
+          EXCEPTION WHEN duplicate_object
+            THEN null;
+        END $$;
       """)
-    end
+
+    :ok
   end
 
   @doc section: :migrations_functions
@@ -112,10 +119,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds `rationals_helpers.greatest_common_denominator(a, b)` function that finds the
   greatest common denominator between two bigint values.
   """
-  @spec create_greatest_common_denominator() :: Macro.t()
-  defmacro create_greatest_common_denominator do
-    quote do
-      execute(
+  @spec create_greatest_common_denominator() :: :ok
+  def create_greatest_common_denominator do
+    :ok =
+      Migration.execute(
         Postgres.Utils.create_plpgsql_function(
           :"rationals_helpers.greatest_common_denominator",
           args: [a: :bigint, b: :bigint],
@@ -134,7 +141,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
           """
         )
       )
-    end
+
+    :ok
   end
 
   @doc section: :migrations_functions
@@ -142,32 +150,32 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds `rationals_helpers.simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
-  @spec create_simplify() :: Macro.t()
-  defmacro create_simplify do
-    quote do
-      execute(
-        Postgres.Utils.create_plpgsql_function(
-          :"rationals_helpers.simplify",
-          args: [input: :rational],
-          returns: :rational,
-          declares: [
-            gcd: {:bigint, "rationals_helpers.greatest_common_denominator(input.numerator, input.denominator)"},
-            denominator: {:bigint, "ABS(input.denominator / gcd)"},
-            numerator: {:bigint, "input.numerator / gcd"}
-          ],
-          body: """
-          SELECT (
-            CASE
-              WHEN input.denominator < 0 THEN numerator * -1
-              ELSE numerator
-            END
-          ) INTO numerator;
+  @spec create_simplify() :: :ok
+  def create_simplify do
+    Migration.execute(
+      Postgres.Utils.create_plpgsql_function(
+        :"rationals_helpers.simplify",
+        args: [input: :rational],
+        returns: :rational,
+        declares: [
+          gcd: {:bigint, "rationals_helpers.greatest_common_denominator(input.numerator, input.denominator)"},
+          denominator: {:bigint, "ABS(input.denominator / gcd)"},
+          numerator: {:bigint, "input.numerator / gcd"}
+        ],
+        body: """
+        SELECT (
+          CASE
+            WHEN input.denominator < 0 THEN numerator * -1
+            ELSE numerator
+          END
+        ) INTO numerator;
 
-          RETURN (numerator, denominator)::rational;
-          """
-        )
+        RETURN (numerator, denominator)::rational;
+        """
       )
-    end
+    )
+
+    :ok
   end
 
   @doc section: :migrations_constraints
@@ -192,21 +200,18 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   PgRational.migration_add_field_constraints(:rationals, :b)
   ```
   """
-  @spec create_field_constraints(atom(), atom()) :: Macro.t()
-  defmacro create_field_constraints(table, field_name) do
-    quote do
-      field_name = unquote(field_name)
-      table = unquote(table)
-
-      create(
-        constraint(
-          table,
-          "#{field_name}_denominator_positive",
-          check: """
-          (#{field_name}).denominator > 0
-          """
-        )
+  @spec create_field_constraints(atom(), atom()) :: :ok
+  def create_field_constraints(table, field_name) do
+    Migration.create(
+      Migration.constraint(
+        table,
+        "#{field_name}_denominator_positive",
+        check: """
+        (#{field_name}).denominator > 0
+        """
       )
-    end
+    )
+
+    :ok
   end
 end

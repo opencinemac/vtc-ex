@@ -54,7 +54,7 @@ defmodule Vtc.MixProject do
       start_permanent: Mix.env() == :prod,
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:ecto]]
+      dialyzer: [plt_add_apps: Enum.map(deps(), &elem(&1, 0))]
     ]
   end
 

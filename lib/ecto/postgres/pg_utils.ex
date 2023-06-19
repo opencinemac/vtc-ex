@@ -42,9 +42,19 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @typedoc """
+  Alias of String.t() that hints raw SQL text.
+  """
+  @type raw_sql() :: String.t()
+
+  @typedoc """
   Options type for `plpgsql_add_function/2`
   """
-  @type create_func_opt() :: {:returns, atom()} | {:declare, Keyword.t(atom())} | {:body, String.t()}
+  @type create_func_opts() :: [
+          args: Keyword.t(atom()),
+          returns: atom(),
+          declares: Keyword.t(atom() | {atom(), raw_sql()}),
+          body: raw_sql()
+        ]
 
   @doc """
   Builds a [plpgsql](https://www.postgresql.org/docs/current/plpgsql.html) function,
@@ -67,7 +77,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   - `body`: The function body.
   """
-  @spec create_plpgsql_function(String.t(), [create_func_opt()]) :: String.t()
+  @spec create_plpgsql_function(atom(), create_func_opts()) :: raw_sql()
   def create_plpgsql_function(name, opts) do
     args = Keyword.get(opts, :args, [])
     returns = Keyword.fetch!(opts, :returns)
