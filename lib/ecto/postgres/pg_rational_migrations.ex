@@ -6,7 +6,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
-  alias Vtc.Ecto.Postgres
 
   require Ecto.Migration
 
@@ -65,8 +64,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @spec create_all() :: :ok
   def create_all do
     :ok = create_type()
-    :ok = create_greatest_common_denominator()
-    :ok = create_simplify()
 
     :ok
   end
@@ -92,88 +89,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
             THEN null;
         END $$;
       """)
-
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA rationals;
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA rationals_helpers;
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
-  end
-
-  @doc section: :migrations_functions
-  @doc """
-  Adds `rationals_helpers.greatest_common_denominator(a, b)` function that finds the
-  greatest common denominator between two bigint values.
-  """
-  @spec create_greatest_common_denominator() :: :ok
-  def create_greatest_common_denominator do
-    :ok =
-      Migration.execute(
-        Postgres.Utils.create_plpgsql_function(
-          :"rationals_helpers.greatest_common_denominator",
-          args: [a: :bigint, b: :bigint],
-          returns: :bigint,
-          declares: [result: :bigint],
-          body: """
-          SELECT (
-            CASE
-              WHEN b = 0 THEN ABS(a)
-              WHEN a = 0 THEN ABS(b)
-              ELSE rationals_helpers.greatest_common_denominator(b, a % b)
-            END
-          ) INTO result;
-
-          RETURN result;
-          """
-        )
-      )
-
-    :ok
-  end
-
-  @doc section: :migrations_functions
-  @doc """
-  Adds `rationals_helpers.simplify(rat)` function that simplifies a rational. Used at
-  the end of every rational operation to avoid overflows.
-  """
-  @spec create_simplify() :: :ok
-  def create_simplify do
-    Migration.execute(
-      Postgres.Utils.create_plpgsql_function(
-        :"rationals_helpers.simplify",
-        args: [input: :rational],
-        returns: :rational,
-        declares: [
-          gcd: {:bigint, "rationals_helpers.greatest_common_denominator(input.numerator, input.denominator)"},
-          denominator: {:bigint, "ABS(input.denominator / gcd)"},
-          numerator: {:bigint, "input.numerator / gcd"}
-        ],
-        body: """
-        SELECT (
-          CASE
-            WHEN input.denominator < 0 THEN numerator * -1
-            ELSE numerator
-          END
-        ) INTO numerator;
-
-        RETURN (numerator, denominator)::rational;
-        """
-      )
-    )
 
     :ok
   end
