@@ -457,3 +457,5 @@ config :vtc,
   env: config_env(),
   include_postgres_types?: true
 ```
+
+See each posgres type for information on it's configuration.

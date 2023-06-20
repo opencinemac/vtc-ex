@@ -1,7 +1,8 @@
 import Config
 
 config :vtc,
-  env: config_env(),
-  include_postgres_types?: true
+  env: config_env()
+
+config :vtc, Postgres, include?: true
 
 import_config "#{config_env()}.exs"

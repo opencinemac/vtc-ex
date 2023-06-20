@@ -2,23 +2,25 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @moduledoc false
 
   ## Exposes a macro for defining modules that will only be compiled if the caller
-  ## has set `:vtc, :include_postgres_types?` to `true` in their application config.
+  ## has set `:vtc, Postrgrex, :include?` to `true` in their application config.
 
   @spec __using__(Keyword.t()) :: Macro.t()
   defmacro __using__(_) do
     quote do
-      import Vtc.Ecto.Postgres.Utils
+      import Vtc.Ecto.Postgres.Utils, only: [defpgmodule: 2]
 
       require Vtc.Ecto.Postgres.Utils
     end
   end
 
-  # Wraps defmodule, conditionally declaring the module during compilation
-  # based on caller configuration.
+  @doc """
+  Wraps defmodule, conditionally declaring the module during compilation
+  based on caller configuration.
+  """
   @spec defpgmodule(module(), do: Macro.t()) :: Macro.t()
   defmacro defpgmodule(name, do: body) do
     quote do
-      if Application.get_env(:vtc, :include_postgres_types?, false) do
+      if unquote(__MODULE__).get_config(:include?, false) do
         :ok = unquote(__MODULE__).enforce_dep(Ecto, :ecto)
         :ok = unquote(__MODULE__).enforce_dep(Postgrex, :postgrex)
 
@@ -29,12 +31,20 @@ defmodule Vtc.Ecto.Postgres.Utils do
     end
   end
 
-  # Affirms that module from dep is present, throwing otherwise.
+  @doc """
+  Fetches a config for `:vtc, Postgrex`
+  """
+  @spec get_config(atom(), result) :: result when result: any()
+  def get_config(opt, default), do: :vtc |> Application.get_env(Postgres, []) |> Keyword.get(opt, default)
+
+  @doc """
+  Affirms that module from dep is present, throwing otherwise.
+  """
   @spec enforce_dep(module(), atom()) :: :ok
   def enforce_dep(module, name) do
     if not Code.ensure_loaded?(module) do
       throw(
-        "vtc: `:include_postgres_types?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
+        ":vtc, Postgres, `:include?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
       )
     end
 

@@ -7,7 +7,14 @@ config :vtc, Vtc.Test.Support.Repo,
   password: "postgres",
   hostname: "localhost",
   database: "vtc_test",
-  log: false
+  log: false,
+  vtc: [
+    pg_rational: [
+      functions_schema: :rational,
+      functions_private_schema: :rational_private,
+      functions_prefix: ""
+    ]
+  ]
 
 config :vtc,
   ecto_repos: [Vtc.Test.Support.Repo]

@@ -36,14 +36,39 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   ## Schemas Created
 
-  Two schemas are created to house our native rational functions:
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
+  section below.
 
-  - `rational`: for user-facing "public" functions that will have backwards
-    compatibility guarantees and application code support.
+  ## Configuring Database Objects
 
-  - `rational_private`: for developer-only "private" functions that support the
-    functions in the "rational" schema. Will NOT havr backwards compatibility guarantees
-    NOR application code support.
+  To change where supporting functions are created, add the following to your
+  Repo confiugration:
+
+  ```elixir
+  config :vtc, Vtc.Test.Support.Repo,
+    adapter: Ecto.Adapters.Postgres,
+    ...
+    vtc: [
+      pg_rational: [
+        functions_schema: :rational,
+        functions_private_schema: :rational_private,
+        functions_prefix: "rational"
+      ]
+    ]
+  ```
+
+  Option definitions are as follows:
+
+  - `functions_schema`: The schema for "public" functions that will have backwards
+    compatibility guarantees and application code support. Default: `:public`.
+
+  - `functions_private_schema:` The schema for for developer-only "private" functions
+    that support the functions in the "rational" schema. Will NOT havr backwards
+    compatibility guarantees NOR application code support. Default: `:public`.
+
+  - `functions_prefix`: A prefix to add before all functions. Defaults to "rational" for
+    any function created in the "public" schema, and "" otherwise.
 
   ## Functions Created
 
@@ -114,23 +139,31 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA rational;
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
+    functions_schema = get_config(Migration.repo(), :functions_schema, :public)
 
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA rational_private;
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
+    if functions_schema != :public do
+      :ok =
+        Migration.execute("""
+          DO $$ BEGIN
+            CREATE SCHEMA #{functions_schema};
+            EXCEPTION WHEN duplicate_schema
+              THEN null;
+          END $$;
+        """)
+    end
+
+    functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
+
+    if functions_private_schema != :public do
+      :ok =
+        Migration.execute("""
+          DO $$ BEGIN
+            CREATE SCHEMA #{functions_private_schema};
+            EXCEPTION WHEN duplicate_schema
+              THEN null;
+          END $$;
+        """)
+    end
 
     :ok
   end
@@ -145,7 +178,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok =
       Migration.execute(
         Postgres.Utils.create_plpgsql_function(
-          :"rational_private.greatest_common_denominator",
+          :"#{private_function_prefix(Migration.repo())}greatest_common_denominator",
           args: [a: :bigint, b: :bigint],
           returns: :bigint,
           declares: [result: :bigint],
@@ -154,7 +187,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
             CASE
               WHEN b = 0 THEN ABS(a)
               WHEN a = 0 THEN ABS(b)
-              ELSE rational_private.greatest_common_denominator(b, a % b)
+              ELSE #{private_function_prefix(Migration.repo())}greatest_common_denominator(b, a % b)
             END
           ) INTO result;
 
@@ -175,11 +208,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_simplify do
     Migration.execute(
       Postgres.Utils.create_plpgsql_function(
-        :"rational_private.simplify",
+        :"#{private_function_prefix(Migration.repo())}simplify",
         args: [input: :rational],
         returns: :rational,
         declares: [
-          gcd: {:bigint, "rational_private.greatest_common_denominator(input.numerator, input.denominator)"},
+          gcd:
+            {:bigint,
+             "#{private_function_prefix(Migration.repo())}greatest_common_denominator(input.numerator, input.denominator)"},
           denominator: {:bigint, "ABS(input.denominator / gcd)"},
           numerator: {:bigint, "input.numerator / gcd"}
         ],
@@ -234,5 +269,23 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     )
 
     :ok
+  end
+
+  # Fetches PgRational configuration option from `repo`'s configuration.
+  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
+  defp get_config(repo, opt, default),
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_rational) |> Keyword.get(opt, default)
+
+  @spec private_function_prefix(Ecto.Repo.t()) :: String.t()
+  defp private_function_prefix(repo) do
+    functions_private_schema = get_config(repo, :functions_private_schema, :public)
+    functions_prefix = get_config(repo, :functions_prefix, "")
+
+    functions_prefix =
+      if functions_prefix == "" and functions_private_schema == :public, do: "rational", else: functions_prefix
+
+    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
+
+    "#{functions_private_schema}.#{functions_prefix}"
   end
 end
