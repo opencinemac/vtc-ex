@@ -117,7 +117,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok =
       Migration.execute("""
         DO $$ BEGIN
-          CREATE SCHEMA rationals;
+          CREATE SCHEMA rational;
           EXCEPTION WHEN duplicate_schema
             THEN null;
         END $$;
