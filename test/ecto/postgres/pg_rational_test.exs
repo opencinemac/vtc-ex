@@ -111,7 +111,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       assert :error = PgRational.load([3, 4])
     end
 
-    test "fails on SQL string" do
+    test "fails on SQL expression" do
       assert :error = PgRational.load("(3, 4)")
     end
 
