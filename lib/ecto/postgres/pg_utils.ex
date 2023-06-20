@@ -40,4 +40,86 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
     :ok
   end
+
+  @typedoc """
+  Alias of String.t() that hints raw SQL text.
+  """
+  @type raw_sql() :: String.t()
+
+  @typedoc """
+  Options type for `plpgsql_add_function/2`
+  """
+  @type create_func_opts() :: [
+          args: Keyword.t(atom()),
+          returns: atom(),
+          declares: Keyword.t(atom() | {atom(), raw_sql()}),
+          body: raw_sql()
+        ]
+
+  @doc """
+  Builds a [plpgsql](https://www.postgresql.org/docs/current/plpgsql.html) function,
+  taking care of all the biolerplate.
+
+  ## Args
+
+  - `name`: The name of the function, including schema namespace.
+
+  ## Options
+
+  - `args`: The arguments the function takes and their types in a `arg: type` keyword
+    list.
+
+  - `returns`: The type the function returns.
+
+  - `declares`: A `name: type` keyword list of variables that should be declared in the
+    function's "DECLARES" block. Optionally can pass `name: {type, calculation}` to
+    declare a short calculation to set the variable.
+
+  - `body`: The function body.
+  """
+  @spec create_plpgsql_function(atom(), create_func_opts()) :: raw_sql()
+  def create_plpgsql_function(name, opts) do
+    args = Keyword.get(opts, :args, [])
+    returns = Keyword.fetch!(opts, :returns)
+    declares = Keyword.get(opts, :declares, nil)
+    body = Keyword.fetch!(opts, :body)
+
+    args = Enum.map_join(args, ", ", fn {arg, type} -> "#{arg} #{type}" end)
+
+    declare =
+      if is_nil(declares) do
+        ""
+      else
+        vars =
+          Enum.map_join(declares, fn
+            {var, {type, value}} -> "#{var} #{type} := #{value};\n"
+            {var, type} -> "#{var} #{type};\n"
+          end)
+
+        """
+        DECLARE
+        #{vars}
+        """
+      end
+
+    """
+    DO $wrapper$ BEGIN
+        CREATE FUNCTION #{name}(#{args})
+          RETURNS #{returns}
+          LANGUAGE plpgsql
+          IMMUTABLE
+          LEAKPROOF
+          PARALLEL SAFE
+          COST 3
+        AS $func$
+          #{declare}
+          BEGIN
+            #{body}
+          END;
+        $func$;
+        EXCEPTION WHEN duplicate_function
+          THEN null;
+      END $wrapper$;
+    """
+  end
 end
