@@ -51,11 +51,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Adds:
-
-  - `rational` composite type
-  - `rationals` schema
-  - `rationals_helpers` schema
+  Adds `rational` composite type.
   """
   @spec create_type() :: :ok
   def create_type do
