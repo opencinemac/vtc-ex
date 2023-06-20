@@ -6,7 +6,8 @@ config :vtc, Vtc.Test.Support.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "vtc_test"
+  database: "vtc_test",
+  log: false
 
 config :vtc,
   ecto_repos: [Vtc.Test.Support.Repo]

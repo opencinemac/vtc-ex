@@ -31,6 +31,7 @@ defmodule Vtc.MixProject do
           "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames],
+          "Ecto Types": [Vtc.Ecto.Postgres.PgRational, Vtc.Ecto.Postgres.PgRational.Migrations],
           "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],
         groups_for_docs: [
@@ -41,13 +42,19 @@ defmodule Vtc.MixProject do
           Arithmetic: &(&1[:section] == :arithmetic),
           Convert: &(&1[:section] == :convert),
           Consts: &(&1[:section] == :consts),
-          Perfs: &(&1[:section] == :perfs)
+          Perfs: &(&1[:section] == :perfs),
+          Queries: &(&1[:section] == :ecto_queries),
+          Full: &(&1[:section] == :migrations_full),
+          PgConstraints: &(&1[:section] == :migrations_constraints),
+          PgTypes: &(&1[:section] == :migrations_types),
+          PgFunctions: &(&1[:section] == :migrations_functions)
         ]
       ],
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       package: package(),
-      deps: deps()
+      deps: deps(),
+      dialyzer: [plt_add_apps: Enum.map(deps(), &elem(&1, 0))]
     ]
   end
 
@@ -60,13 +67,15 @@ defmodule Vtc.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
+    include_postgres_types? = not Application.get_env(:vtc, :include_postgres_types?, false)
+
     [
       # Library Dependencies
       {:decimal, "~> 2.0"},
       {:ratio, "~> 3.0"},
-      {:ecto, "~> 3.10", optional: true},
-      {:ecto_sql, "~> 3.10", optional: true},
-      {:postgrex, ">= 0.0.0", optional: true},
+      {:ecto, "~> 3.10", optional: include_postgres_types?},
+      {:ecto_sql, "~> 3.10", optional: include_postgres_types?},
+      {:postgrex, ">= 0.0.0", optional: include_postgres_types?},
 
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},

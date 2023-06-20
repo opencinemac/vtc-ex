@@ -14,12 +14,12 @@ cond do
     :ok
 
   true ->
-    {:ok, _} = Application.ensure_all_started(:postgrex)
+    db_config = Vtc.Test.Support.Repo.config()
 
-    _ = Vtc.Test.Support.Repo.__adapter__().storage_down(Vtc.Test.Support.Repo.config())
-    :ok = Vtc.Test.Support.Repo.__adapter__().storage_up(Vtc.Test.Support.Repo.config())
+    _ = Vtc.Test.Support.Repo.__adapter__().storage_down(db_config)
+    :ok = Vtc.Test.Support.Repo.__adapter__().storage_up(db_config)
 
-    {:ok, _} = Vtc.Test.Support.Repo.start_link()
+    {:ok, _} = Vtc.Test.Support.Repo.start_link(db_config)
 
     Ecto.Migrator.run(Vtc.Test.Support.Repo, :up, all: true)
     Ecto.Adapters.SQL.Sandbox.mode(Vtc.Test.Support.Repo, :manual)

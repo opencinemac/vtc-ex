@@ -7,6 +7,8 @@ defmodule Vtc.Test.Support.EctoCase do
 
   using do
     quote do
+      use Vtc.Test.Support.TestCase
+
       alias Vtc.Test.Support.Repo
 
       @moduletag :ecto
