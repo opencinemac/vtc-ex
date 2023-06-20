@@ -14,11 +14,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  Includes all migraitons under the
-  [PgTypes](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgtypes) and
-  [PgFunctions](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgfunctions)
-  headings.
-
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
 
@@ -31,20 +26,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     numerator bigint,
     denominator bigint
   );
-  ```
-
-  ## Schemas Creates
-
-  Two schemas are created to house our native rational functions:
-
-  - `rationals`: Holds "public", user-facing functions.
-  - `rationals_helpers`: Holds "private" helper functions our "public" functions in the
-    `rationals` schema rely on.
-
-  ## Functions Creates
-
-  See `ecto_functions` section of these docs for details on native database functions
-  created.
 
   ## Examples
 
