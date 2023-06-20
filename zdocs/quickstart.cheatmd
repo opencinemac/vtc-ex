@@ -449,8 +449,8 @@ iex> Range.intersection!(a, b)
 
 ## Postgres Types
 
-To use Postgres types with Ecto. Add the following into you applications configuration
-file:
+To include Postgres types with Ecto. Add the following into you applications 
+configuration file:
 
 ```elixir
 config :vtc,
