@@ -36,6 +36,42 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   );
   ```
 
+  ## Schemas Created
+
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#create_all/0-configuring-database-objects)
+  section below.
+
+  ## Configuring Database Objects
+
+  To change where supporting functions are created, add the following to your
+  Repo confiugration:
+
+  ```elixir
+  config :vtc, Vtc.Test.Support.Repo,
+    adapter: Ecto.Adapters.Postgres,
+    ...
+    vtc: [
+      pg_framerate: [
+        functions_schema: :framerate,
+        functions_private_schema: :framerate_private,
+        functions_prefix: "framerate"
+      ]
+    ]
+  ```
+
+  Option definitions are as follows:
+
+  - `functions_schema`: The schema for "public" functions that will have backwards
+    compatibility guarantees and application code support. Default: `:public`.
+
+  - `functions_private_schema:` The schema for for developer-only "private" functions
+    that support the functions in the "framerate" schema. Will NOT have backwards
+    compatibility guarantees NOR application code support. Default: `:public`.
+
+  - `functions_prefix`: A prefix to add before all functions. Defaults to "framerate"
+    for any function created in the "public" schema, and "" otherwise.
+
   ## Examples
 
   ```elixir
@@ -54,16 +90,17 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @spec create_all() :: :ok
   def create_all do
     :ok = create_type_framerate_tags()
+    :ok = create_function_schemas()
     :ok = create_type_framerate()
 
     :ok
   end
 
   @doc section: :migrations_types
-  @spec create_type_framerate_tags() :: :ok
   @doc """
   Adds `framerate_tgs` enum type.
   """
+  @spec create_type_framerate_tags() :: :ok
   def create_type_framerate_tags do
     :ok =
       Migration.execute("""
@@ -95,6 +132,48 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
             THEN null;
         END $$;
       """)
+
+    :ok
+  end
+
+  @doc section: :migrations_types
+  @doc """
+  Creates schemas to act as namespaces for rational functions:
+
+  - `rational`: for user-facing "public" functions that will have backwards
+    compatibility guarantees and application code support.
+
+  - `rational_private`: for developer-only "private" functions that support the
+    functions in the "rational" schema. Will NOT havr backwards compatibility guarantees
+    NOR application code support.
+  """
+  @spec create_function_schemas() :: :ok
+  def create_function_schemas do
+    functions_schema = get_config(Migration.repo(), :functions_schema, :public)
+
+    if functions_schema != :public do
+      :ok =
+        Migration.execute("""
+          DO $$ BEGIN
+            CREATE SCHEMA #{functions_schema};
+            EXCEPTION WHEN duplicate_schema
+              THEN null;
+          END $$;
+        """)
+    end
+
+    functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
+
+    if functions_private_schema != :public do
+      :ok =
+        Migration.execute("""
+          DO $$ BEGIN
+            CREATE SCHEMA #{functions_private_schema};
+            EXCEPTION WHEN duplicate_schema
+              THEN null;
+          END $$;
+        """)
+    end
 
     :ok
   end
@@ -153,4 +232,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
     :ok
   end
+
+  # Fetches PgRational configuration option from `repo`'s configuration.
+  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
+  defp get_config(repo, opt, default),
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_rational) |> Keyword.get(opt, default)
 end

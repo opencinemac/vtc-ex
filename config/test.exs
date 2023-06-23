@@ -13,6 +13,11 @@ config :vtc, Vtc.Test.Support.Repo,
       functions_schema: :rational,
       functions_private_schema: :rational_private,
       functions_prefix: ""
+    ],
+    pg_framerate: [
+      functions_schema: :framerate,
+      functions_private_schema: :framerate_private,
+      functions_prefix: ""
     ]
   ]
 
