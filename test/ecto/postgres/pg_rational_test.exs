@@ -10,7 +10,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
   require Ecto.Query
 
-  describe "cast/1" do
+  describe "#cast/1" do
     test "succeeds with %Ratio{} struct" do
       assert PgRational.cast(Ratio.new(3, 4)) == {:ok, Ratio.new(3, 4)}
     end
@@ -71,7 +71,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "dump/1" do
+  describe "#dump/1" do
     test "succeeds on %Ratio{}" do
       assert {:ok, {3, 4}} = PgRational.dump(Ratio.new(3, 4))
     end
@@ -97,7 +97,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "load/1" do
+  describe "#load/1" do
     test "succeeds on {integer, integer} tuple" do
       assert {:ok, result} = PgRational.load({3, 4})
       assert result == Ratio.new(3, 4)

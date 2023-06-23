@@ -4,8 +4,6 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddRationalSchemas do
 
   alias Vtc.Ecto.Postgres.PgRational
 
-  require PgRational.Migrations
-
   def change do
     create table("rationals_01", primary_key: false) do
       add(:id, :uuid, primary_key: true, null: false)

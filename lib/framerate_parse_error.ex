@@ -30,13 +30,20 @@ defmodule Vtc.Framerate.ParseError do
   Type of `ParseError`
   """
   @type t() :: %__MODULE__{
-          reason: :bad_drop_rate | :invalid_ntsc | :invalid_ntsc_rate | :unrecognized_format | :imprecise
+          reason:
+            :non_positive
+            | :bad_drop_rate
+            | :invalid_ntsc
+            | :invalid_ntsc_rate
+            | :unrecognized_format
+            | :imprecise
         }
 
   @doc """
   Returns a message for the error reason.
   """
   @spec message(t()) :: String.t()
+  def message(%{reason: :non_positive}), do: "must be positive"
   def message(%{reason: :bad_drop_rate}), do: "drop-frame rates must be divisible by 30000/1001"
   def message(%{reason: :invalid_ntsc}), do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
 
