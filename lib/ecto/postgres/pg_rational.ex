@@ -9,7 +9,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   The composite type is defined as follows:
 
   ```sql
-  CREATE TYPE public.rational as (
+  CREATE TYPE rational as (
     numerator bigint,
     denominator bigint
   )
@@ -20,6 +20,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   ```sql
   SELECT (1, 2)::rational
   ```
+
+  See `Vtc.Ecto.Postgres.PgRational.Migrations` for more information on how to create
+  `rational` and it's supporting functions in your database.
 
   ## Field migrations
 
@@ -78,7 +81,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
 
   - Strings formatted as `'numerator/denominator'`. Useful for casting from a JSON
     string.
-
   """
 
   use Ecto.Type
