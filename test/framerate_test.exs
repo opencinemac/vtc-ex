@@ -94,6 +94,56 @@ defmodule Vtc.FramerateTest do
         timebase: Ratio.new(24, 1)
       },
       %{
+        name: "error - non-positive | true",
+        inputs: [
+          Ratio.new(0, 1),
+          Ratio.new(-24, 1),
+          0,
+          -24,
+          "0/1",
+          "-24/1",
+          0.0
+        ],
+        ntsc: :non_drop,
+        coerce_ntsc?: true,
+        err: %Framerate.ParseError{reason: :non_positive},
+        err_msg: "must be positive"
+      },
+      %{
+        name: "error - non-positive | :non_drop",
+        inputs: [
+          Ratio.new(0, 1001),
+          Ratio.new(-24_000, 1001),
+          0,
+          -24,
+          "0/1001",
+          "-24000/1001",
+          0.0,
+          -23.98
+        ],
+        ntsc: :non_drop,
+        coerce_ntsc?: true,
+        err: %Framerate.ParseError{reason: :non_positive},
+        err_msg: "must be positive"
+      },
+      %{
+        name: "error - non-positive | :drop",
+        inputs: [
+          Ratio.new(0, 1001),
+          Ratio.new(-30_000, 1001),
+          0,
+          -39,
+          "0/1001",
+          "-30000/1001",
+          0.0,
+          -29.97
+        ],
+        ntsc: :drop,
+        coerce_ntsc?: true,
+        err: %Framerate.ParseError{reason: :non_positive},
+        err_msg: "must be positive"
+      },
+      %{
         name: "error - bad drop",
         inputs: [
           Ratio.new(24, 1),
@@ -141,10 +191,8 @@ defmodule Vtc.FramerateTest do
 
     new_table =
       Enum.flat_map(parse_table, fn test_case ->
-        for {input, index} <- Enum.with_index(test_case.inputs) do
-          test_case
-          |> Map.put(:input, input)
-          |> Map.put(:name, "#{test_case.name} - #{index}: #{inspect(input)} - new")
+        for input <- test_case.inputs do
+          Map.put(test_case, :input, input)
         end
       end)
 

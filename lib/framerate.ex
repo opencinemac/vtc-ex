@@ -154,18 +154,6 @@ defmodule Vtc.Framerate do
     end
   end
 
-  # validates that a rate is a proper drop-frame framerate.
-  @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
-  defp validate_drop(rate, :drop) do
-    if DropFrame.drop_allowed?(rate) do
-      :ok
-    else
-      {:error, %ParseError{reason: :bad_drop_rate}}
-    end
-  end
-
-  defp validate_drop(_, _), do: :ok
-
   # The core parser used to parse a rational or integer rate value.
   @spec new_core(Ratio.t() | number(), new_opts()) :: parse_result()
   defp new_core(rate, opts) do
@@ -177,10 +165,22 @@ defmodule Vtc.Framerate do
     with :ok <- validate_float(rate, ntsc),
          :ok <- validate_ntsc(ntsc),
          rate = Ratio.new(rate),
+         :ok <- validate_positive(rate),
          rate = if(invert?, do: Ratio.new(rate.denominator, rate.numerator), else: rate),
          {:ok, rate} <- coerce_ntsc_rate(rate, ntsc, coerce_ntsc?),
          :ok <- validate_drop(rate, ntsc) do
       {:ok, %__MODULE__{playback: rate, ntsc: ntsc}}
+    end
+  end
+
+  @zero Ratio.new(0, 1)
+
+  @spec validate_positive(Ratio.t()) :: :ok | {:error, ParseError.t()}
+  defp validate_positive(rate) do
+    if Ratio.gt?(rate, @zero) do
+      :ok
+    else
+      {:error, %ParseError{reason: :non_positive}}
     end
   end
 
@@ -199,6 +199,18 @@ defmodule Vtc.Framerate do
   @spec validate_ntsc(ntsc()) :: :ok | {:error, ParseError.t()}
   defp validate_ntsc(ntsc) when ntsc in [:drop, :non_drop, nil], do: :ok
   defp validate_ntsc(_), do: {:error, %ParseError{reason: :invalid_ntsc}}
+
+  # validates that a rate is a proper drop-frame framerate.
+  @spec validate_drop(Ratio.t(), ntsc()) :: :ok | {:error, ParseError.t()}
+  defp validate_drop(rate, :drop) do
+    if DropFrame.drop_allowed?(rate) do
+      :ok
+    else
+      {:error, %ParseError{reason: :bad_drop_rate}}
+    end
+  end
+
+  defp validate_drop(_, _), do: :ok
 
   # coerces a rate to the closest proper NTSC playback rate if the option is set.
   @spec coerce_ntsc_rate(Ratio.t(), ntsc(), coerce? :: boolean()) :: {:ok, Ratio.t()} | {:error, ParseError.t()}

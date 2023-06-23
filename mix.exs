@@ -31,7 +31,12 @@ defmodule Vtc.MixProject do
           "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames],
-          "Ecto Types": [Vtc.Ecto.Postgres.PgRational, Vtc.Ecto.Postgres.PgRational.Migrations],
+          "Ecto Types": [
+            Vtc.Ecto.Postgres.PgRational,
+            Vtc.Ecto.Postgres.PgRational.Migrations,
+            Vtc.Ecto.Postgres.PgFramerate,
+            Vtc.Ecto.Postgres.PgFramerate.Migrations
+          ],
           "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],
         groups_for_docs: [
