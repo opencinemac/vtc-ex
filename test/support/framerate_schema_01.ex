@@ -5,7 +5,6 @@ defmodule Vtc.Test.Support.FramerateSchema01 do
   use Ecto.Schema
 
   alias Ecto.Changeset
-  alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Framerate
 
   @type t() :: %__MODULE__{
@@ -17,8 +16,8 @@ defmodule Vtc.Test.Support.FramerateSchema01 do
   @primary_key {:id, Ecto.UUID, autogenerate: true}
 
   schema "framerates_01" do
-    field(:a, PgFramerate)
-    field(:b, PgFramerate)
+    field(:a, Framerate)
+    field(:b, Framerate)
   end
 
   @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t(%__MODULE__{})

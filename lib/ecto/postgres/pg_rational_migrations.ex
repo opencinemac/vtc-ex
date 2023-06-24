@@ -118,13 +118,29 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok = create_func_mult()
     :ok = create_func_div()
 
-    :ok = create_func_cast_to_double_precison()
-
     :ok = create_op_add()
     :ok = create_op_sub()
     :ok = create_op_mult()
     :ok = create_op_div()
 
+    :ok = create_func_cmp()
+    :ok = create_func_eq()
+    :ok = create_func_neq()
+    :ok = create_func_lt()
+    :ok = create_func_lte()
+    :ok = create_func_gt()
+    :ok = create_func_gte()
+
+    :ok = create_op_eq()
+    :ok = create_op_neq()
+    :ok = create_op_neq2()
+    :ok = create_op_lt()
+    :ok = create_op_lte()
+    :ok = create_op_gt()
+    :ok = create_op_gte()
+    :ok = create_op_class_btree()
+
+    :ok = create_func_cast_to_double_precison()
     :ok = create_cast_double_precision()
 
     :ok
@@ -343,6 +359,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok
   end
 
+  ## ARITHMATIC BACKING FUNCS
+
   @doc section: :migrations_functions
   @doc """
   Creates Creates `rational_private.add(a, b)` backing function for the `+` operator
@@ -451,6 +469,186 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok
   end
 
+  ## COMPARISON BACKING FUNCS
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.cmp(a, b)` that returns:
+
+    - `1` if a > b
+    - `0` if a == b
+    - `-1` if a < b
+
+  Used to back equality operators.
+  """
+  @spec create_func_cmp() :: :ok
+  def create_func_cmp do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}cmp",
+        args: [a: :rational, b: :rational],
+        declares: [
+          a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+          b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+          result: :integer
+        ],
+        returns: :integer,
+        body: """
+        SELECT (
+          CASE
+            WHEN a_cmp > b_cmp THEN 1
+            WHEN a_cmp < b_cmp THEN -1
+            ELSE 0
+          END
+        ) INTO result;
+
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_eq() :: :ok
+  def create_func_eq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}eq",
+        args: [a: :rational, b: :rational],
+        returns: :boolean,
+        body: """
+        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = 0;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_neq() :: :ok
+  def create_func_neq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}neq",
+        args: [a: :rational, b: :rational],
+        returns: :boolean,
+        body: """
+        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) != 0;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_lt() :: :ok
+  def create_func_lt do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}lt",
+        args: [a: :rational, b: :rational],
+        returns: :boolean,
+        body: """
+        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = -1;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_lte() :: :ok
+  def create_func_lte do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}lte",
+        args: [a: :rational, b: :rational],
+        declares: [
+          cmp: {:integer, "#{private_function_prefix(Migration.repo())}cmp(a, b)"},
+          cmp_array: :"integer[]"
+        ],
+        returns: :boolean,
+        body: """
+        cmp_array = ARRAY_APPEND(cmp_array, cmp);
+        RETURN cmp_array <@ '{-1, 0}';
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_gt() :: :ok
+  def create_func_gt do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}gt",
+        args: [a: :rational, b: :rational],
+        returns: :boolean,
+        body: """
+        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = 1;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_gte() :: :ok
+  def create_func_gte do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}gte",
+        args: [a: :rational, b: :rational],
+        declares: [
+          cmp: {:integer, "#{private_function_prefix(Migration.repo())}cmp(a, b)"},
+          cmp_array: :"integer[]"
+        ],
+        returns: :boolean,
+        body: """
+        cmp_array = ARRAY_APPEND(cmp_array, cmp);
+        RETURN cmp_array <@ '{1, 0}';
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  ## ARITHMATIC OPS
+
   @doc section: :migrations_operators
   @doc """
   Creates a custom :rational, :rational `+` operator.
@@ -528,6 +726,182 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
     :ok
   end
+
+  ## COMPARISON OPS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `=` operator.
+  """
+  @spec create_op_eq() :: :ok
+  def create_op_eq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :=,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}eq",
+        commutator: :=,
+        negator: :<>
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `<>` operator.
+  """
+  @spec create_op_neq() :: :ok
+  def create_op_neq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<>,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}neq",
+        commutator: :<>,
+        negator: :=
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `!=` operator.
+  """
+  @spec create_op_neq2() :: :ok
+  def create_op_neq2 do
+    create_op =
+      Postgres.Utils.create_operator(
+        :!=,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}neq",
+        commutator: :!=,
+        negator: :=
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `<` operator.
+  """
+  @spec create_op_lt() :: :ok
+  def create_op_lt do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}lt",
+        commutator: :>,
+        negator: :>=
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `<` operator.
+  """
+  @spec create_op_lte() :: :ok
+  def create_op_lte do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<=,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}lte",
+        commutator: :>=,
+        negator: :>
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `<` operator.
+  """
+  @spec create_op_gt() :: :ok
+  def create_op_gt do
+    create_op =
+      Postgres.Utils.create_operator(
+        :>,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}gt",
+        commutator: :<,
+        negator: :<=
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `<` operator.
+  """
+  @spec create_op_gte() :: :ok
+  def create_op_gte do
+    create_op =
+      Postgres.Utils.create_operator(
+        :>=,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}gte",
+        commutator: :<=,
+        negator: :<
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  ## OPERATOR CLASSES
+  @spec create_op_class_btree() :: :ok
+  def create_op_class_btree do
+    create_class =
+      Postgres.Utils.create_operator_class(
+        :rational_ops_btree,
+        :rational,
+        :btree,
+        [
+          <: 1,
+          <=: 2,
+          =: 3,
+          >=: 4,
+          >: 5
+        ],
+        [
+          {:"#{private_function_prefix(Migration.repo())}cmp", 1}
+        ]
+      )
+
+    :ok = Migration.execute(create_class)
+
+    :ok
+  end
+
+  ## CASTS
 
   @doc section: :migrations_casts
   @doc """
