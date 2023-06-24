@@ -12,7 +12,14 @@ defmodule Vtc.Framerate do
 
   - `ntsc`: Atom representing which, if any, NTSC convention this framerate adheres to.
 
+  ## Using as an Ecto Type
+
+  See [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) for information on how to use
+  `Framerate` in your postgres database as a native type.
   """
+  use Vtc.Ecto.Postgres.Utils
+
+  alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Framerate.ParseError
   alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
@@ -104,9 +111,9 @@ defmodule Vtc.Framerate do
   @spec new(Ratio.t() | number() | String.t(), new_opts()) :: parse_result()
   def new(rate, opts \\ [])
 
+  # for binaries we need to try to match integer, float, and rational string
+  # representations
   def new(rate, opts) when is_binary(rate) do
-    # for binaries we need to try to match integer, float, and rational string
-    # representations
     parsers = [
       &Integer.parse/1,
       &Float.parse/1,
@@ -229,6 +236,26 @@ defmodule Vtc.Framerate do
     else
       {:error, %ParseError{reason: :invalid_ntsc_rate}}
     end
+  end
+
+  when_pg_enabled do
+    use Ecto.Type
+
+    @impl Ecto.Type
+    @spec type() :: atom()
+    defdelegate type, to: PgFramerate
+
+    @impl Ecto.Type
+    @spec cast(t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, t()} | :error
+    defdelegate cast(value), to: PgFramerate
+
+    @impl Ecto.Type
+    @spec load(PgFramerate.db_record()) :: {:ok, t()} | :error
+    defdelegate load(value), to: PgFramerate
+
+    @impl Ecto.Type
+    @spec dump(t()) :: {:ok, PgFramerate.db_record()} | :error
+    defdelegate dump(value), to: PgFramerate
   end
 end
 

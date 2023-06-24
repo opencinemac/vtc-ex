@@ -7,7 +7,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @spec __using__(Keyword.t()) :: Macro.t()
   defmacro __using__(_) do
     quote do
-      import Vtc.Ecto.Postgres.Utils, only: [defpgmodule: 2]
+      import Vtc.Ecto.Postgres.Utils, only: [defpgmodule: 2, when_pg_enabled: 1]
 
       require Vtc.Ecto.Postgres.Utils
     end
@@ -19,15 +19,35 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec defpgmodule(module(), do: Macro.t()) :: Macro.t()
   defmacro defpgmodule(name, do: body) do
-    quote do
-      if unquote(__MODULE__).get_config(:include?, false) do
-        :ok = unquote(__MODULE__).enforce_dep(Ecto, :ecto)
-        :ok = unquote(__MODULE__).enforce_dep(Postgrex, :postgrex)
-
+    if_pg_enabled(fn ->
+      quote do
         defmodule unquote(name) do
           unquote(body)
         end
       end
+    end)
+  end
+
+  @doc """
+  Only executes if the calling application has Postgres types enabled.
+  """
+  @spec when_pg_enabled(do: Macro.t()) :: Macro.t()
+  defmacro when_pg_enabled(do: body) do
+    if_pg_enabled(fn ->
+      quote do
+        unquote(body)
+      end
+    end)
+  end
+
+  defp if_pg_enabled(action, otherwise \\ fn -> nil end) do
+    if get_config(:include?, false) do
+      :ok = enforce_dep(Ecto, :ecto)
+      :ok = enforce_dep(Postgrex, :postgrex)
+
+      action.()
+    else
+      otherwise.()
     end
   end
 
@@ -93,6 +113,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
     returns = Keyword.fetch!(opts, :returns)
     declares = Keyword.get(opts, :declares, nil)
     body = Keyword.fetch!(opts, :body)
+    cost = Keyword.get(opts, :cost, 100)
 
     args = Enum.map_join(args, ", ", fn {arg, type} -> "#{arg} #{type}" end)
 
@@ -120,7 +141,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
           IMMUTABLE
           LEAKPROOF
           PARALLEL SAFE
-          COST 3
+          COST #{cost}
         AS $func$
           #{declare}
           BEGIN
@@ -136,10 +157,13 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native operator.
   """
-  @spec create_operator(atom(), atom(), atom(), atom(), commutator: atom()) :: raw_sql()
+  @spec create_operator(atom(), atom(), atom(), atom(), commutator: atom(), negator: atom()) :: raw_sql()
   def create_operator(name, left_type, right_type, func_name, opts \\ []) do
     commutator = Keyword.get(opts, :commutator)
+    negator = Keyword.get(opts, :negator)
+
     commutator_sql = if is_nil(commutator), do: "", else: "COMMUTATOR = #{commutator},"
+    negator_sql = if is_nil(negator), do: "", else: "NEGATOR = #{negator},"
 
     """
     DO $wrapper$ BEGIN
@@ -147,9 +171,38 @@ defmodule Vtc.Ecto.Postgres.Utils do
         LEFTARG = #{left_type},
         RIGHTARG = #{right_type},
         #{commutator_sql}
+        #{negator_sql}
         FUNCTION = #{func_name}
       );
     EXCEPTION WHEN duplicate_function
+      THEN null;
+    END $wrapper$;
+    """
+  end
+
+  @doc """
+  Builds an SQL query for creating a new native CAST
+  """
+  @spec create_operator_class(atom(), atom(), atom(), Keyword.t(pos_integer()), Keyword.t(pos_integer())) :: raw_sql()
+  def create_operator_class(name, type, index_type, operators, functions) do
+    operators_sql_list =
+      Enum.map(operators, fn {operator, index} ->
+        "operator #{index} #{operator}"
+      end)
+
+    functions_sql_list =
+      Enum.map(functions, fn {function, index} ->
+        "function #{index} #{function}(#{type}, #{type})"
+      end)
+
+    sql_list = operators_sql_list |> Enum.concat(functions_sql_list) |> Enum.join(",")
+
+    """
+    DO $wrapper$ BEGIN
+      CREATE OPERATOR CLASS #{name}
+      DEFAULT FOR TYPE #{type} USING #{index_type} AS
+        #{sql_list};
+    EXCEPTION WHEN duplicate_object
       THEN null;
     END $wrapper$;
     """

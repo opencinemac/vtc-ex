@@ -1,10 +1,10 @@
-defmodule Vtc.Ecto.Postgres.PgFramerateTest do
+defmodule Vtc.Ecto.Postgres.FramerateTest do
   use Vtc.Test.Support.EctoCase, async: true
   use ExUnitProperties
 
   alias Ecto.Changeset
   alias Ecto.Query
-  alias Vtc.Ecto.Postgres.PgFramerate
+  alias Vtc.Ecto.Postgres.Framerate
   alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Test.Support.FramerateSchema01
@@ -63,7 +63,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
 
     table_test "<%= name %>", cast_table, test_case do
       %{input: input, expected: expected} = test_case
-      assert {:ok, result} = PgFramerate.cast(input)
+      assert {:ok, result} = Framerate.cast(input)
       assert result == expected
     end
 
@@ -72,7 +72,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       %{input: input, expected: expected} = test_case
       input = input |> Enum.map(fn {key, value} -> {Atom.to_string(key), value} end) |> Map.new()
 
-      assert {:ok, result} = PgFramerate.cast(input)
+      assert {:ok, result} = Framerate.cast(input)
       assert result == expected
     end
 
@@ -83,7 +83,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
           ntsc: framerate.ntsc
         }
 
-        assert {:ok, result} = PgFramerate.cast(input)
+        assert {:ok, result} = Framerate.cast(input)
         assert result == framerate
       end
     end
@@ -95,7 +95,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
           ntsc: framerate.ntsc
         }
 
-        assert {:ok, result} = PgFramerate.cast(input)
+        assert {:ok, result} = Framerate.cast(input)
         assert result == framerate
       end
     end
@@ -158,7 +158,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
     table_test "errors on <%= name %>", cast_error_table, test_case do
       %{input: input} = test_case
 
-      assert :error = PgFramerate.cast(input)
+      assert :error = Framerate.cast(input)
     end
 
     table_test "errors on <%= name %> in changesets", cast_error_table, test_case do
@@ -167,8 +167,8 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       attrs = %{a: input, b: input}
 
       assert %Changeset{valid?: false, errors: errors} = FramerateSchema01.changeset(%FramerateSchema01{}, attrs)
-      assert {:a, {"is invalid", [type: PgFramerate, validation: :cast]}} in errors
-      assert {:b, {"is invalid", [type: PgFramerate, validation: :cast]}} in errors
+      assert {:a, {"is invalid", [type: Framerate, validation: :cast]}} in errors
+      assert {:b, {"is invalid", [type: Framerate, validation: :cast]}} in errors
     end
   end
 
@@ -195,34 +195,19 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
     table_test "succeeds on <%= application_value %>", serilization_table, test_case do
       %{application_value: application_value, database_record: database_record} = test_case
 
-      assert {:ok, result} = PgFramerate.dump(application_value)
+      assert {:ok, result} = Framerate.dump(application_value)
       assert result == database_record
     end
 
     property "succeeds on good framerate" do
       check all(framerate <- StreamDataVtc.framerate()) do
-        assert {:ok, result} = PgFramerate.dump(framerate)
+        assert {:ok, result} = Framerate.dump(framerate)
         chack_dumped(result, framerate)
       end
     end
   end
 
-  describe "#dump!/1" do
-    table_test "<%= application_value %>", serilization_table, test_case do
-      %{application_value: application_value, database_record: database_record} = test_case
-
-      assert PgFramerate.dump!(application_value) == database_record
-    end
-
-    property "succeeds on good framerate" do
-      check all(framerate <- StreamDataVtc.framerate()) do
-        result = PgFramerate.dump!(framerate)
-        chack_dumped(result, framerate)
-      end
-    end
-  end
-
-  @spec chack_dumped(PgFramerate.db_record(), Framerate.t()) :: term()
+  @spec chack_dumped(Framerate.db_record(), Framerate.t()) :: term()
   defp chack_dumped(result, input) do
     assert {{numerator, denominator}, tags} = result
     assert numerator == input.playback.numerator
@@ -240,15 +225,15 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
     table_test "<%= application_value %>", serilization_table, test_case do
       %{application_value: application_value, database_record: database_record} = test_case
 
-      assert {:ok, result} = PgFramerate.load(database_record)
+      assert {:ok, result} = Framerate.load(database_record)
       assert result == application_value
     end
   end
 
   property "round trip dump/1 -> load/1" do
     check all(framerate <- StreamDataVtc.framerate()) do
-      assert {:ok, dumped} = PgFramerate.dump(framerate)
-      assert {:ok, ^framerate} = PgFramerate.load(dumped)
+      assert {:ok, dumped} = Framerate.dump(framerate)
+      assert {:ok, ^framerate} = Framerate.load(dumped)
     end
   end
 
@@ -275,33 +260,31 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
     end
 
     table_test "placeholder | <%= application_value %>", serilization_table, test_case do
-      %{database_record: database_record} = test_case
+      %{application_value: application_value, database_record: database_record} = test_case
 
-      query = Query.from(f in fragment("SELECT ?::framerate as r", ^database_record), select: f.r)
+      query = Query.from(f in fragment("SELECT ? as r", type(^application_value, Framerate)), select: f.r)
       assert Repo.one!(query) == database_record
     end
 
     table_test "playback field | <%= application_value %>", serilization_table, test_case do
-      %{database_record: {expected, _} = database_record} = test_case
+      %{database_record: {expected, _}, application_value: application_value} = test_case
 
-      query = Query.from(f in fragment("SELECT (?::framerate).playback as r", ^database_record), select: f.r)
+      query = Query.from(f in fragment("SELECT (?).playback as r", type(^application_value, Framerate)), select: f.r)
       assert Repo.one!(query) == expected
     end
 
     table_test "tags field | <%= application_value %>", serilization_table, test_case do
-      %{database_record: {_, expected} = database_record} = test_case
+      %{database_record: {_, expected}, application_value: application_value} = test_case
 
-      query = Query.from(f in fragment("SELECT (?::framerate).tags as r", ^database_record), select: f.r)
+      query = Query.from(f in fragment("SELECT (?).tags as r", type(^application_value, Framerate)), select: f.r)
       assert Repo.one!(query) == expected
     end
 
     property "succeeds on good framerate" do
       check all(framerate <- StreamDataVtc.framerate()) do
-        assert {:ok, dumped} = PgFramerate.dump(framerate)
-
-        query = Query.from(f in fragment("SELECT ?::framerate as r", ^dumped), select: f.r)
+        query = Query.from(f in fragment("SELECT ? as r", type(^framerate, Framerate)), select: f.r)
         assert record = Repo.one!(query)
-        assert {:ok, ^framerate} = PgFramerate.load(record)
+        assert {:ok, ^framerate} = Framerate.load(record)
       end
     end
   end

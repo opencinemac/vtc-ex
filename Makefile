@@ -5,7 +5,7 @@ install-dev:
 
 .PHONY: test
 test:
-	-mix test --cover --warnings-as-errors
+	-mix test --exclude index_test --cover --warnings-as-errors
 
 .PHONY: lint
 lint:

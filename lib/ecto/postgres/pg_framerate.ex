@@ -67,14 +67,14 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
         }
 
   schema "rationals_01" do
-    field(:a, PgFramerate)
-    field(:b, PgFramerate)
+    field(:a, Framerate)
+    field(:b, Framerate)
   end
   ```
 
-  ... notice that the schema field type is [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`),
-  but the type-spec field uses `Framerate.t()`, the type that our DB fields will be
-  deserialized into.
+  ... notice that that both the schema field and type-spec use
+  [PgFramerate](`Vtc.Framerate`). That's because `Framerate` delegates an Ecto type
+  implementation to `PgFramerate`, and can be used in it's stead.
 
   ## Changesets
 
@@ -104,6 +104,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
     Where `rate` is a value supported by
     [PgRational](`Vtc.Ecto.Postgres.PgRational`) casting and `ntsc` can be `null`,
     `"drop"` or `"non_drop"`.
+
+  ## Fragments
+
+  Framerate values must be explicitly cast using
+  [type/2](https://hexdocs.pm/ecto/Ecto.Query.html#module-interpolation-and-casting):
+
+  ```elixir
+  framerate = Rates.f23_98()
+  query = Query.from(f in fragment("SELECT ? as r", type(^framerate, Framerate)), select: f.r)
+  ```
   """
 
   use Ecto.Type
@@ -197,31 +207,4 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
   defp dump_tags_add_ntsc(tags, %{ntsc: :non_drop}), do: ["non_drop" | tags]
   defp dump_tags_add_ntsc(tags, %{ntsc: :drop}), do: ["drop" | tags]
   defp dump_tags_add_ntsc(tags, _), do: tags
-
-  @doc section: :ecto_queries
-  @doc """
-  Serialize [Framerate](`Vtc.Framerate`) for use in a query fragment.
-
-  The fragment must explicitly cast the value to a `::framerate` type.
-
-  ## Examples
-
-  ```elixir
-  alias Ecto.Query
-  require Ecto.Query
-
-  alias Vtc.Rates
-  alias Vtc.Ecto.Postgres.PgFramerate
-
-  framerate = Rates.f23_98()
-  framerate_composite = PgFramerate.dump!(framerate)
-
-  Query.from(f in fragment("SELECT ?::framerate as r", ^framerate_composite), select: f.r)
-  ```
-  """
-  @spec dump!(Framerate.t()) :: db_record()
-  def dump!(framerate) do
-    {:ok, db_record} = dump(framerate)
-    db_record
-  end
 end

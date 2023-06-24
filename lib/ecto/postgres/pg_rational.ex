@@ -148,12 +148,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   rational = Ratio.new(1, 2)
   rational_sql = PgRational.dump!(rational)
 
-  Query.from(f in fragment("SELECT ?::rational as r", ^rational_sql), select: f.r)
+  Query.from(f in fragment("SELECT ? as r", ^rational_sql), select: f.r)
   ```
   """
-  @spec dump!(Ratio.t()) :: db_record()
-  def dump!(rational) do
-    {:ok, db_record} = dump(rational)
-    db_record
+  @spec sql(Macro.t()) :: Macro.t()
+  defmacro sql(rational) do
+    quote do
+      type(^unquote(rational), unquote(__MODULE__))
+    end
   end
 end

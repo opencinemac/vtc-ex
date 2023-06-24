@@ -3,6 +3,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   use ExUnitProperties
 
   alias Ecto.Query
+  alias Ecto.Repo.Queryable
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Test.Support.RationalsSchema01
   alias Vtc.Test.Support.RationalsSchema02
@@ -10,46 +11,35 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   alias Vtc.Utils.Rational
 
   require Ecto.Query
+  require PgRational
 
   describe "#cast/1" do
-    test "succeeds with %Ratio{} struct" do
-      assert PgRational.cast(Ratio.new(3, 4)) == {:ok, Ratio.new(3, 4)}
+    cast_table = [
+      %{input: Ratio.new(3, 4), expected: Ratio.new(3, 4)},
+      %{input: Ratio.new(-3, 4), expected: Ratio.new(-3, 4)},
+      %{input: [3, 4], expected: Ratio.new(3, 4)},
+      %{input: [-3, 4], expected: Ratio.new(-3, 4)},
+      %{input: "3/4", expected: Ratio.new(3, 4)},
+      %{input: "-3/4", expected: Ratio.new(-3, 4)}
+    ]
+
+    table_test "succeeds with <%= input %>", cast_table, test_case do
+      %{input: input, expected: expected} = test_case
+      assert {:ok, ^expected} = PgRational.cast(input)
     end
 
-    test "succeeds with 2-item array" do
-      assert PgRational.cast([3, 4]) == {:ok, Ratio.new(3, 4)}
-    end
+    bad_cast_table = [
+      %{input: %{numerator: 3, denominator: 4}},
+      %{input: {3, 4}},
+      %{input: [3, 4, 5]},
+      %{input: "3,4"},
+      %{input: "3/4/"},
+      %{input: "3/4 "}
+    ]
 
-    test "succeeds with rational string" do
-      assert PgRational.cast("3/4") == {:ok, Ratio.new(3, 4)}
-    end
-
-    test "fails with with map" do
-      assert PgRational.cast(%{numerator: 3, denominator: 4}) == :error
-    end
-
-    test "fails with 2-item tuple" do
-      assert PgRational.cast({3, 4}) == :error
-    end
-
-    test "fails with 3-item array" do
-      assert PgRational.cast([3, 4, 5]) == :error
-    end
-
-    test "fails with non-rationl string" do
-      assert PgRational.cast("3,4") == :error
-    end
-
-    test "fails with extra `/` characters" do
-      assert PgRational.cast("3/4/") == :error
-    end
-
-    test "fails with bad whitespace" do
-      assert PgRational.cast(" 3/4 ") == :error
-    end
-
-    test "fails with bad trailing whitespace" do
-      assert PgRational.cast("3/4 ") == :error
+    table_test "fails with <%= input %>", bad_cast_table, test_case do
+      %{input: input} = test_case
+      assert :error = PgRational.cast(input)
     end
 
     property "succeeds on %Ratio{} struct" do
@@ -73,20 +63,25 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "#dump/1" do
-    test "succeeds on %Ratio{}" do
-      assert {:ok, {3, 4}} = PgRational.dump(Ratio.new(3, 4))
+    dump_table = [
+      %{input: Ratio.new(3, 4), expected: {3, 4}},
+      %{input: Ratio.new(-3, 4), expected: {-3, 4}}
+    ]
+
+    table_test "succeeds on <%= input %>", dump_table, test_case do
+      %{input: input, expected: expected} = test_case
+      assert {:ok, ^expected} = PgRational.dump(input)
     end
 
-    test "fails on map" do
-      assert :error = PgRational.dump(%{numerator: 3, denominator: 4})
-    end
+    bad_dump_table = [
+      %{input: %{numerator: 3, denominator: 4}},
+      %{input: [3, 4]},
+      %{input: "3/4"}
+    ]
 
-    test "fails on array" do
-      assert :error = PgRational.dump([3, 4])
-    end
-
-    test "fails on string" do
-      assert :error = PgRational.dump("3/4")
+    table_test "fails on <%= input %>", bad_dump_table, test_case do
+      %{input: input} = test_case
+      assert :error = PgRational.dump(input)
     end
 
     property "succeeds on %Ratio{} values" do
@@ -99,25 +94,26 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "#load/1" do
-    test "succeeds on {integer, integer} tuple" do
-      assert {:ok, result} = PgRational.load({3, 4})
-      assert result == Ratio.new(3, 4)
+    load_table = [
+      %{input: {3, 4}, expected: Ratio.new(3, 4)},
+      %{input: {-3, 4}, expected: Ratio.new(-3, 4)}
+    ]
+
+    table_test "succeeds on <%= input %>", load_table, test_case do
+      %{input: input, expected: expected} = test_case
+      assert {:ok, ^expected} = PgRational.load(input)
     end
 
-    test "fails on map" do
-      assert :error = PgRational.load(%{numerator: 3, denominator: 4})
-    end
+    bad_load_table = [
+      %{input: %{numerator: 3, denominator: 4}},
+      %{input: [3, 4]},
+      %{input: "3/4"},
+      %{input: "(3, 4)"}
+    ]
 
-    test "fails on array" do
-      assert :error = PgRational.load([3, 4])
-    end
-
-    test "fails on SQL string" do
-      assert :error = PgRational.load("(3, 4)")
-    end
-
-    test "fails on rational string" do
-      assert :error = PgRational.load("3/4")
+    table_test "fails on <%= input %>", bad_load_table, test_case do
+      %{input: input} = test_case
+      assert :error = PgRational.load(input)
     end
 
     property "succeeds on {integer, integer} tuple" do
@@ -135,8 +131,8 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
 
     test "can cast %Ratio{} struct to DB value" do
-      rational = PgRational.dump!(Ratio.new(3, 4))
-      query = Query.from(f in fragment("SELECT ?::rational as r", ^rational), select: f.r)
+      rational = Ratio.new(3, 4)
+      query = Query.from(f in fragment("SELECT ? as r", type(^rational, PgRational)), select: f.r)
 
       assert {3, 4} = Repo.one!(query)
     end
@@ -153,9 +149,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
     property "can SELECT rational values" do
       check all(rational <- StreamDataVtc.rational()) do
-        rational_sql = PgRational.dump!(rational)
-
-        query = Query.from(f in fragment("SELECT ?::rational as r", ^rational_sql), select: f.r)
+        query = Query.from(f in fragment("SELECT ? as r", type(^rational, PgRational)), select: f.r)
 
         assert {numerator, denominator} = Repo.one!(query)
         assert numerator == rational.numerator
@@ -256,230 +250,6 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "Postgres rational.minus" do
-    property "matches Ratio" do
-      check all(input <- StreamDataVtc.rational()) do
-        input_sql = PgRational.dump!(input)
-
-        query =
-          Query.from(f in fragment("SELECT rational.minus(?::rational) as r", ^input_sql),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.minus(input)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema01
-               |> Query.select([r], fragment("rational.minus(?)", r.a))
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(-3, 4)
-    end
-  end
-
-  describe "Postgres rational.round" do
-    property "matches Ratio" do
-      check all(input <- StreamDataVtc.rational()) do
-        input_sql = PgRational.dump!(input)
-
-        query =
-          Query.from(f in fragment("SELECT rational.round(?::rational) as r", ^input_sql),
-            select: f.r
-          )
-
-        result = Repo.one!(query)
-        assert is_integer(result)
-        assert result == Rational.round(input)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
-               |> Repo.insert()
-
-      result =
-        RationalsSchema01
-        |> Query.select([r], fragment("rational.round(?)", r.a))
-        |> Query.where([r], r.id == ^record_id)
-        |> Repo.one!()
-
-      assert result == 1
-    end
-  end
-
-  describe "Postgres + (add)" do
-    property "matches Ratio" do
-      check all(
-              a <- StreamDataVtc.rational(),
-              b <- StreamDataVtc.rational()
-            ) do
-        a_sql = PgRational.dump!(a)
-        b_sql = PgRational.dump!(b)
-
-        query =
-          Query.from(f in fragment("SELECT ?::rational + ?::rational as r", ^a_sql, ^b_sql),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.add(a, b)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema02{}
-               |> RationalsSchema02.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 2)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema02
-               |> Query.select([r], r.a + r.b)
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(5, 4)
-    end
-  end
-
-  describe "Postgres - (sub)" do
-    property "matches Ratio" do
-      check all(
-              a <- StreamDataVtc.rational(),
-              b <- StreamDataVtc.rational()
-            ) do
-        a_sql = PgRational.dump!(a)
-        b_sql = PgRational.dump!(b)
-
-        query =
-          Query.from(f in fragment("SELECT ?::rational - ?::rational as r", ^a_sql, ^b_sql),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.sub(a, b)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema02{}
-               |> RationalsSchema02.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 2)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema02
-               |> Query.select([r], r.a - r.b)
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(1, 4)
-    end
-  end
-
-  describe "Postgres * (multiply)" do
-    property "matches Ratio" do
-      check all(
-              a <- StreamDataVtc.rational(),
-              b <- StreamDataVtc.rational()
-            ) do
-        a_sql = PgRational.dump!(a)
-        b_sql = PgRational.dump!(b)
-
-        query =
-          Query.from(f in fragment("SELECT ?::rational * ?::rational as r", ^a_sql, ^b_sql),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.mult(a, b)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema02{}
-               |> RationalsSchema02.changeset(%{a: Ratio.new(23, 8), b: Ratio.new(4, 5)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema02
-               |> Query.select([r], r.a * r.b)
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(23, 10)
-    end
-  end
-
-  describe "Postgres / (divide)" do
-    property "matches Ratio" do
-      check all(
-              a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
-            ) do
-        a_sql = PgRational.dump!(a)
-        b_sql = PgRational.dump!(b)
-
-        query =
-          Query.from(f in fragment("SELECT ?::rational / ?::rational as r", ^a_sql, ^b_sql),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.div(a, b)
-      end
-    end
-
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema02{}
-               |> RationalsSchema02.changeset(%{a: Ratio.new(23, 8), b: Ratio.new(4, 5)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema02
-               |> Query.select([r], r.a / r.b)
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(115, 32)
-    end
-  end
-
-  describe "Postgres CAST AS double precision" do
-    property "matches application code value" do
-      check all(rational <- StreamDataVtc.rational()) do
-        database_record = PgRational.dump!(rational)
-
-        query =
-          Query.from(f in fragment("SELECT CAST (?::rational AS double precision) as r", ^database_record), select: f.r)
-
-        result = Repo.one!(query)
-
-        assert is_float(result)
-        assert result == rational.numerator / rational.denominator
-      end
-    end
-  end
-
   describe "#Postgres rational_private.greatest_common_denominator/2" do
     gcd_table = [
       %{a: 2, b: 4, expected: 2},
@@ -557,6 +327,593 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
         assert db_numerator == expected.numerator
         assert db_denominator == expected.denominator
       end
+    end
+  end
+
+  describe "Postgres rational.minus/1" do
+    property "matches Ratio" do
+      check all(input <- StreamDataVtc.rational()) do
+        query =
+          Query.from(f in fragment("SELECT rational.minus(?) as r", type(^input, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
+        assert result == Ratio.minus(input)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema01{}
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> Repo.insert()
+
+      assert {:ok, result} =
+               RationalsSchema01
+               |> Query.select([r], fragment("rational.minus(?)", r.a))
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+               |> PgRational.load()
+
+      assert result == Ratio.new(-3, 4)
+    end
+  end
+
+  describe "Postgres rational.round/1" do
+    property "matches Ratio" do
+      check all(input <- StreamDataVtc.rational()) do
+        query =
+          Query.from(f in fragment("SELECT rational.round(?) as r", type(^input, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        assert is_integer(result)
+        assert result == Rational.round(input)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema01{}
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema01
+        |> Query.select([r], fragment("rational.round(?)", r.a))
+        |> Query.where([r], r.id == ^record_id)
+        |> Repo.one!()
+
+      assert result == 1
+    end
+  end
+
+  describe "Postgres + (add)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamDataVtc.rational()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT ? + ? as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
+        assert result == Ratio.add(a, b)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      assert {:ok, result} =
+               RationalsSchema02
+               |> Query.select([r], r.a + r.b)
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+               |> PgRational.load()
+
+      assert result == Ratio.new(5, 4)
+    end
+  end
+
+  describe "Postgres - (sub)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamDataVtc.rational()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT ? - ? as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
+        assert result == Ratio.sub(a, b)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      assert {:ok, result} =
+               RationalsSchema02
+               |> Query.select([r], r.a - r.b)
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+               |> PgRational.load()
+
+      assert result == Ratio.new(1, 4)
+    end
+  end
+
+  describe "Postgres * (multiply)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamDataVtc.rational()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT ? * ? as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
+        assert result == Ratio.mult(a, b)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(23, 8), b: Ratio.new(4, 5)})
+               |> Repo.insert()
+
+      assert {:ok, result} =
+               RationalsSchema02
+               |> Query.select([r], r.a * r.b)
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+               |> PgRational.load()
+
+      assert result == Ratio.new(23, 10)
+    end
+  end
+
+  describe "Postgres / (divide)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT ? / ? as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
+        assert result == Ratio.div(a, b)
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(23, 8), b: Ratio.new(4, 5)})
+               |> Repo.insert()
+
+      assert {:ok, result} =
+               RationalsSchema02
+               |> Query.select([r], r.a / r.b)
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+               |> PgRational.load()
+
+      assert result == Ratio.new(115, 32)
+    end
+  end
+
+  describe "Postgres rational_private.comp/2" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(
+            f in fragment(
+              "SELECT rational_private.cmp(?, ?) as r",
+              type(^a, PgRational),
+              type(^b, PgRational)
+            ),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        assert is_integer(result)
+
+        expected =
+          case Ratio.compare(a, b) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
+
+        assert result == expected
+      end
+    end
+
+    test "can be used on table fields" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 4)})
+               |> Repo.insert()
+
+      assert result =
+               RationalsSchema02
+               |> Query.select([r], fragment("rational_private.cmp(?, ?)", r.a, r.b))
+               |> Query.where([r], r.id == ^record_id)
+               |> Repo.one!()
+
+      assert result == 1
+    end
+  end
+
+  describe "Postgres = (equals)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? = ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Ratio.eq?(a, b)
+      end
+    end
+
+    test "passes on non-simplified values" do
+      a = {6, 3}
+      b = {2, 1}
+
+      query = Query.from(f in fragment("SELECT (?::rational = ?::rational) as r", ^a, ^b), select: f.r)
+
+      result = Repo.one!(query)
+
+      assert is_boolean(result)
+      assert result
+    end
+
+    table_field_cases = [
+      %{a: Ratio.new(1, 2), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(1, 2), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(1, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(3, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(3, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(-1, 2), expected: false}
+    ]
+
+    table_test "can be used in WHERE table.field | <%= a %> = <%= b %>", table_field_cases, test_case do
+      run_table_comparison_test(test_case, fn query -> Query.where(query, [r], r.a == r.b) end)
+    end
+  end
+
+  describe "Postgres != (not equals)" do
+    property "matches Ratio using <> operator" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query = Query.from(f in fragment("SELECT (? <> ?) as r", type(^a, PgRational), type(^b, PgRational)), select: f.r)
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        refute result == Ratio.eq?(a, b)
+      end
+    end
+
+    property "matches Ratio using != operator" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(
+            f in fragment("SELECT (? != ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        refute result == Ratio.eq?(a, b)
+      end
+    end
+
+    table_field_cases = [
+      %{a: Ratio.new(1, 2), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 2), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 4), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(3, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(3, 4), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(-1, 2), expected: true}
+    ]
+
+    table_test "can be used in WHERE table.field | <%= a %> != <%= b %>", table_field_cases, test_case do
+      run_table_comparison_test(test_case, fn query -> Query.where(query, [r], r.a != r.b) end)
+    end
+  end
+
+  describe "Postgres < (less than)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? < ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Ratio.lt?(a, b)
+      end
+    end
+
+    table_field_cases = [
+      %{a: Ratio.new(1, 2), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 2), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(3, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(3, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(-1, 2), expected: true}
+    ]
+
+    table_test "can be used in WHERE table.field | <%= a %> < <%= b %>", table_field_cases, test_case do
+      run_table_comparison_test(test_case, fn query -> Query.where(query, [r], r.a < r.b) end)
+    end
+  end
+
+  describe "Postgres <= (less than or equal to)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(
+            f in fragment("SELECT (? <= ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Ratio.lte?(a, b)
+      end
+    end
+
+    table_field_cases = [
+      %{a: Ratio.new(1, 2), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 2), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 2), b: Ratio.new(-1, 2), expected: true},
+      %{a: Ratio.new(1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-1, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(3, 4), b: Ratio.new(1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(1, 2), expected: true},
+      %{a: Ratio.new(3, 4), b: Ratio.new(-1, 2), expected: false},
+      %{a: Ratio.new(-3, 4), b: Ratio.new(-1, 2), expected: true}
+    ]
+
+    table_test "can be used in WHERE table.field | <%= a %> <= <%= b %>", table_field_cases, test_case do
+      run_table_comparison_test(test_case, fn query -> Query.where(query, [r], r.a <= r.b) end)
+    end
+  end
+
+  describe "Postgres > (greater than)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? > ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Ratio.gt?(a, b)
+      end
+    end
+
+    test "can be used on table fields | equal" do
+      assert {:ok, %{id: _record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a > r.b)
+        |> Repo.one()
+
+      assert is_nil(result)
+    end
+
+    test "can be used on table fields | less than" do
+      assert {:ok, %{id: _record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 4), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a > r.b)
+        |> Repo.one()
+
+      assert is_nil(result)
+    end
+
+    test "can be used on table fields | greater than" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 4)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a > r.b)
+        |> Repo.one()
+
+      assert result == record_id
+    end
+  end
+
+  describe "Postgres >= (greater than or equal to)" do
+    property "matches Ratio" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+            ) do
+        query =
+          Query.from(
+            f in fragment("SELECT (? >= ?) as r", type(^a, PgRational), type(^b, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Ratio.gte?(a, b)
+      end
+    end
+
+    test "can be used on table fields | equal" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a >= r.b)
+        |> Repo.one()
+
+      assert result == record_id
+    end
+
+    test "can be used on table fields | less than" do
+      assert {:ok, %{id: _record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 4), b: Ratio.new(1, 2)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a >= r.b)
+        |> Repo.one()
+
+      assert is_nil(result)
+    end
+
+    test "can be used on table fields | greater than" do
+      assert {:ok, %{id: record_id}} =
+               %RationalsSchema02{}
+               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 4)})
+               |> Repo.insert()
+
+      result =
+        RationalsSchema02
+        |> Query.select([r], r.id)
+        |> Query.where([r], r.a >= r.b)
+        |> Repo.one()
+
+      assert result == record_id
+    end
+  end
+
+  describe "Postgres CAST AS double precision" do
+    property "matches application code value" do
+      check all(rational <- StreamDataVtc.rational()) do
+        query =
+          Query.from(f in fragment("SELECT CAST (? AS double precision) as r", type(^rational, PgRational)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_float(result)
+        assert result == rational.numerator / rational.denominator
+      end
+    end
+  end
+
+  @spec run_table_comparison_test(
+          %{a: Ratio.t(), b: Ratio.t(), expected: boolean()},
+          (Queryable.t() -> Query.t())
+        ) :: term()
+  defp run_table_comparison_test(test_case, where_filter) do
+    %{a: a, b: b, expected: expected} = test_case
+
+    assert {:ok, %{id: record_id}} =
+             %RationalsSchema02{}
+             |> RationalsSchema02.changeset(%{a: a, b: b})
+             |> Repo.insert()
+
+    result =
+      RationalsSchema02
+      |> Query.select([r], r.id)
+      |> where_filter.()
+      |> Repo.one()
+
+    if expected do
+      assert result == record_id
+    else
+      assert is_nil(result)
     end
   end
 end
