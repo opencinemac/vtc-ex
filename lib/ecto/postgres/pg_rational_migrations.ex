@@ -76,6 +76,18 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   section of these docs for details on native database functions
   created.
 
+  ## Operators Created
+
+  See [PgOperators](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgoperators)
+  section of these docs for details on native database operators
+  created.
+
+  ## Casts Created
+
+  See [PgCasts](Vtc.Ecto.Postgres.PgRational.Migrations.html#pgcasts)
+  section of these docs for details on native database operators
+  created.
+
   ## Examples
 
   ```elixir
