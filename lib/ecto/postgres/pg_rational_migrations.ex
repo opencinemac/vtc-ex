@@ -187,7 +187,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Adds `rational_private.greatest_common_denominator(a, b)` function that finds the
+  Creates `rational_private.greatest_common_denominator(a, b)` function that finds the
   greatest common denominator between two bigint values.
   """
   @spec create_func_greatest_common_denominator() :: :ok
@@ -218,7 +218,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Adds `rational_private.simplify(rat)` function that simplifies a rational. Used at
+  Creates `rational_private.simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
   @spec create_func_simplify() :: :ok
@@ -254,7 +254,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Returns the negated version of the rational
+  Creates `rational.minus(rat)` function that flips the sign of the input value --
+  makes a positive value negative and a negative value positive.
   """
   @spec create_func_minus() :: :ok
   def create_func_minus do
@@ -275,7 +276,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Returns the rational input, rounded to the nearest :bigint
+  Creates `rational.round(rat)` function that returns the rational input, rounded to
+  the nearest :bigint
   """
   @spec create_func_round() :: :ok
   def create_func_round do
@@ -309,6 +311,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   end
 
   @doc section: :migrations_functions
+  @doc """
+  Creates a native CAST from `rational` to `double precision`.
+  """
   @spec create_func_cast_to_double_precison() :: :ok
   def create_func_cast_to_double_precison do
     create_func =
@@ -328,7 +333,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates the backing function for the '+' operator between two rationals.
+  Creates Creates `rational_private.add(a, b)` backing function for the `+` operator
+  between two rationals.
   """
   @spec create_func_add() :: :ok
   def create_func_add do
@@ -354,7 +360,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates the backing function for the '-' operator between two rationals.
+  Creates Creates `rational_private.sub(a, b)` backing function for the `-` operator
+  between two rationals.
   """
   @spec create_func_sub() :: :ok
   def create_func_sub do
@@ -380,7 +387,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates the backing function for the '*' operator between two rationals.
+  Creates Creates `rational_private.mult(a, b)` backing function for the `*` operator
+  between two rationals.
   """
   @spec create_func_mult() :: :ok
   def create_func_mult do
@@ -406,7 +414,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates the backing function for the '*' operator between two rationals.
+  Creates Creates `rational_private.div(a, b)` backing function for the `/` operator
+  between two rationals.
   """
   @spec create_func_div() :: :ok
   def create_func_div do
@@ -432,7 +441,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :rational, :rational + operator.
+  Creates a custom :rational, :rational `+` operator.
   """
   @spec create_op_add() :: :ok
   def create_op_add do
@@ -451,7 +460,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :rational, :rational + operator.
+  Creates a custom :rational, :rational `-` operator.
   """
   @spec create_op_sub() :: :ok
   def create_op_sub do
@@ -470,7 +479,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :rational, :rational * operator.
+  Creates a custom :rational, :rational `*` operator.
   """
   @spec create_op_mult() :: :ok
   def create_op_mult do
@@ -489,7 +498,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :rational, :rational * operator.
+  Creates a custom :rational, :rational `/` operator.
   """
   @spec create_op_div() :: :ok
   def create_op_div do
