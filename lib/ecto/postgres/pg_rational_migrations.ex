@@ -462,7 +462,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :+,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}add"
+        :"#{private_function_prefix(Migration.repo())}add",
+        commutator: :+
       )
 
     :ok = Migration.execute(create_op)
@@ -500,7 +501,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :*,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}mult"
+        :"#{private_function_prefix(Migration.repo())}mult",
+        commutator: :*
       )
 
     :ok = Migration.execute(create_op)

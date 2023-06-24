@@ -134,15 +134,19 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc """
-  Builds an SQL query for creating a new native CAST
+  Builds an SQL query for creating a new native operator.
   """
-  @spec create_operator(atom(), atom(), atom(), atom()) :: raw_sql()
-  def create_operator(name, left_type, right_type, func_name) do
+  @spec create_operator(atom(), atom(), atom(), atom(), commutator: atom()) :: raw_sql()
+  def create_operator(name, left_type, right_type, func_name, opts \\ []) do
+    commutator = Keyword.get(opts, :commutator)
+    commutator_sql = if is_nil(commutator), do: "", else: "COMMUTATOR = #{commutator},"
+
     """
     DO $wrapper$ BEGIN
       CREATE OPERATOR #{name} (
         LEFTARG = #{left_type},
         RIGHTARG = #{right_type},
+        #{commutator_sql}
         FUNCTION = #{func_name}
       );
     EXCEPTION WHEN duplicate_function
