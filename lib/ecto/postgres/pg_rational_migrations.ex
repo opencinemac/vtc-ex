@@ -2,7 +2,7 @@ use Vtc.Ecto.Postgres.Utils
 
 defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @moduledoc """
-  Migrations for adding rational types, functions and constraints to a
+  Migrations for adding rational types, casts, functions and constraints to a
   Postgres database.
   """
   alias Ecto.Migration
@@ -95,8 +95,25 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_all do
     :ok = create_type()
     :ok = create_function_schemas()
-    :ok = create_greatest_common_denominator()
-    :ok = create_simplify()
+
+    :ok = create_func_greatest_common_denominator()
+    :ok = create_func_simplify()
+
+    :ok = create_func_minus()
+    :ok = create_func_round()
+    :ok = create_func_add()
+    :ok = create_func_sub()
+    :ok = create_func_mult()
+    :ok = create_func_div()
+
+    :ok = create_func_cast_to_double_precison()
+
+    :ok = create_op_add()
+    :ok = create_op_sub()
+    :ok = create_op_mult()
+    :ok = create_op_div()
+
+    :ok = create_cast_double_precision()
 
     :ok
   end
@@ -173,28 +190,28 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds `rational_private.greatest_common_denominator(a, b)` function that finds the
   greatest common denominator between two bigint values.
   """
-  @spec create_greatest_common_denominator() :: :ok
-  def create_greatest_common_denominator do
-    :ok =
-      Migration.execute(
-        Postgres.Utils.create_plpgsql_function(
-          :"#{private_function_prefix(Migration.repo())}greatest_common_denominator",
-          args: [a: :bigint, b: :bigint],
-          returns: :bigint,
-          declares: [result: :bigint],
-          body: """
-          SELECT (
-            CASE
-              WHEN b = 0 THEN ABS(a)
-              WHEN a = 0 THEN ABS(b)
-              ELSE #{private_function_prefix(Migration.repo())}greatest_common_denominator(b, a % b)
-            END
-          ) INTO result;
+  @spec create_func_greatest_common_denominator() :: :ok
+  def create_func_greatest_common_denominator do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}greatest_common_denominator",
+        args: [a: :bigint, b: :bigint],
+        returns: :bigint,
+        declares: [result: :bigint],
+        body: """
+        SELECT (
+          CASE
+            WHEN b = 0 THEN ABS(a)
+            WHEN a = 0 THEN ABS(b)
+            ELSE #{private_function_prefix(Migration.repo())}greatest_common_denominator(b, a % b)
+          END
+        ) INTO result;
 
-          RETURN result;
-          """
-        )
+        RETURN result;
+        """
       )
+
+    :ok = Migration.execute(create_func)
 
     :ok
   end
@@ -204,9 +221,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds `rational_private.simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
-  @spec create_simplify() :: :ok
-  def create_simplify do
-    Migration.execute(
+  @spec create_func_simplify() :: :ok
+  def create_func_simplify do
+    create_func =
       Postgres.Utils.create_plpgsql_function(
         :"#{private_function_prefix(Migration.repo())}simplify",
         args: [input: :rational],
@@ -229,7 +246,284 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         RETURN (numerator, denominator)::rational;
         """
       )
-    )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns the negated version of the rational
+  """
+  @spec create_func_minus() :: :ok
+  def create_func_minus do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{function_prefix(Migration.repo())}minus",
+        args: [input: :rational],
+        returns: :rational,
+        body: """
+        RETURN ((input).numerator * -1, (input).denominator)::rational;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns the rational input, rounded to the nearest :bigint
+  """
+  @spec create_func_round() :: :ok
+  def create_func_round do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{function_prefix(Migration.repo())}round",
+        args: [input: :rational],
+        declares: [result: :bigint],
+        returns: :bigint,
+        body: """
+        SELECT (
+          CASE
+            WHEN (input).numerator < 0 THEN
+              #{function_prefix(Migration.repo())}round(
+                #{function_prefix(Migration.repo())}minus(input)
+              ) * -1
+            WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
+              (input).numerator / (input).denominator
+            ELSE
+              ((input).numerator / (input).denominator) + 1
+          END
+        ) INTO result;
+
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @spec create_func_cast_to_double_precison() :: :ok
+  def create_func_cast_to_double_precison do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}cast_to_float",
+        args: [value: :rational],
+        returns: :"double precision",
+        body: """
+        RETURN CAST ((value).numerator AS double precision) / CAST ((value).denominator AS double precision);
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates the backing function for the '+' operator between two rationals.
+  """
+  @spec create_func_add() :: :ok
+  def create_func_add do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}add",
+        args: [a: :rational, b: :rational],
+        declares: [
+          numerator: {:bigint, "((a).numerator * (b).denominator) + ((b).numerator * (a).denominator)"},
+          denominator: {:bigint, "(a).denominator * (b).denominator"},
+          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+        ],
+        returns: :rational,
+        body: """
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates the backing function for the '-' operator between two rationals.
+  """
+  @spec create_func_sub() :: :ok
+  def create_func_sub do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}sub",
+        args: [a: :rational, b: :rational],
+        declares: [
+          b_numerator: {:bigint, "(b).numerator * -1"},
+          b_negated: {:rational, "(b_numerator, (b).denominator)"},
+          result: {:rational, "#{private_function_prefix(Migration.repo())}add(a, b_negated)"}
+        ],
+        returns: :rational,
+        body: """
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates the backing function for the '*' operator between two rationals.
+  """
+  @spec create_func_mult() :: :ok
+  def create_func_mult do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}mult",
+        args: [a: :rational, b: :rational],
+        declares: [
+          numerator: {:bigint, "(a).numerator * (b).numerator"},
+          denominator: {:bigint, "(a).denominator * (b).denominator"},
+          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+        ],
+        returns: :rational,
+        body: """
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates the backing function for the '*' operator between two rationals.
+  """
+  @spec create_func_div() :: :ok
+  def create_func_div do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{private_function_prefix(Migration.repo())}div",
+        args: [a: :rational, b: :rational],
+        declares: [
+          numerator: {:bigint, "(a).numerator * (b).denominator"},
+          denominator: {:bigint, "(a).denominator * (b).numerator"},
+          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+        ],
+        returns: :rational,
+        body: """
+        RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational + operator.
+  """
+  @spec create_op_add() :: :ok
+  def create_op_add do
+    create_op =
+      Postgres.Utils.create_operator(
+        :+,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}add"
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational + operator.
+  """
+  @spec create_op_sub() :: :ok
+  def create_op_sub do
+    create_op =
+      Postgres.Utils.create_operator(
+        :-,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}sub"
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational * operator.
+  """
+  @spec create_op_mult() :: :ok
+  def create_op_mult do
+    create_op =
+      Postgres.Utils.create_operator(
+        :*,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}mult"
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational * operator.
+  """
+  @spec create_op_div() :: :ok
+  def create_op_div do
+    create_op =
+      Postgres.Utils.create_operator(
+        :/,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}div"
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
+  @doc section: :migrations_casts
+  @doc """
+  Creates a native cast for:
+
+  ```sql
+  rational AS double precision
+  ```
+  """
+  @spec create_cast_double_precision() :: :ok
+  def create_cast_double_precision do
+    create_cast =
+      Postgres.Utils.create_cast(
+        :rational,
+        :"double precision",
+        :"#{private_function_prefix(Migration.repo())}cast_to_float"
+      )
+
+    :ok = Migration.execute(create_cast)
 
     :ok
   end
@@ -287,5 +581,17 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
 
     "#{functions_private_schema}.#{functions_prefix}"
+  end
+
+  @spec function_prefix(Ecto.Repo.t()) :: String.t()
+  defp function_prefix(repo) do
+    functions_schema = get_config(repo, :functions_schema, :public)
+    functions_prefix = get_config(repo, :functions_prefix, "")
+
+    functions_prefix = if functions_prefix == "" and functions_schema == :public, do: "rational", else: functions_prefix
+
+    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
+
+    "#{functions_schema}.#{functions_prefix}"
   end
 end

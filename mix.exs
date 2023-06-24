@@ -52,6 +52,8 @@ defmodule Vtc.MixProject do
           Full: &(&1[:section] == :migrations_full),
           PgConstraints: &(&1[:section] == :migrations_constraints),
           PgTypes: &(&1[:section] == :migrations_types),
+          PgCasts: &(&1[:section] == :migrations_casts),
+          PgOperators: &(&1[:section] == :migrations_operators),
           PgFunctions: &(&1[:section] == :migrations_functions)
         ]
       ],

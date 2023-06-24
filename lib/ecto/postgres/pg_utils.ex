@@ -132,4 +132,36 @@ defmodule Vtc.Ecto.Postgres.Utils do
       END $wrapper$;
     """
   end
+
+  @doc """
+  Builds an SQL query for creating a new native CAST
+  """
+  @spec create_operator(atom(), atom(), atom(), atom()) :: raw_sql()
+  def create_operator(name, left_type, right_type, func_name) do
+    """
+    DO $wrapper$ BEGIN
+      CREATE OPERATOR #{name} (
+        LEFTARG = #{left_type},
+        RIGHTARG = #{right_type},
+        FUNCTION = #{func_name}
+      );
+    EXCEPTION WHEN duplicate_function
+      THEN null;
+    END $wrapper$;
+    """
+  end
+
+  @doc """
+  Builds an SQL query for creating a new native CAST
+  """
+  @spec create_cast(atom(), atom(), atom()) :: raw_sql()
+  def create_cast(left_type, right_type, func_name) do
+    """
+    DO $wrapper$ BEGIN
+      CREATE CAST (#{left_type} AS #{right_type}) WITH FUNCTION #{func_name}(#{left_type});
+    EXCEPTION WHEN duplicate_object
+      THEN null;
+    END $wrapper$;
+    """
+  end
 end
