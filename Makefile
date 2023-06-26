@@ -7,6 +7,10 @@ install-dev:
 test:
 	-mix test --exclude index_test --cover --warnings-as-errors
 
+.PHONY: bench
+bench:
+	-mix test test/ecto/postgres/pg_timecode_benches_test.exs --include skip
+
 .PHONY: lint
 lint:
 	-mix format --check-formatted

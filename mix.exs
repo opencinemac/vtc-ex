@@ -90,6 +90,7 @@ defmodule Vtc.MixProject do
       {:covertool, "~> 2.0", only: [:test]},
       {:stream_data, "~> 0.5.0", only: [:dev, :test]},
       {:junit_formatter, "~> 3.1", only: [:test]},
+      {:benchee, "~> 1.1", only: [:dev, :test]},
 
       # Dev dependencies
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
