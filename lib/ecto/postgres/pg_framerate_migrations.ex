@@ -138,16 +138,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for framerate functions:
-
-  - `framerate`: for user-facing "public" functions that will have backwards
-    compatibility guarantees and application code support.
-
-  - framerate_private`: for developer-only "private" functions that support the
-    functions in the "rational" schema. Will NOT have backwards compatibility guarantees
-    NOR application code support.
-
-  These schemas can be configured in your Repo settings.
+  Creates schemas to act as namespaces for framerate functions based on your repo's
+  settings.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do

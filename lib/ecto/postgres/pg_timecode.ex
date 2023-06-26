@@ -4,7 +4,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   @moduledoc """
   Defines a composite type for storing rational values as a
   [PgRational](`Vtc.Ecto.Postgres.PgRational`) real-world playbck seconds,
-  [PgFramerate](`Vtc.Ecto.Postgres.Framerate`) playback rate pair.
+  [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) pair.
 
   These values are cast to
   [Timecode](`Vtc.Timecode`) structs for use in application code.
@@ -19,7 +19,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   ```
 
   ```sql
-  SELECT ((10, 1), ((24, 1), '{non_drop}'))::timecode
+  SELECT ((18018, 5), ((24000, 1001), '{non_drop}'))::timecode
   ```
 
   ## Field migrations

@@ -110,16 +110,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for rational functions:
-
-  - `timecode`: for user-facing "public" functions that will have backwards
-    compatibility guarantees and application code support.
-
-  - `timecode_private`: for developer-only "private" functions that support the
-    functions in the "timecode" schema. Will NOT have backwards compatibility guarantees
-    NOR application code support.
-
-  These schemas can be configured in your Repo settings.
+  Creates schemas to act as namespaces for timecode functions based on your repo's
+  settings.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
