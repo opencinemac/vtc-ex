@@ -98,6 +98,8 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
   import Vtc.TimecodeTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
+  alias Vtc.Rates
+  alias Vtc.TestUtls.StreamDataVtc
   alias Vtc.Timecode
 
   describe "parse round trip" do
@@ -122,6 +124,25 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
           assert Timecode.timecode(timecode) == timecode_string
         end
       end
+    end
+  end
+
+  property "timecode round trip" do
+    check all(timecode <- StreamDataVtc.timecode(rate_opts: [type: [:whole, :non_drop, :drop]])) do
+      assert Timecode.with_seconds!(timecode.seconds, timecode.rate) == timecode
+      timecode_str = Timecode.timecode(timecode)
+      assert {:ok, result} = Timecode.with_frames(timecode_str, timecode.rate)
+      assert result == timecode
+    end
+  end
+
+  property "59.94 frames round trip" do
+    check all(frames <- StreamData.integer(-5_178_816..5_178_816)) do
+      assert {:ok, timecode} = Timecode.with_frames(frames, Rates.f59_94_df())
+      assert Timecode.frames(timecode) == frames
+
+      timecode_str = Timecode.timecode(timecode)
+      assert {:ok, ^timecode} = Timecode.with_frames(timecode_str, Rates.f59_94_df()), "#{frames}"
     end
   end
 end
@@ -194,21 +215,10 @@ defmodule Vtc.TimecodeTest.Properties.Rebase do
               new_rate <- StreamDataVtc.framerate(),
               max_runs: 20
             ) do
-        assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
-        assert {:ok, ^timecode} = Timecode.rebase(rebased, timecode.rate)
-      end
-    end
-  end
-
-  describe "#rebase!/2" do
-    property "round trip rebases do not lose accuracy" do
-      check all(
-              timecode <- StreamDataVtc.timecode(),
-              new_rate <- StreamDataVtc.framerate(),
-              max_runs: 20
-            ) do
-        assert {:ok, rebased} = Timecode.rebase(timecode, new_rate)
-        assert {:ok, ^timecode} = Timecode.rebase(rebased, timecode.rate)
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          assert rebased = Timecode.rebase!(timecode, new_rate)
+          assert ^timecode = Timecode.rebase!(rebased, timecode.rate)
+        end)
       end
     end
   end
@@ -325,10 +335,12 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
                 ),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
-        div_result = Timecode.div(dividend, divisor, round: :floor)
-        {divrem_result, _} = Timecode.divrem(dividend, divisor)
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          div_result = Timecode.div(dividend, divisor, round: :floor)
+          {divrem_result, _} = Timecode.divrem(dividend, divisor)
 
-        assert divrem_result == div_result
+          assert divrem_result == div_result
+        end)
       end
     end
   end
@@ -343,10 +355,12 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
                 ),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
-        {_, divrem_result} = Timecode.divrem(dividend, divisor)
-        rem_result = Timecode.rem(dividend, divisor)
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          {_, divrem_result} = Timecode.divrem(dividend, divisor)
+          rem_result = Timecode.rem(dividend, divisor)
 
-        assert rem_result == divrem_result
+          assert rem_result == divrem_result
+        end)
       end
     end
   end

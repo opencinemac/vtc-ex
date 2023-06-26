@@ -90,8 +90,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @spec create_all() :: :ok
   def create_all do
     :ok = create_type_framerate_tags()
-    :ok = create_function_schemas()
     :ok = create_type_framerate()
+    :ok = create_function_schemas()
 
     :ok
   end
@@ -138,14 +138,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for rational functions:
+  Creates schemas to act as namespaces for framerate functions:
 
-  - `rational`: for user-facing "public" functions that will have backwards
+  - `framerate`: for user-facing "public" functions that will have backwards
     compatibility guarantees and application code support.
 
-  - `rational_private`: for developer-only "private" functions that support the
-    functions in the "rational" schema. Will NOT havr backwards compatibility guarantees
+  - framerate_private`: for developer-only "private" functions that support the
+    functions in the "rational" schema. Will NOT have backwards compatibility guarantees
     NOR application code support.
+
+  These schemas can be configured in your Repo settings.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
@@ -236,5 +238,5 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   # Fetches PgRational configuration option from `repo`'s configuration.
   @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
   defp get_config(repo, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_rational) |> Keyword.get(opt, default)
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_framerate) |> Keyword.get(opt, default)
 end

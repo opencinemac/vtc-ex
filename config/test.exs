@@ -18,6 +18,11 @@ config :vtc, Vtc.Test.Support.Repo,
       functions_schema: :framerate,
       functions_private_schema: :framerate_private,
       functions_prefix: ""
+    ],
+    pg_timecode: [
+      functions_schema: :timecode,
+      functions_private_schema: :timecode_private,
+      functions_prefix: ""
     ]
   ]
 

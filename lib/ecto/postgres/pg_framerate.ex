@@ -3,10 +3,10 @@ use Vtc.Ecto.Postgres.Utils
 defpgmodule Vtc.Ecto.Postgres.PgFramerate do
   @moduledoc """
   Defines a composite type for storing rational values as a
-  [PgRational](`Vtc.Ecto.Postgres.PgRational`) + list of tags These values are cast to
+  [PgRational](`Vtc.Ecto.Postgres.PgRational`) + list of tags. These values are cast to
   [Framerate](`Vtc.Framerate`) structs for use in application code.
 
-  The composite types iare defined as follows:
+  The composite types are defined as follows:
 
   ```sql
   CREATE TYPE framerate_tags AS ENUM (
@@ -43,11 +43,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
   You can create `framerate` fields during a migration like so:
 
   ```elixir
+  alias Vtc.Framerate
+
   create table("rationals") do
-    add(:a, PgFramerate.type())
-    add(:b, PgFramerate.type())
+    add(:a, Framerate.type())
+    add(:b, Framerate.type())
   end
   ```
+
+  [Framerate](`Vtc.Framerate`) re-exports the `Ecto.Type` implementation of this module,
+  and can be used any place this module would be used.
 
   ## Schema fields
 
@@ -58,7 +63,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
   @moduledoc false
   use Ecto.Schema
 
-  alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Framerate
 
   @type t() :: %__MODULE__{
@@ -71,10 +75,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
     field(:b, Framerate)
   end
   ```
-
-  ... notice that that both the schema field and type-spec use
-  [PgFramerate](`Vtc.Framerate`). That's because `Framerate` delegates an Ecto type
-  implementation to `PgFramerate`, and can be used in it's stead.
 
   ## Changesets
 
@@ -96,12 +96,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
 
     ```json
     {
-      rate: [24000, 1001],
-      ntsc: "non_drop"
+      "playback": [24000, 1001],
+      "ntsc": "non_drop"
     }
     ```
 
-    Where `rate` is a value supported by
+    Where `playback` is a value supported by
     [PgRational](`Vtc.Ecto.Postgres.PgRational`) casting and `ntsc` can be `null`,
     `"drop"` or `"non_drop"`.
 

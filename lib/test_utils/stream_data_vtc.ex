@@ -8,7 +8,11 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     """
 
     alias Vtc.Framerate
+    alias Vtc.Rates
     alias Vtc.Timecode
+    alias Vtc.Utils.DropFrame
+
+    require ExUnit.Assertions
 
     @doc """
     Yields rational values as %Ratio{} structs.
@@ -102,7 +106,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
 
       numerator_gen = StreamData.positive_integer()
       denominator_gen = StreamData.positive_integer()
-      drop_mult_gen = StreamData.integer(1..10)
+      drop_mult_gen = StreamData.integer(1..3)
 
       {numerator_gen, denominator_gen, drop_mult_gen, ntsc_gen}
       |> StreamData.tuple()
@@ -113,9 +117,8 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
         {numerator, denominator, _, :fractional} ->
           numerator |> Ratio.new(denominator) |> Framerate.new!(ntsc: nil)
 
-        {_, _, multiplier, :drop} ->
-          multiplier = Ratio.new(multiplier, 1)
-          30_000 |> Ratio.new(1001) |> Ratio.mult(multiplier) |> Framerate.new!(ntsc: :drop)
+        {_, _, _, :drop} ->
+          Rates.f29_97_df()
 
         {numerator, _, _, :non_drop} ->
           (numerator * 1000) |> Ratio.new(1001) |> Framerate.new!(ntsc: :non_drop)
@@ -156,7 +159,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
       frames_gen = StreamData.integer(0..20_736_000)
 
       frames_gen =
-        if non_negative?, do: StreamData.filter(frames_gen, &(&1 >= 0)), else: StreamData.integer(0..20_736_000)
+        if non_negative?, do: StreamData.filter(frames_gen, &(&1 >= 0)), else: StreamData.integer(-20_736_000..20_736_000)
 
       framerate_gen =
         case rate do
@@ -167,8 +170,36 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
       {frames_gen, framerate_gen}
       |> StreamData.tuple()
       |> StreamData.map(fn {frames, framerate} ->
-        Timecode.with_frames!(frames, framerate)
+        frames
+        |> clip_drop_frames(framerate)
+        |> Timecode.with_frames!(framerate)
       end)
+    end
+
+    # Clips drop frames to the maximum legal value for SMPTE timecode.
+    @spec clip_drop_frames(integer(), Framerate.t()) :: integer()
+    defp clip_drop_frames(frames, %{ntsc: :drop} = rate) do
+      max_frames = DropFrame.max_frames(rate)
+
+      if frames >= 0 do
+        min(frames, max_frames)
+      else
+        max(frames, -max_frames)
+      end
+    end
+
+    defp clip_drop_frames(frames, _), do: frames
+
+    @doc """
+    Runs a test, but does not fail if the operation causes a drop-frame overflow
+    exception to occur.
+    """
+    @spec run_test_rescue_drop_overflow((() -> term())) :: term()
+    def run_test_rescue_drop_overflow(test_runner) do
+      test_runner.()
+    rescue
+      error in Timecode.ParseError ->
+        ExUnit.Assertions.assert(error.reason == :drop_frame_maximum_exceeded)
     end
   end
 end
