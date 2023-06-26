@@ -173,14 +173,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for rational functions:
-
-  - `rational`: for user-facing "public" functions that will have backwards
-    compatibility guarantees and application code support.
-
-  - `rational_private`: for developer-only "private" functions that support the
-    functions in the "rational" schema. Will NOT havr backwards compatibility guarantees
-    NOR application code support.
+  Creates schemas to act as namespaces for timecode functions based on your repo's
+  settings.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
