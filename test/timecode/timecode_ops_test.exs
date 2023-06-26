@@ -392,12 +392,20 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.add(a, b, round: :ceil) == expected
     end
 
-    test "round | :off" do
+    test "round | :off | allow_partial_frames" do
       a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
       expected = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
 
-      assert Timecode.add(a, b, round: :off) == expected
+      assert Timecode.add(a, b, round: :off, allow_partial_frames?: true) == expected
+    end
+
+    test "error | round | :off" do
+      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+
+      error = assert_raise Timecode.ParseError, fn -> Timecode.add(a, b, round: :off) end
+      assert error.reason == :partial_frame
     end
   end
 
@@ -520,12 +528,20 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.sub(a, b, round: :ceil) == expected
     end
 
-    test "round | :off" do
+    test "round | :off | allow_partial_frames" do
       a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
       expected = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
 
-      assert Timecode.sub(a, b, round: :off) == expected
+      assert Timecode.sub(a, b, round: :off, allow_partial_frames?: true) == expected
+    end
+
+    test "error | round | :off" do
+      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+
+      error = assert_raise Timecode.ParseError, fn -> Timecode.sub(a, b, round: :off) end
+      assert error.reason == :partial_frame
     end
   end
 
@@ -606,12 +622,20 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.mult(a, b, round: :ceil) == expected
     end
 
-    test "round | :off" do
+    test "round | :off | allow_partial_frames" do
       a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       b = Ratio.new(239, 240)
       expected = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
 
-      assert Timecode.mult(a, b, round: :off) == expected
+      assert Timecode.mult(a, b, round: :off, allow_partial_frames?: true) == expected
+    end
+
+    test "error | round | :off" do
+      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      b = Ratio.new(239, 240)
+
+      error = assert_raise Timecode.ParseError, fn -> Timecode.mult(a, b, round: :off) end
+      assert error.reason == :partial_frame
     end
   end
 
@@ -687,12 +711,20 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.div(a, b, round: :ceil) == expected
     end
 
-    test "round | :off" do
+    test "round | :off | allow_partial_frames" do
       a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       b = 48
       expected = %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
 
-      assert Timecode.div(a, b, round: :off) == expected
+      assert Timecode.div(a, b, round: :off, allow_partial_frames?: true) == expected
+    end
+
+    test "error | round | :off" do
+      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      b = 48
+
+      error = assert_raise Timecode.ParseError, fn -> Timecode.div(a, b, round: :off) end
+      assert error.reason == :partial_frame
     end
   end
 

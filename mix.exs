@@ -61,7 +61,7 @@ defmodule Vtc.MixProject do
       start_permanent: Mix.env() == :prod,
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: Enum.map(deps(), &elem(&1, 0))]
+      dialyzer: [plt_add_apps: Enum.map(deps(), &elem(&1, 0)) ++ [:ex_unit]]
     ]
   end
 

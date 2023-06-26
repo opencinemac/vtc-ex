@@ -50,12 +50,8 @@ defmodule Vtc.Utils.DropFrame do
     framerate = Ratio.to_float(rate.playback)
 
     dropped_per_min = round(framerate * 0.066666)
-    frames_per_hour = round(framerate * 60 * 60)
-    frames_per_24_hours = frames_per_hour * 24
     frames_per_10_min = round(framerate * 60 * 10)
     frames_per_min = round(framerate) * 60 - dropped_per_min
-
-    frame_number = rem(frame_number, frames_per_24_hours)
 
     tens_of_mins = div(frame_number, frames_per_10_min)
     remaining_mins = rem(frame_number, frames_per_10_min)
@@ -92,4 +88,11 @@ defmodule Vtc.Utils.DropFrame do
       _ -> false
     end
   end
+
+  @doc """
+  Drop-frame timecode CANNOT exceed the 24-hour mark. This method calculates the maximum
+  number of frames that can exist within a day.
+  """
+  @spec max_frames(Framerate.t()) :: pos_integer()
+  def max_frames(%{ntsc: :drop} = rate), do: round(Ratio.to_float(rate.playback) * 60.0 * 60.0) * 24
 end

@@ -21,7 +21,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> sorted = Enum.sort([tc_02, tc_01], Timecode)
   iex> inspect(sorted)
   "[<01:00:00:00 <23.98 NTSC>>, <02:00:00:00 <23.98 NTSC>>]"
@@ -103,10 +103,17 @@ defmodule Vtc.Timecode do
 
   Going through protocols allows callers to define their own types that work with Vtc's
   parsing functions directly.
+
+  ## Using as an Ecto Type
+
+  See [PgTimecode](`Vtc.Ecto.Postgres.PgTimecode`) for information on how to use
+  `Framerate` in your postgres database as a native type.
   """
+  use Vtc.Ecto.Postgres.Utils
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
 
+  alias Vtc.Ecto.Postgres.PgTimecode
   alias Vtc.FilmFormat
   alias Vtc.Framerate
   alias Vtc.Source.Frames
@@ -119,6 +126,7 @@ defmodule Vtc.Timecode do
   alias Vtc.Timecode.Eval
   alias Vtc.Timecode.ParseError
   alias Vtc.Timecode.Sections
+  alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
@@ -167,7 +175,11 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - `round`: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames. Default: `:closest`.
+
+  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
+    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
+    Default: `false`.
 
   ## Examples
 
@@ -220,22 +232,23 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> alias Vtc.Source.Seconds.PremiereTicks
-  iex> 
+  iex>
   iex> input = %PremiereTicks{in: 254_016_000_000}
-  iex> 
+  iex>
   iex> result = Timecode.with_seconds!(input, Rates.f23_98())
   iex> inspect(result)
   "<00:00:01:00 <23.98 NTSC>>"
   ```
   """
-  @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: parse_result()
+  @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round(), allow_partial_frames?: boolean()]) ::
+          parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
+    allow_partial_frames? = Keyword.get(opts, :allow_partial_frames?, false)
 
-    with {:ok, seconds} <- Seconds.seconds(seconds, rate) do
-      # If the vaue doesn't cleany divide into the framerate then we need to round to
-      # the nearest frame.
-      seconds = with_seconds_round_to_frame(seconds, rate, round)
+    with {:ok, seconds} <- Seconds.seconds(seconds, rate),
+         seconds = with_seconds_round_to_frame(seconds, rate, round),
+         :ok <- validate_whole_frames(seconds, rate, round, allow_partial_frames?) do
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
     end
   end
@@ -258,11 +271,29 @@ defmodule Vtc.Timecode do
     end
   end
 
+  # Validates that seconds is cleanly divisible by `rate.playback`.
+  @spec validate_whole_frames(Ratio.t(), Framerate.t(), maybe_round(), boolean()) :: :ok | {:error, ParseError.t()}
+  defp validate_whole_frames(seconds, rate, :off, false) do
+    {_, remainder} = seconds |> Ratio.mult(rate.playback) |> Rational.divrem(Ratio.new(1, 1))
+
+    if Ratio.eq?(remainder, Ratio.new(0, 1)) do
+      :ok
+    else
+      {:error, %ParseError{reason: :partial_frame}}
+    end
+  end
+
+  defp validate_whole_frames(_, _, _, _), do: :ok
+
   @doc section: :parse
   @doc """
   As `with_seconds/3`, but raises on error.
   """
-  @spec with_seconds!(Seconds.t(), Framerate.t(), opts :: [round: maybe_round()]) :: t()
+  @spec with_seconds!(
+          Seconds.t(),
+          Framerate.t(),
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+        ) :: t()
   def with_seconds!(seconds, rate, opts \\ []) do
     seconds
     |> with_seconds(rate, opts)
@@ -283,7 +314,7 @@ defmodule Vtc.Timecode do
 
   ## Options
 
-  - `round`: How to round the result with regards to whole-frames.
+  - `round`: How to round the result with regards to whole-frames. Default: `:closest`.
 
   ## Examples
 
@@ -308,9 +339,9 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
-  iex> 
+  iex>
   iex> {:ok, feet_and_frames} = FeetAndFrames.from_string("5400+00", film_format: :ff16mm)
-  iex> 
+  iex>
   iex> result = Timecode.with_frames(feet_and_frames, Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:15:00:00 <23.98 NTSC>>}"
@@ -334,11 +365,12 @@ defmodule Vtc.Timecode do
   """
   @spec with_frames(Frames.t(), Framerate.t()) :: parse_result()
   def with_frames(frames, rate) do
-    with {:ok, frames} <- Frames.frames(frames, rate) do
+    with {:ok, frames} <- Frames.frames(frames, rate),
+         :ok <- validate_drop_frame_number(frames, rate) do
       frames
       |> Ratio.new()
       |> Ratio.div(rate.playback)
-      |> with_seconds(rate)
+      |> with_seconds(rate, round: :off)
     end
   end
 
@@ -352,6 +384,17 @@ defmodule Vtc.Timecode do
     |> with_frames(rate)
     |> handle_raise_function()
   end
+
+  @spec validate_drop_frame_number(integer(), Framerate.t()) :: :ok | {:error, ParseError.t()}
+  defp validate_drop_frame_number(frames, %{ntsc: :drop} = rate) do
+    if Kernel.abs(frames) > DropFrame.max_frames(rate) do
+      {:error, %ParseError{reason: :drop_frame_maximum_exceeded}}
+    else
+      :ok
+    end
+  end
+
+  defp validate_drop_frame_number(_, _), do: :ok
 
   @doc section: :manipulate
   @doc """
@@ -513,6 +556,10 @@ defmodule Vtc.Timecode do
   - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
 
+  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
+    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
+    Default: `false`.
+
   ## Examples
 
   Two timecodes running at the same rate:
@@ -520,7 +567,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.add(a, b)
   iex> inspect(result)
   "<02:30:21:17 <23.98 NTSC>>"
@@ -531,7 +578,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
-  iex> 
+  iex>
   iex> result = Timecode.add(a, b)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
@@ -541,13 +588,17 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.add(a, "01:30:21:17")
   iex> inspect(result)
   "<02:30:21:17 <23.98 NTSC>>"
   ```
   """
-  @spec add(a :: t() | Frames.t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
+  @spec add(
+          a :: t() | Frames.t(),
+          b :: t() | Frames.t(),
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+        ) :: t()
   def add(a, b, opts \\ []) do
     {a, b} = cast_op_args(a, b)
     a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
@@ -575,7 +626,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
   iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.sub(a, b)
   iex> inspect(result)
   "<00:30:21:17 <23.98 NTSC>>"
@@ -586,7 +637,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.sub(a, b)
   iex> inspect(result)
   "<-01:00:00:00 <23.98 NTSC>>"
@@ -597,7 +648,7 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
-  iex> 
+  iex>
   iex> result = Timecode.sub(a, b)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
@@ -607,13 +658,13 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.sub(a, "01:00:00:00")
   iex> inspect(result)
   "<00:30:21:17 <23.98 NTSC>>"
   ```
   """
-  @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round()]) :: t()
+  @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round(), allow_partial_frames?: boolean()]) :: t()
   def sub(a, b, opts \\ []) do
     {a, b} = cast_op_args(a, b)
     a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
@@ -639,23 +690,31 @@ defmodule Vtc.Timecode do
   - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:closest`.
 
+  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
+    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
+    Default: `false`.
+
   ## Examples
 
   ```elixir
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.mult(a, 2)
   iex> inspect(result)
   "<02:00:00:00 <23.98 NTSC>>"
 
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.mult(a, 0.5)
   iex> inspect(result)
   "<00:30:00:00 <23.98 NTSC>>"
   ```
   """
-  @spec mult(a :: t(), b :: Ratio.t() | number(), opts :: [round: maybe_round()]) :: t()
+  @spec mult(
+          a :: t(),
+          b :: Ratio.t() | number(),
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+        ) :: t()
   def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(Ratio.new(b)) |> with_seconds!(a.rate, opts)
 
   @doc section: :arithmetic
@@ -671,17 +730,21 @@ defmodule Vtc.Timecode do
     `:floor` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
 
+  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
+    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
+    Default: `false`.
+
   ## Examples
 
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.div(dividend, 2)
   iex> inspect(result)
   "<00:30:00:00 <23.98 NTSC>>"
 
   iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.div(dividend, 0.5)
   iex> inspect(result)
   "<02:00:00:00 <23.98 NTSC>>"
@@ -690,7 +753,7 @@ defmodule Vtc.Timecode do
   @spec div(
           dividend :: t(),
           divisor :: Ratio.t() | number(),
-          opts :: [round: maybe_round()]
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
         ) :: t()
   def div(dividend, divisor, opts \\ []) do
     opts = Keyword.put_new(opts, :round, :floor)
@@ -717,7 +780,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.divrem(dividend, 4)
   iex> inspect(result)
   "{<00:15:00:00 <23.98 NTSC>>, <00:00:00:01 <23.98 NTSC>>}"
@@ -766,7 +829,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.rem(dividend, 4)
   iex> inspect(result)
   "<00:00:00:01 <23.98 NTSC>>"
@@ -790,7 +853,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.minus(tc)
   iex> inspect(result)
   "<-01:00:00:00 <23.98 NTSC>>"
@@ -798,7 +861,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.minus(tc)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
@@ -815,7 +878,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.abs(tc)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
@@ -823,7 +886,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.abs(tc)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
@@ -856,16 +919,16 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> require Timecode
-  iex> 
+  iex>
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
   iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result =
   iex>   Timecode.eval do
   iex>     a + b * 2 - c
   iex>   end
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
@@ -874,13 +937,13 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> require Timecode
-  iex> 
+  iex>
   iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
   iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
   iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.eval(a + b * 2 - c)
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
@@ -891,12 +954,12 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result =
   iex>   Timecode.eval do
   iex>     "01:00:00:00" + b * 2 - "00:15:00:00"
   iex>   end
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
@@ -910,7 +973,7 @@ defmodule Vtc.Timecode do
   iex>   Timecode.eval at: Rates.f23_98() do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
@@ -922,7 +985,7 @@ defmodule Vtc.Timecode do
   iex>   Timecode.eval at: 23.98 do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
@@ -935,7 +998,7 @@ defmodule Vtc.Timecode do
   iex>   Timecode.eval at: 24, ntsc: nil do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
-  iex> 
+  iex>
   iex> inspect(result)
   "<01:45:00:00 <24.0 fps>>"
   ```
@@ -1002,7 +1065,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.sections(timecode)
   iex> inspect(result)
   "%Vtc.Timecode.Sections{negative?: false, hours: 1, minutes: 0, seconds: 0, frames: 0}"
@@ -1195,7 +1258,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.feet_and_frames(timecode)
   iex> inspect(result)
   "<5400+00 :ff35mm_4perf>"
@@ -1205,9 +1268,9 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
-  iex> 
+  iex>
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.feet_and_frames(timecode)
   iex> String.Chars.to_string(result)
   "5400+00"
@@ -1219,7 +1282,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> 
+  iex>
   iex> result = Timecode.feet_and_frames(timecode, film_format: :ff16mm)
   iex> inspect(result)
   "<4320+00 :ff16mm>"
@@ -1238,6 +1301,26 @@ defmodule Vtc.Timecode do
   @spec handle_raise_function({:ok, t()} | {:error, Exception.t()}) :: t()
   defp handle_raise_function({:ok, result}), do: result
   defp handle_raise_function({:error, error}), do: raise(error)
+
+  when_pg_enabled do
+    use Ecto.Type
+
+    @impl Ecto.Type
+    @spec type() :: atom()
+    defdelegate type, to: PgTimecode
+
+    @impl Ecto.Type
+    @spec cast(t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, t()} | :error
+    defdelegate cast(value), to: PgTimecode
+
+    @impl Ecto.Type
+    @spec load(PgTimecode.db_record()) :: {:ok, t()} | :error
+    defdelegate load(value), to: PgTimecode
+
+    @impl Ecto.Type
+    @spec dump(t()) :: {:ok, PgTimecode.db_record()} | :error
+    defdelegate dump(value), to: PgTimecode
+  end
 end
 
 defimpl Inspect, for: Vtc.Timecode do

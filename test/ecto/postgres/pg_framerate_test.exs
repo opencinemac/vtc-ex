@@ -1,10 +1,9 @@
-defmodule Vtc.Ecto.Postgres.FramerateTest do
+defmodule Vtc.Ecto.Postgres.PgFramerateTest do
   use Vtc.Test.Support.EctoCase, async: true
   use ExUnitProperties
 
   alias Ecto.Changeset
   alias Ecto.Query
-  alias Vtc.Ecto.Postgres.Framerate
   alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Test.Support.FramerateSchema01
@@ -172,7 +171,7 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
     end
   end
 
-  serilization_table = [
+  serialization_table = [
     %{
       application_value: Rates.f23_98(),
       database_record: {{24_000, 1001}, ["non_drop"]}
@@ -192,7 +191,7 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
   ]
 
   describe "#dump/1" do
-    table_test "succeeds on <%= application_value %>", serilization_table, test_case do
+    table_test "succeeds on <%= application_value %>", serialization_table, test_case do
       %{application_value: application_value, database_record: database_record} = test_case
 
       assert {:ok, result} = Framerate.dump(application_value)
@@ -222,7 +221,7 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
   end
 
   describe "#load/1" do
-    table_test "<%= application_value %>", serilization_table, test_case do
+    table_test "<%= application_value %>", serialization_table, test_case do
       %{application_value: application_value, database_record: database_record} = test_case
 
       assert {:ok, result} = Framerate.load(database_record)
@@ -259,21 +258,21 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
       assert db_record == expected
     end
 
-    table_test "placeholder | <%= application_value %>", serilization_table, test_case do
+    table_test "placeholder | <%= application_value %>", serialization_table, test_case do
       %{application_value: application_value, database_record: database_record} = test_case
 
       query = Query.from(f in fragment("SELECT ? as r", type(^application_value, Framerate)), select: f.r)
       assert Repo.one!(query) == database_record
     end
 
-    table_test "playback field | <%= application_value %>", serilization_table, test_case do
+    table_test "playback field | <%= application_value %>", serialization_table, test_case do
       %{database_record: {expected, _}, application_value: application_value} = test_case
 
       query = Query.from(f in fragment("SELECT (?).playback as r", type(^application_value, Framerate)), select: f.r)
       assert Repo.one!(query) == expected
     end
 
-    table_test "tags field | <%= application_value %>", serilization_table, test_case do
+    table_test "tags field | <%= application_value %>", serialization_table, test_case do
       %{database_record: {_, expected}, application_value: application_value} = test_case
 
       query = Query.from(f in fragment("SELECT (?).tags as r", type(^application_value, Framerate)), select: f.r)
@@ -290,7 +289,7 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
   end
 
   describe "#table serialization" do
-    table_test "can insert into field without constraints", serilization_table, test_case do
+    table_test "can insert into field without constraints", serialization_table, test_case do
       %{application_value: application_value} = test_case
 
       assert {:ok, inserted} =
@@ -307,7 +306,7 @@ defmodule Vtc.Ecto.Postgres.FramerateTest do
       assert record.b == nil
     end
 
-    table_test "can insert into field with constraints", serilization_table, test_case do
+    table_test "can insert into field with constraints", serialization_table, test_case do
       %{application_value: application_value} = test_case
 
       assert {:ok, inserted} =

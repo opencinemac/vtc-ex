@@ -2,10 +2,12 @@ defmodule Vtc.TimecodeTest.Parse do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
+  alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Timecode
+  alias Vtc.Utils.DropFrame
 
   parse_table = [
     # 23.98 NTSC #########################
@@ -514,9 +516,19 @@ defmodule Vtc.TimecodeTest.Parse do
       assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
     end
 
-    test "round | :off" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
+    test "round | :off | allow_partial_frames" do
+      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off, allow_partial_frames?: true)
       assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+    end
+
+    test "ParseTimecodeError when partial frames | round | :off" do
+      {:error, %Timecode.ParseError{} = error} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
+
+      expected_message =
+        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+
+      assert :partial_frame == error.reason
+      assert Timecode.ParseError.message(error) == expected_message
     end
 
     test "ParseTimecodeError when bad format" do
@@ -573,9 +585,22 @@ defmodule Vtc.TimecodeTest.Parse do
       assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
     end
 
-    test "round | :off" do
-      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
+    test "round | :off | allow_partial_frames" do
+      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off, allow_partial_frames?: true)
       assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+    end
+
+    test "ParseTimecodeError when partial frames | round | :off" do
+      error =
+        assert_raise Timecode.ParseError, fn ->
+          Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
+        end
+
+      expected_message =
+        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+
+      assert :partial_frame == error.reason
+      assert Timecode.ParseError.message(error) == expected_message
     end
 
     test "ParseTimecodeError throws" do
@@ -601,6 +626,39 @@ defmodule Vtc.TimecodeTest.Parse do
       input_case
       |> Timecode.with_frames(rate)
       |> check_parsed(test_case)
+    end
+
+    round_trip_tc_table = [
+      %{smpte_timecode: "23:58:34;10", rate: Rates.f29_97_df()},
+      %{smpte_timecode: "23:58:33;46", rate: Rates.f59_94_df()},
+      %{smpte_timecode: "23:58:36;11", rate: Framerate.new!(Ratio.new(90_000, 1001), ntsc: :drop)},
+      %{smpte_timecode: "23:58:33;75", rate: Framerate.new!(Ratio.new(90_000, 1001), ntsc: :drop)}
+    ]
+
+    table_test "round trip <%= smpte_timecode %> @ <%= rate %>", round_trip_tc_table, test_case do
+      %{smpte_timecode: smpte_timecode, rate: rate} = test_case
+
+      assert {:ok, timecode} = Timecode.with_frames(smpte_timecode, rate)
+      assert Timecode.timecode(timecode) == smpte_timecode
+    end
+
+    table_test "round trip <%= smpte_timecode %> @ <%= rate %> | frames", round_trip_tc_table, test_case do
+      %{smpte_timecode: smpte_timecode, rate: rate} = test_case
+
+      assert {:ok, timecode} = Timecode.with_frames(smpte_timecode, rate)
+
+      frames = Timecode.frames(timecode)
+      assert {:ok, ^timecode} = Timecode.with_frames(frames, rate)
+    end
+
+    test "29.97 DF max frames == 24:00:00;00" do
+      assert {:ok, timecode} = Rates.f29_97_df() |> DropFrame.max_frames() |> Timecode.with_frames(Rates.f29_97_df())
+      assert Timecode.timecode(timecode) == "24:00:00;00"
+    end
+
+    test "59.94 DF max frames == 24:00:00;00" do
+      assert {:ok, timecode} = Rates.f59_94_df() |> DropFrame.max_frames() |> Timecode.with_frames(Rates.f59_94_df())
+      assert Timecode.timecode(timecode) == "24:00:00;00"
     end
 
     test "ParseTimecodeError - Format" do
@@ -698,11 +756,11 @@ defmodule Vtc.TimecodeTest.Parse do
       assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
     end
 
-    test "round | :off" do
-      {:ok, timecode} =
-        (PremiereTicks.per_second() - 1)
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24(), round: :off)
+    test "round | :off | allow_partial_frames" do
+      assert {:ok, timecode} =
+               (PremiereTicks.per_second() - 1)
+               |> then(&%PremiereTicks{in: &1})
+               |> Timecode.with_seconds(Rates.f24(), round: :off, allow_partial_frames?: true)
 
       assert timecode == %Timecode{
                seconds:
@@ -712,6 +770,19 @@ defmodule Vtc.TimecodeTest.Parse do
                  ),
                rate: Rates.f24()
              }
+    end
+
+    test "ParseTimecodeError when partial frames | round | :off" do
+      assert {:error, %Timecode.ParseError{} = error} =
+               (PremiereTicks.per_second() - 1)
+               |> then(&%PremiereTicks{in: &1})
+               |> Timecode.with_seconds(Rates.f24(), round: :off)
+
+      expected_message =
+        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+
+      assert :partial_frame == error.reason
+      assert Timecode.ParseError.message(error) == expected_message
     end
   end
 
@@ -771,10 +842,12 @@ defmodule Vtc.TimecodeTest.Parse do
       assert Timecode.frames(timecode, round: :ceil) == 24
     end
 
-    test "round: :off raises" do
+    test "round: :off, allow_partial_frames?: true raises" do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception = assert_raise ArgumentError, fn -> Timecode.frames(timecode, round: :off) end
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.frames(timecode, round: :off, allow_partial_frames?: true) end
+
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
@@ -820,10 +893,12 @@ defmodule Vtc.TimecodeTest.Parse do
       assert Timecode.timecode(timecode, round: :ceil) == "00:00:01:00"
     end
 
-    test "round: :off raises" do
+    test "round: :off, allow_partial_frames?: true raises" do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception = assert_raise ArgumentError, fn -> Timecode.timecode(timecode, round: :off) end
+      exception =
+        assert_raise ArgumentError, fn -> Timecode.timecode(timecode, round: :off, allow_partial_frames?: true) end
+
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
@@ -1062,6 +1137,7 @@ defmodule Vtc.TimecodeTest.Parse do
       timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception = assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
+
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end

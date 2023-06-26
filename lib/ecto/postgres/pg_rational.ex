@@ -132,29 +132,4 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   @spec dump(Ratio.t()) :: {:ok, db_record()} | :error
   def dump(%Ratio{} = rational), do: {:ok, {rational.numerator, rational.denominator}}
   def dump(_), do: :error
-
-  @doc section: :ecto_queries
-  @doc """
-  Serialize `Ratio` for use in a query fragment.
-
-  The fragment must explicitly cast the value to a `::rational` type.
-
-  ## Examples
-
-  ```elixir
-  alias Ecto.Query
-  require Ecto.Query
-
-  rational = Ratio.new(1, 2)
-  rational_sql = PgRational.dump!(rational)
-
-  Query.from(f in fragment("SELECT ? as r", ^rational_sql), select: f.r)
-  ```
-  """
-  @spec sql(Macro.t()) :: Macro.t()
-  defmacro sql(rational) do
-    quote do
-      type(^unquote(rational), unquote(__MODULE__))
-    end
-  end
 end
