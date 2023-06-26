@@ -143,7 +143,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   - `framerate`: for user-facing "public" functions that will have backwards
     compatibility guarantees and application code support.
 
-  - framerate_private`: for developer-only "private" functions that support the
+  - `framerate_private`: for developer-only "private" functions that support the
     functions in the "rational" schema. Will NOT have backwards compatibility guarantees
     NOR application code support.
 
