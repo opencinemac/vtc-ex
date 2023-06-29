@@ -436,7 +436,7 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
     end
   end
 
-  property "#lte?2 always matches compare/2" do
+  property "#lte?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
       a = Timecode.with_frames!(a_frames, Rates.f23_98())
       b = Timecode.with_frames!(b_frames, Rates.f23_98())
@@ -445,7 +445,7 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
     end
   end
 
-  property "#gt?2 always matches compare/2" do
+  property "#gt?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
       a = Timecode.with_frames!(a_frames, Rates.f23_98())
       b = Timecode.with_frames!(b_frames, Rates.f23_98())
@@ -454,7 +454,7 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
     end
   end
 
-  property "#gte?2 always matches frame comparson" do
+  property "#gte?/2 always matches frame comparson" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
       a = Timecode.with_frames!(a_frames, Rates.f23_98())
       b = Timecode.with_frames!(b_frames, Rates.f23_98())
