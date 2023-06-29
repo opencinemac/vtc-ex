@@ -222,4 +222,37 @@ defmodule Vtc.Ecto.Postgres.Utils do
     END $wrapper$;
     """
   end
+
+  @doc """
+  Returns a configuration option for a specific vtc Postgres type and Repo.
+  """
+  @spec get_type_config(Ecto.Repo.t(), atom(), atom(), Keyword.value()) :: Keyword.value()
+  def get_type_config(repo, type_name, opt, default),
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name) |> Keyword.get(opt, default)
+
+  @doc """
+  Returns a the public function prefix for a specific vtc Postgres type and Repo.
+  """
+  @spec type_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  def type_function_prefix(repo, type_name), do: calculate_prefix(repo, type_name, :functions_schema)
+
+  @spec type_private_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  def type_private_function_prefix(repo, type_name), do: calculate_prefix(repo, type_name, :functions_private_schema)
+
+  # Calculate a function prefix for a specific schema and vtc postgres type based on the
+  # Repo configuration.
+  @spec calculate_prefix(Ecto.Repo.t(), atom(), atom()) :: String.t()
+  defp calculate_prefix(repo, type_name, schema_config_opt) do
+    functions_schema = get_type_config(repo, type_name, schema_config_opt, :public)
+    custom_prefix = get_type_config(repo, type_name, :functions_prefix, "")
+
+    functions_prefix =
+      cond do
+        functions_schema == :public and custom_prefix == "" -> "rational_"
+        custom_prefix != "" -> "#{custom_prefix}_"
+        true -> ""
+      end
+
+    "#{functions_schema}.#{functions_prefix}"
+  end
 end

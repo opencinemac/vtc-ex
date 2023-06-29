@@ -162,7 +162,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function_prefix(Migration.repo())}with_seconds",
+        :"#{function(:with_seconds, Migration.repo())}",
         args: [seconds: :rational, rate: :framerate],
         declares: [rounded: :bigint],
         returns: :timecode,
@@ -233,20 +233,16 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     :ok
   end
 
-  # Fetches PgRational configuration option from `repo`'s configuration.
-  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
-  defp get_config(repo, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_timecode) |> Keyword.get(opt, default)
+  @doc """
+  Returns the config-qualified name of the function for this type.
+  """
+  @spec function(atom(), Ecto.Repo.t()) :: String.t()
+  def function(name, repo), do: "#{function_prefix(repo)}#{name}"
 
   @spec function_prefix(Ecto.Repo.t()) :: String.t()
-  defp function_prefix(repo) do
-    functions_schema = get_config(repo, :functions_schema, :public)
-    functions_prefix = get_config(repo, :functions_prefix, "")
+  defp function_prefix(repo), do: Postgres.Utils.type_function_prefix(repo, :pg_timecode)
 
-    functions_prefix = if functions_prefix == "" and functions_schema == :public, do: "rational", else: functions_prefix
-
-    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
-
-    "#{functions_schema}.#{functions_prefix}"
-  end
+  # Fetches PgRational configuration option from `repo`'s configuration.
+  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
+  defp get_config(repo, opt, default), do: Postgres.Utils.get_type_config(repo, :pg_timecode, opt, default)
 end

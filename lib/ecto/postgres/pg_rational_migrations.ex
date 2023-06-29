@@ -1034,24 +1034,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok
   end
 
-  # Fetches PgRational configuration option from `repo`'s configuration.
-  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
-  defp get_config(repo, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_rational) |> Keyword.get(opt, default)
-
-  @spec private_function_prefix(Ecto.Repo.t()) :: String.t()
-  defp private_function_prefix(repo) do
-    functions_private_schema = get_config(repo, :functions_private_schema, :public)
-    functions_prefix = get_config(repo, :functions_prefix, "")
-
-    functions_prefix =
-      if functions_prefix == "" and functions_private_schema == :public, do: "rational", else: functions_prefix
-
-    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
-
-    "#{functions_private_schema}.#{functions_prefix}"
-  end
-
   @doc """
   Returns the config-qualified name of the function for this type.
   """
@@ -1059,14 +1041,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def function(name, repo), do: "#{function_prefix(repo)}#{name}"
 
   @spec function_prefix(Ecto.Repo.t()) :: String.t()
-  defp function_prefix(repo) do
-    functions_schema = get_config(repo, :functions_schema, :public)
-    functions_prefix = get_config(repo, :functions_prefix, "")
+  defp function_prefix(repo), do: Postgres.Utils.type_function_prefix(repo, :pg_rational)
 
-    functions_prefix = if functions_prefix == "" and functions_schema == :public, do: "rational", else: functions_prefix
+  @spec private_function_prefix(Ecto.Repo.t()) :: String.t()
+  defp private_function_prefix(repo), do: Postgres.Utils.type_private_function_prefix(repo, :pg_rational)
 
-    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
-
-    "#{functions_schema}.#{functions_prefix}"
-  end
+  # Fetches PgRational configuration option from `repo`'s configuration.
+  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
+  defp get_config(repo, opt, default), do: Postgres.Utils.get_type_config(repo, :pg_rational, opt, default)
 end
