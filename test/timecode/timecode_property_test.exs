@@ -145,7 +145,7 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
     end
   end
 
-  property "rounded seconds is valid with roudning off" do
+  property "rounded seconds successfully parsed by `with_seconds`, round: off" do
     check all(
             seconds <- StreamDataVtc.rational(),
             framerate <- StreamDataVtc.framerate()
