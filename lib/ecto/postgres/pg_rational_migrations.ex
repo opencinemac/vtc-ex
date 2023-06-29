@@ -380,7 +380,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates Creates `rational_private.add(a, b)` backing function for the `+` operator
+  Creates `rational_private.add(a, b)` backing function for the `+` operator
   between two rationals.
   """
   @spec create_func_add() :: :ok
