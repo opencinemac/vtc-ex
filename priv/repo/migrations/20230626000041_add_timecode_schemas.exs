@@ -10,5 +10,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddTimecodeSchemas do
       add(:a, PgTimecode.type())
       add(:b, PgTimecode.type())
     end
+
+    :ok = PgTimecode.Migrations.create_field_constraints("timecodes_01", :b)
   end
 end

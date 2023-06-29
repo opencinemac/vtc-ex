@@ -46,7 +46,10 @@ defmodule Vtc.Utils.Rational do
     do: dividend |> Ratio.abs() |> divrem(divisor) |> then(fn {q, r} -> {-q, r} end)
 
   def divrem(dividend, divisor) do
-    quotient = dividend |> Ratio.new() |> Ratio.div(Ratio.new(divisor)) |> Ratio.floor()
+    dividend = Ratio.new(dividend)
+    divisor = Ratio.new(divisor)
+
+    quotient = dividend |> Ratio.div(divisor) |> Ratio.floor()
     remainder = Ratio.sub(dividend, Ratio.mult(divisor, Ratio.new(quotient)))
     {quotient, remainder}
   end

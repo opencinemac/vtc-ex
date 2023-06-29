@@ -7,6 +7,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   alias Ecto.Migration
   alias Ecto.Migration.Constraint
+  alias Vtc.Ecto.Postgres
 
   require Ecto.Migration
 
@@ -91,7 +92,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   def create_all do
     :ok = create_type_framerate_tags()
     :ok = create_type_framerate()
+
     :ok = create_function_schemas()
+
+    :ok = create_func_is_ntsc()
 
     :ok
   end
@@ -138,8 +142,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for framerate functions based on your repo's
-  settings.
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#create_all/0-configuring-database-objects)
+  section above.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
@@ -172,39 +177,84 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     :ok
   end
 
+  @doc section: :migrations_functions
+  @doc """
+  Creates `rational_private.simplify(rat)` function that simplifies a rational. Used at
+  the end of every rational operation to avoid overflows.
+  """
+  @spec create_func_is_ntsc() :: :ok
+  def create_func_is_ntsc do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{function(:is_ntsc, Migration.repo())}",
+        args: [input: :framerate],
+        returns: :boolean,
+        body: """
+        RETURN (
+          (input).tags @> '{drop}'::framerate_tags[]
+          OR (input).tags @> '{non_drop}'::framerate_tags[]
+        );
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
   @doc section: :migrations_constraints
   @doc """
-  Creates basic constraints for a [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`)
-  database field.
+  Creates basic constraints for a [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) /
+  [Framerate](`Vtc.Framerate`) database field.
+
+  ## Arguments
+
+  - `table`: The table to make the constraint on.
+
+  - `target_value`: The target value to check. Can be be any sql fragment that resolves
+    to a `framerate` value.
+
+  - `field`: The name of the field being validated. Can be omitted if `target_value`
+    is itself a field on `table`. This name is not used for anything but the constraint
+    names.
 
   ## Constraints created:
 
-  - `{field_name}_positive`: Checks that the playback speed is positive.
+  - `{field}_positive`: Checks that the playback speed is positive.
 
-  - `{field_name}_ntsc_tags`: Checks that only `drop` or `non_drop` is set.
+  - `{field}_ntsc_tags`: Checks that both `drop` and `non_drop` are not set at the same
+    time.
+
+  - `{field}_ntsc_valid`: Checks that NTSC framerates are mathematically sound, i.e.,
+    that the rate is equal to `(round(rate.playback) * 1000) / 1001`.
+
+  - `{field}_ntsc_drop_valid`: Checks that NTSC, drop-frame framerates are valid, i.e,
+    are cleanly divisible by `30_000/1001`.
 
   ## Examples
 
   ```elixir
   create table("my_table", primary_key: false) do
     add(:id, :uuid, primary_key: true, null: false)
-    add(:a, PgFramerate.type())
-    add(:b, PgFramerate.type())
+    add(:a, Framerate.type())
+    add(:b, Framerate.type())
   end
 
   PgRational.migration_add_field_constraints(:my_table, :a)
   PgRational.migration_add_field_constraints(:my_table, :b)
   ```
   """
-  @spec create_field_constraints(atom(), atom()) :: :ok
-  def create_field_constraints(table, field_name) do
+  @spec create_field_constraints(atom(), atom() | String.t(), atom() | String.t()) :: :ok
+  def create_field_constraints(table, target_value, field \\ nil) do
+    field = constraint_get_field_name(target_value, field)
+
     positive =
       Migration.constraint(
         table,
-        "#{field_name}_positive",
+        "#{field}_positive",
         check: """
-        (#{field_name}).playback.denominator > 0
-        AND (#{field_name}).playback.numerator > 0
+        (#{target_value}).playback.denominator > 0
+        AND (#{target_value}).playback.numerator > 0
         """
       )
 
@@ -213,18 +263,70 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     ntsc_tags =
       Migration.constraint(
         table,
-        "#{field_name}_ntsc_tags",
+        "#{field}_ntsc_tags",
         check: """
         NOT (
-          ((#{field_name}).tags) @> '{drop}'::framerate_tags[]
-          AND ((#{field_name}).tags) @> '{non_drop}'::framerate_tags[]
+          ((#{target_value}).tags) @> '{drop}'::framerate_tags[]
+          AND ((#{target_value}).tags) @> '{non_drop}'::framerate_tags[]
         )
         """
       )
 
     %Constraint{} = Migration.create(ntsc_tags)
 
+    ntsc_valid =
+      Migration.constraint(
+        table,
+        "#{field}_ntsc_valid",
+        check: """
+        NOT #{function(:is_ntsc, Migration.repo())}(#{target_value})
+        OR (
+            (
+              round((#{target_value}).playback.numerator::float / (#{target_value}).playback.denominator::float) * 1000,
+              1001
+            )::rational
+            = (#{target_value}).playback
+        )
+        """
+      )
+
+    %Constraint{} = Migration.create(ntsc_valid)
+
+    drop_valid =
+      Migration.constraint(
+        table,
+        "#{field}_ntsc_drop_valid",
+        check: """
+        NOT (#{target_value}).tags @> '{drop}'::framerate_tags[]
+        OR (#{target_value}).playback % (30000, 1001)::rational = (0, 1)::rational
+        """
+      )
+
+    %Constraint{} = Migration.create(drop_valid)
+
     :ok
+  end
+
+  @spec constraint_get_field_name(atom() | String.t(), atom() | String.t()) :: atom() | String.t()
+  defp constraint_get_field_name(target, nil), do: target
+  defp constraint_get_field_name(_, field_name), do: field_name
+
+  @doc """
+  Returns the config-qualified name of the function for this type.
+  """
+  @spec function(atom(), Ecto.Repo.t()) :: String.t()
+  def function(name, repo), do: "#{function_prefix(repo)}#{name}"
+
+  @spec function_prefix(Ecto.Repo.t()) :: String.t()
+  defp function_prefix(repo) do
+    functions_schema = get_config(repo, :functions_schema, :public)
+    functions_prefix = get_config(repo, :functions_prefix, "")
+
+    functions_prefix = if functions_prefix == "" and functions_schema == :public, do: "rational", else: functions_prefix
+
+    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
+
+    "#{functions_schema}.#{functions_prefix}"
   end
 
   # Fetches PgRational configuration option from `repo`'s configuration.

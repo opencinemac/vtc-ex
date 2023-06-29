@@ -491,6 +491,25 @@ defmodule Vtc.TimecodeTest.Parse do
       |> check_parsed(test_case)
     end
 
+    round_sub_1_fps_table = [
+      %{input: Ratio.new(3, 1), expected: Ratio.new(3, 1)},
+      %{input: Ratio.new(-3, 1), expected: Ratio.new(-3, 1)},
+      %{input: Ratio.new(2, 1), expected: Ratio.new(3, 1)},
+      %{input: Ratio.new(-2, 1), expected: Ratio.new(-3, 1)},
+      %{input: Ratio.new(1, 1), expected: Ratio.new(0, 1)},
+      %{input: Ratio.new(-1, 1), expected: Ratio.new(0, 1)},
+      %{input: Ratio.new(0, 1), expected: Ratio.new(0, 1)}
+    ]
+
+    table_test "round | :closest | <%= input %> @ 1/3 fps -> <%= expected %>", round_sub_1_fps_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      rate = Framerate.new!(Ratio.new(1, 3), ntsc: nil)
+
+      assert {:ok, result} = Timecode.with_seconds(input, rate)
+      assert result.seconds == expected
+    end
+
     test "round | :closest | implied" do
       {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24())
       assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}

@@ -4,6 +4,8 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
 
   alias Ecto.Changeset
   alias Ecto.Query
+  alias Vtc.Ecto.Postgres.PgRational
+  alias Vtc.Framerate
   alias Vtc.Rates
   alias Vtc.Test.Support.TimecodeSchema01
   alias Vtc.TestUtls.StreamDataVtc
@@ -295,7 +297,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
   end
 
   describe "#table serialization" do
-    table_test "can insert into field without constraints", serialization_table, test_case do
+    table_test "can insert <%= app_value %> without constraints", serialization_table, test_case do
       %{app_value: app_value} = test_case
 
       assert {:ok, inserted} =
@@ -312,6 +314,23 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
       assert record.b == nil
     end
 
+    table_test "can insert <%= app_value %> with constraints", serialization_table, test_case do
+      %{app_value: app_value} = test_case
+
+      assert {:ok, inserted} =
+               %TimecodeSchema01{}
+               |> TimecodeSchema01.changeset(%{b: app_value})
+               |> Repo.insert()
+
+      assert %TimecodeSchema01{} = inserted
+      assert inserted.a == nil
+      assert inserted.b == app_value
+
+      assert %TimecodeSchema01{} = record = Repo.get(TimecodeSchema01, inserted.id)
+      assert record.a == nil
+      assert record.b == app_value
+    end
+
     property "succeeds on good timecode" do
       check all(timecode <- StreamDataVtc.timecode()) do
         assert {:ok, inserted} =
@@ -326,6 +345,118 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
         assert %TimecodeSchema01{} = record = Repo.get(TimecodeSchema01, inserted.id)
         assert record.a == timecode
         assert record.b == timecode
+      end
+    end
+
+    bad_insert_table = [
+      %{
+        name: "framerate negative",
+        value: "((1, 1), ((-24, 1), '{}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_positive"
+      },
+      %{
+        name: "framerate zero ",
+        value: "((1, 1), ((0, 1), '{}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_positive"
+      },
+      %{
+        name: "framerate zero denominator",
+        value: "((1, 1), ((24, 0), '{}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_positive"
+      },
+      %{
+        name: "framerate negative denominator",
+        value: "((1, 1), ((1, -1), '{}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_positive"
+      },
+      %{
+        name: "framerate bad tag with constraints",
+        value: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        field: :b,
+        expected_code: :invalid_text_representation
+      },
+      %{
+        name: "framerate bad tag without constraints",
+        value: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        field: :a,
+        expected_code: :invalid_text_representation
+      },
+      %{
+        name: "framerate multiple ntsc tags",
+        value: "((0, 1), ((30000, 1001), '{drop, non_drop}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_ntsc_tags"
+      },
+      %{
+        name: "framerate bad ntsc rate",
+        value: "((1, 1), ((24, 1), '{non_drop}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_ntsc_valid"
+      },
+      %{
+        name: "framerate bad drop rate",
+        value: "((0, 1), ((24000, 1001), '{drop}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_rate_ntsc_drop_valid"
+      },
+      %{
+        name: "timecode bad seconds",
+        value: "((1, 1), ((24000, 1001), '{non_drop}'))",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_seconds_divisible_by_rate"
+      }
+    ]
+
+    table_test "error <%= name %>", bad_insert_table, test_case do
+      %{value: value, expected_code: expected_code, field: field} = test_case
+
+      value_str = "#{value}::timecode"
+      {a, b} = if field == :a, do: {value_str, "NULL"}, else: {"NULL", value_str}
+
+      id = Ecto.UUID.generate()
+      query = "INSERT INTO timecodes_01 (id, a, b) VALUES ('#{id}', #{a}, #{b})"
+
+      assert {:error, error} = Repo.query(query)
+      assert %Postgrex.Error{postgres: %{code: ^expected_code} = postgres} = error
+
+      if expected_code == :check_violation do
+        assert postgres.constraint == test_case.expected_constraint
+      end
+    end
+  end
+
+  describe "#Postgres timecode.with_seconds/2" do
+    property "matches Timecode.with_seconds/2" do
+      check all(
+              seconds <- StreamDataVtc.rational(),
+              framerate <- StreamDataVtc.framerate()
+            ) do
+        expected = Timecode.with_seconds!(seconds, framerate)
+
+        query =
+          Query.from(
+            f in fragment(
+              "SELECT timecode.with_seconds(?, ?) as r",
+              type(^seconds, PgRational),
+              type(^framerate, Framerate)
+            ),
+            select: f.r
+          )
+
+        assert record = Repo.one!(query)
+        assert {:ok, ^expected} = Timecode.load(record)
       end
     end
   end

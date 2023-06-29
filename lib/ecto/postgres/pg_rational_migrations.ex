@@ -112,16 +112,19 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok = create_func_simplify()
 
     :ok = create_func_minus()
+    :ok = create_func_abs()
     :ok = create_func_round()
     :ok = create_func_add()
     :ok = create_func_sub()
     :ok = create_func_mult()
     :ok = create_func_div()
+    :ok = create_func_modulo()
 
     :ok = create_op_add()
     :ok = create_op_sub()
     :ok = create_op_mult()
     :ok = create_op_div()
+    :ok = create_op_modulo()
 
     :ok = create_func_cmp()
     :ok = create_func_eq()
@@ -173,8 +176,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for timecode functions based on your repo's
-  settings.
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
+  section above.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
@@ -258,14 +262,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
           numerator: {:bigint, "input.numerator / gcd"}
         ],
         body: """
-        SELECT (
-          CASE
-            WHEN input.denominator < 0 THEN numerator * -1
-            ELSE numerator
-          END
-        ) INTO numerator;
-
-        RETURN (numerator, denominator)::rational;
+        IF (input).denominator < 0 THEN
+          RETURN  (numerator * -1, denominator);
+        ELSE
+          RETURN (numerator, denominator);
+        END IF;
         """
       )
 
@@ -283,11 +284,33 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_minus do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function_prefix(Migration.repo())}minus",
+        :"#{function(:minus, Migration.repo())}",
         args: [input: :rational],
         returns: :rational,
         body: """
         RETURN ((input).numerator * -1, (input).denominator)::rational;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `rational.abs(rat)` function that returns the absolute value of the rational
+  value.
+  """
+  @spec create_func_abs() :: :ok
+  def create_func_abs do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        :"#{function(:abs, Migration.repo())}",
+        args: [input: :rational],
+        returns: :rational,
+        body: """
+        RETURN (ABS((input).numerator), ABS((input).denominator))::rational;
         """
       )
 
@@ -305,7 +328,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_round do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function_prefix(Migration.repo())}round",
+        :"#{function(:round, Migration.repo())}",
         args: [input: :rational],
         declares: [result: :bigint],
         returns: :bigint,
@@ -313,8 +336,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         SELECT (
           CASE
             WHEN (input).numerator < 0 THEN
-              #{function_prefix(Migration.repo())}round(
-                #{function_prefix(Migration.repo())}minus(input)
+              #{function(:round, Migration.repo())}(
+                #{function(:minus, Migration.repo())}(input)
               ) * -1
             WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
               (input).numerator / (input).denominator
@@ -455,6 +478,42 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         returns: :rational,
         body: """
         RETURN result;
+        """
+      )
+
+    :ok = Migration.execute(create_func)
+
+    :ok
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.modulo(a, b)` backing function for the `%` operator
+  between two rationals.
+  """
+  @spec create_func_modulo() :: :ok
+  def create_func_modulo do
+    abs = function(:abs, Migration.repo())
+    minus = function(:minus, Migration.repo())
+
+    create_func =
+      "#{private_function_prefix(Migration.repo())}modulo"
+      |> :erlang.binary_to_atom(:utf8)
+      |> Postgres.Utils.create_plpgsql_function(
+        args: [dividend: :rational, divisor: :rational],
+        declares: [
+          dividend_abs: {:rational, "#{abs}(dividend)"},
+          quotient: {:rational, "dividend_abs / divisor"},
+          quotient_floored: {:rational, "(floor((quotient).numerator::float / (quotient).denominator), 1)"},
+          remainder: {:rational, "dividend_abs - (divisor * quotient_floored)"}
+        ],
+        returns: :rational,
+        body: """
+        IF (divisor).numerator < 0 THEN
+          RETURN #{minus}(#{abs}(remainder));
+        ELSE
+          RETURN remainder;
+        END IF;
         """
       )
 
@@ -721,6 +780,25 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     :ok
   end
 
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `%` operator.
+  """
+  @spec create_op_modulo() :: :ok
+  def create_op_modulo do
+    create_op =
+      Postgres.Utils.create_operator(
+        :%,
+        :rational,
+        :rational,
+        :"#{private_function_prefix(Migration.repo())}modulo"
+      )
+
+    :ok = Migration.execute(create_op)
+
+    :ok
+  end
+
   ## COMPARISON OPS
 
   @doc section: :migrations_operators
@@ -973,6 +1051,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
     "#{functions_private_schema}.#{functions_prefix}"
   end
+
+  @doc """
+  Returns the config-qualified name of the function for this type.
+  """
+  @spec function(atom(), Ecto.Repo.t()) :: String.t()
+  def function(name, repo), do: "#{function_prefix(repo)}#{name}"
 
   @spec function_prefix(Ecto.Repo.t()) :: String.t()
   defp function_prefix(repo) do

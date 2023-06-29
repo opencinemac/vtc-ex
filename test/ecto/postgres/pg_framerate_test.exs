@@ -357,7 +357,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       },
       %{
         name: "zero denominator",
-        value: "((24000, 0), '{non_drop}')",
+        value: "((24, 0), '{}')",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_positive"
@@ -370,23 +370,37 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
         expected_constraint: "b_positive"
       },
       %{
-        name: "bad tag with and without constraints",
+        name: "bad tag with constraints",
         value: "((24000, 1001), '{bad_tag}')",
         field: :b,
         expected_code: :invalid_text_representation
       },
       %{
+        name: "bad tag without constraints",
+        value: "((24000, 1001), '{bad_tag}')",
+        field: :a,
+        expected_code: :invalid_text_representation
+      },
+      %{
         name: "multiple ntsc tags",
-        value: "((24000, 1001), '{drop, non_drop}')",
+        value: "((30000, 1001), '{drop, non_drop}')",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_ntsc_tags"
       },
       %{
-        name: "bad tag with and without constraints",
-        value: "((24000, 1001), '{bad_tag}')",
-        field: :a,
-        expected_code: :invalid_text_representation
+        name: "bad ntsc rate",
+        value: "((24, 1), '{non_drop}')",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_ntsc_valid"
+      },
+      %{
+        name: "bad drop rate",
+        value: "((24000, 1001), '{drop}')",
+        field: :b,
+        expected_code: :check_violation,
+        expected_constraint: "b_ntsc_drop_valid"
       }
     ]
 

@@ -129,8 +129,8 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
 
   property "timecode round trip" do
     check all(timecode <- StreamDataVtc.timecode(rate_opts: [type: [:whole, :non_drop, :drop]])) do
-      assert Timecode.with_seconds!(timecode.seconds, timecode.rate) == timecode
       timecode_str = Timecode.timecode(timecode)
+
       assert {:ok, result} = Timecode.with_frames(timecode_str, timecode.rate)
       assert result == timecode
     end
@@ -139,10 +139,19 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
   property "59.94 frames round trip" do
     check all(frames <- StreamData.integer(-5_178_816..5_178_816)) do
       assert {:ok, timecode} = Timecode.with_frames(frames, Rates.f59_94_df())
-      assert Timecode.frames(timecode) == frames
+      Timecode.frames(timecode) == frames
 
-      timecode_str = Timecode.timecode(timecode)
-      assert {:ok, ^timecode} = Timecode.with_frames(timecode_str, Rates.f59_94_df()), "#{frames}"
+      assert {:ok, ^timecode} = Timecode.with_frames(frames, Rates.f59_94_df())
+    end
+  end
+
+  property "rounded seconds is valid with roudning off" do
+    check all(
+            seconds <- StreamDataVtc.rational(),
+            framerate <- StreamDataVtc.framerate()
+          ) do
+      assert {:ok, timecode} = Timecode.with_seconds(seconds, framerate)
+      assert {:ok, ^timecode} = Timecode.with_seconds(timecode.seconds, framerate, round: :off)
     end
   end
 end

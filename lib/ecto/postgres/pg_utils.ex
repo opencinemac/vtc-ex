@@ -138,6 +138,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
         CREATE FUNCTION #{name}(#{args})
           RETURNS #{returns}
           LANGUAGE plpgsql
+          STRICT
           IMMUTABLE
           LEAKPROOF
           PARALLEL SAFE

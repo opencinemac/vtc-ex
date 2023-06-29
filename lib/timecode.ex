@@ -240,8 +240,11 @@ defmodule Vtc.Timecode do
   "<00:00:01:00 <23.98 NTSC>>"
   ```
   """
-  @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round(), allow_partial_frames?: boolean()]) ::
-          parse_result()
+  @spec with_seconds(
+          Seconds.t(),
+          Framerate.t(),
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+        ) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
     allow_partial_frames? = Keyword.get(opts, :allow_partial_frames?, false)
@@ -258,11 +261,14 @@ defmodule Vtc.Timecode do
   defp with_seconds_round_to_frame(seconds, _, :off), do: seconds
 
   defp with_seconds_round_to_frame(seconds, rate, round) do
-    case Ratio.div(seconds, rate.playback) do
-      %Ratio{denominator: 1} ->
+    divided = Ratio.div(seconds, rate.playback)
+    positive? = Ratio.gte?(rate.playback, %Ratio{numerator: 1, denominator: 1})
+
+    case {positive?, divided} do
+      {true, %{denominator: 1}} ->
         seconds
 
-      %Ratio{} ->
+      _ ->
         rate.playback
         |> Ratio.mult(seconds)
         |> Rational.round(round)
