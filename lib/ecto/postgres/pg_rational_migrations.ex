@@ -6,6 +6,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
+  alias Ecto.Migration.Constraint
   alias Vtc.Ecto.Postgres
 
   require Ecto.Migration
@@ -105,48 +106,46 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_all() :: :ok
   def create_all do
-    :ok = create_type()
-    :ok = create_function_schemas()
+    create_type()
+    create_function_schemas()
 
-    :ok = create_func_greatest_common_denominator()
-    :ok = create_func_simplify()
+    create_func_greatest_common_denominator()
+    create_func_simplify()
 
-    :ok = create_func_minus()
-    :ok = create_func_abs()
-    :ok = create_func_round()
-    :ok = create_func_add()
-    :ok = create_func_sub()
-    :ok = create_func_mult()
-    :ok = create_func_div()
-    :ok = create_func_modulo()
+    create_func_minus()
+    create_func_abs()
+    create_func_round()
+    create_func_add()
+    create_func_sub()
+    create_func_mult()
+    create_func_div()
+    create_func_modulo()
 
-    :ok = create_op_add()
-    :ok = create_op_sub()
-    :ok = create_op_mult()
-    :ok = create_op_div()
-    :ok = create_op_modulo()
+    create_op_add()
+    create_op_sub()
+    create_op_mult()
+    create_op_div()
+    create_op_modulo()
 
-    :ok = create_func_cmp()
-    :ok = create_func_eq()
-    :ok = create_func_neq()
-    :ok = create_func_lt()
-    :ok = create_func_lte()
-    :ok = create_func_gt()
-    :ok = create_func_gte()
+    create_func_cmp()
+    create_func_eq()
+    create_func_neq()
+    create_func_lt()
+    create_func_lte()
+    create_func_gt()
+    create_func_gte()
 
-    :ok = create_op_eq()
-    :ok = create_op_neq()
-    :ok = create_op_neq2()
-    :ok = create_op_lt()
-    :ok = create_op_lte()
-    :ok = create_op_gt()
-    :ok = create_op_gte()
-    :ok = create_op_class_btree()
+    create_op_eq()
+    create_op_neq()
+    create_op_neq2()
+    create_op_lt()
+    create_op_lte()
+    create_op_gt()
+    create_op_gte()
+    create_op_class_btree()
 
-    :ok = create_func_cast_to_double_precison()
-    :ok = create_cast_double_precision()
-
-    :ok
+    create_func_cast_to_double_precison()
+    create_cast_double_precision()
   end
 
   @doc section: :migrations_types
@@ -159,19 +158,16 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_type() :: :ok
   def create_type do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE rational AS (
-            numerator bigint,
-            denominator bigint
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE rational AS (
+          numerator bigint,
+          denominator bigint
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
@@ -185,27 +181,25 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     functions_schema = get_config(Migration.repo(), :functions_schema, :public)
 
     if functions_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
 
     if functions_private_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_private_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     :ok
@@ -237,9 +231,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -270,9 +262,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -292,9 +282,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -314,9 +302,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -350,9 +336,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -371,9 +355,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   ## ARITHMATIC BACKING FUNCS
@@ -400,9 +382,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -427,9 +407,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -454,9 +432,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -481,9 +457,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -517,9 +491,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   ## COMPARISON BACKING FUNCS
@@ -559,9 +531,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -580,9 +550,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -601,9 +569,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -622,9 +588,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -648,9 +612,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -669,9 +631,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -695,9 +655,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   ## ARITHMATIC OPS
@@ -717,9 +675,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         commutator: :+
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -736,9 +692,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :"#{private_function_prefix(Migration.repo())}sub"
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -756,9 +710,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         commutator: :*
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -775,9 +727,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :"#{private_function_prefix(Migration.repo())}div"
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -794,9 +744,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :"#{private_function_prefix(Migration.repo())}modulo"
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   ## COMPARISON OPS
@@ -817,9 +765,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :<>
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -838,9 +784,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -859,9 +803,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -880,9 +822,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :>=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -901,9 +841,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :>
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -922,9 +860,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :<=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -943,9 +879,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         negator: :<
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   ## OPERATOR CLASSES
@@ -968,9 +902,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         ]
       )
 
-    :ok = Migration.execute(create_class)
-
-    :ok
+    Migration.execute(create_class)
   end
 
   ## CASTS
@@ -992,9 +924,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :"#{private_function_prefix(Migration.repo())}cast_to_float"
       )
 
-    :ok = Migration.execute(create_cast)
-
-    :ok
+    Migration.execute(create_cast)
   end
 
   @doc section: :migrations_constraints
@@ -1021,7 +951,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_field_constraints(atom(), atom()) :: :ok
   def create_field_constraints(table, field_name) do
-    Migration.create(
+    constraint =
       Migration.constraint(
         table,
         "#{field_name}_denominator_positive",
@@ -1029,7 +959,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         (#{field_name}).denominator > 0
         """
       )
-    )
+
+    %Constraint{} = Migration.create(constraint)
 
     :ok
   end

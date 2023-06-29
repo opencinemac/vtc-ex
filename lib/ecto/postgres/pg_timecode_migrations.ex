@@ -6,7 +6,6 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
-  alias Ecto.Migration.Constraint
   alias Vtc.Ecto.Postgres
   alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Ecto.Postgres.PgRational
@@ -85,12 +84,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   """
   @spec create_all() :: :ok
   def create_all do
-    :ok = create_type_timecode()
-    :ok = create_function_schemas()
+    create_type_timecode()
+    create_function_schemas()
 
-    :ok = create_func_with_seconds()
-
-    :ok
+    create_func_with_seconds()
   end
 
   @doc section: :migrations_types
@@ -99,19 +96,16 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   """
   @spec create_type_timecode() :: :ok
   def create_type_timecode do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE timecode AS (
-            seconds rational,
-            rate framerate
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE timecode AS (
+          seconds rational,
+          rate framerate
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
@@ -125,27 +119,25 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     functions_schema = get_config(Migration.repo(), :functions_schema, :public)
 
     if functions_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
 
     if functions_private_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_private_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     :ok
@@ -176,9 +168,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_constraints
@@ -217,7 +207,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   """
   @spec create_field_constraints(atom(), atom()) :: :ok
   def create_field_constraints(table, field) do
-    :ok = PgFramerate.Migrations.create_field_constraints(table, "(#{field}).rate", :"#{field}_rate")
+    PgFramerate.Migrations.create_field_constraints(table, "(#{field}).rate", :"#{field}_rate")
 
     seconds_divisible_by_rate =
       Migration.constraint(
@@ -228,7 +218,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
         """
       )
 
-    %Constraint{} = Migration.create(seconds_divisible_by_rate)
+    Migration.create(seconds_divisible_by_rate)
 
     :ok
   end

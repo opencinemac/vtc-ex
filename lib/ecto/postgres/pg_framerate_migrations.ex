@@ -6,7 +6,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
-  alias Ecto.Migration.Constraint
   alias Vtc.Ecto.Postgres
 
   require Ecto.Migration
@@ -90,14 +89,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec create_all() :: :ok
   def create_all do
-    :ok = create_type_framerate_tags()
-    :ok = create_type_framerate()
+    create_type_framerate_tags()
+    create_type_framerate()
 
-    :ok = create_function_schemas()
+    create_function_schemas()
 
-    :ok = create_func_is_ntsc()
-
-    :ok
+    create_func_is_ntsc()
   end
 
   @doc section: :migrations_types
@@ -106,17 +103,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec create_type_framerate_tags() :: :ok
   def create_type_framerate_tags do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE framerate_tags AS ENUM (
-            'drop',
-            'non_drop'
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE framerate_tags AS ENUM (
+          'drop',
+          'non_drop'
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
@@ -125,19 +121,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec create_type_framerate() :: :ok
   def create_type_framerate do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE framerate AS (
-            playback rational,
-            tags framerate_tags[]
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE framerate AS (
+          playback rational,
+          tags framerate_tags[]
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
@@ -151,27 +144,25 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     functions_schema = get_config(Migration.repo(), :functions_schema, :public)
 
     if functions_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
 
     if functions_private_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_private_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     :ok
@@ -197,9 +188,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_constraints
@@ -258,7 +247,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         """
       )
 
-    %Constraint{} = Migration.create(positive)
+    Migration.create(positive)
 
     ntsc_tags =
       Migration.constraint(
@@ -272,7 +261,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         """
       )
 
-    %Constraint{} = Migration.create(ntsc_tags)
+    Migration.create(ntsc_tags)
 
     ntsc_valid =
       Migration.constraint(
@@ -290,7 +279,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         """
       )
 
-    %Constraint{} = Migration.create(ntsc_valid)
+    Migration.create(ntsc_valid)
 
     drop_valid =
       Migration.constraint(
@@ -302,7 +291,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         """
       )
 
-    %Constraint{} = Migration.create(drop_valid)
+    Migration.create(drop_valid)
 
     :ok
   end
