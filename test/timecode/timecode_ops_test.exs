@@ -399,7 +399,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :floor],
-        description: "positive",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
@@ -413,7 +413,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :ceil],
-        description: "positive",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
@@ -425,16 +425,9 @@ defmodule Vtc.TimecodeTest.Ops do
       },
       %{
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "",
-        expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      },
-      %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
-        description: "positive",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
@@ -443,6 +436,20 @@ defmodule Vtc.TimecodeTest.Ops do
         opts: [round: :trunc],
         description: "negative",
         expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-235, 240), rate: Rates.f24()}
       }
     ]
 
@@ -586,7 +593,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :floor],
-        description: "postivie",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
@@ -600,7 +607,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :ceil],
-        description: "positive",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
@@ -614,7 +621,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :trunc],
-        description: "positive",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
@@ -630,6 +637,13 @@ defmodule Vtc.TimecodeTest.Ops do
         opts: [round: :off, allow_partial_frames?: true],
         description: "",
         expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-245, 240), rate: Rates.f24()}
       }
     ]
 
@@ -684,52 +698,96 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.mult(a, b) == expected
     end
 
-    test "round | :closest | implied" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(235, 240)
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+    round_table = [
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(235, 240),
+        opts: [],
+        description: ":closest implicit",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-235, 240),
+        opts: [],
+        description: ":closest implicit negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(235, 240),
+        opts: [round: :closest],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-235, 240),
+        opts: [round: :closest],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(234, 240),
+        opts: [round: :closest],
+        description: "towards zero",
+        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-234, 240),
+        opts: [round: :closest],
+        description: "towards zero negative",
+        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(239, 240),
+        opts: [round: :floor],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-231, 240),
+        opts: [round: :floor],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(231, 240),
+        opts: [round: :ceil],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-239, 240),
+        opts: [round: :ceil],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(239, 240),
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: Ratio.new(-239, 240),
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-239, 240), rate: Rates.f24()}
+      }
+    ]
 
-      assert Timecode.mult(a, b) == expected
-    end
-
-    test "round | :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(235, 240)
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      assert Timecode.mult(a, b, round: :closest) == expected
-    end
-
-    test "round | :closest | down" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(234, 240)
-      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-
-      assert Timecode.mult(a, b, round: :closest) == expected
-    end
-
-    test "round | :floor" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(239, 240)
-      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-
-      assert Timecode.mult(a, b, round: :floor) == expected
-    end
-
-    test "round | :ceil" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(231, 240)
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      assert Timecode.mult(a, b, round: :ceil) == expected
-    end
-
-    test "round | :off | allow_partial_frames" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = Ratio.new(239, 240)
-      expected = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
-
-      assert Timecode.mult(a, b, round: :off, allow_partial_frames?: true) == expected
+    table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      assert Timecode.mult(a, b, opts) == expected
     end
 
     test "error | round | :off" do
@@ -773,52 +831,82 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.div(a, b) == expected
     end
 
-    test "round | :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 48
-      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    round_table = [
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 48,
+        opts: [round: :closest],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: 48,
+        opts: [round: :closest],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 48 * 2,
+        opts: [round: :closest],
+        description: "towards zero",
+        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: -48 * 2,
+        opts: [round: :closest],
+        description: "towards zero negative",
+        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 36,
+        opts: [round: :floor],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: -36,
+        opts: [round: :floor],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 48 * 2,
+        opts: [round: :ceil],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: -48 * 2,
+        opts: [round: :ceil],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 48,
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: 48,
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
+      }
+    ]
 
-      assert Timecode.div(a, b, round: :closest) == expected
-    end
-
-    test "round | :closest | down" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 48 * 2
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.div(a, b, round: :closest) == expected
-    end
-
-    test "round | :floor" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 36
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.div(a, b, round: :floor) == expected
-    end
-
-    test "round | :floor | :implied" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 36
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.div(a, b) == expected
-    end
-
-    test "round | :ceil" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 48 * 2
-      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.div(a, b, round: :ceil) == expected
-    end
-
-    test "round | :off | allow_partial_frames" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = 48
-      expected = %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
-
-      assert Timecode.div(a, b, round: :off, allow_partial_frames?: true) == expected
+    table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      assert Timecode.div(a, b, opts) == expected
     end
 
     test "error | round | :off" do
@@ -834,165 +922,281 @@ defmodule Vtc.TimecodeTest.Ops do
     %{
       dividend: {"01:00:00:00", Rates.f24()},
       divisor: 2,
-      expected_quotient: {"00:30:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:00", Rates.f24()}
+      expected_q: {"00:30:00:00", Rates.f24()},
+      expected_r: {"00:00:00:00", Rates.f24()}
     },
     %{
       dividend: {"-01:00:00:00", Rates.f24()},
       divisor: 2,
-      expected_quotient: {"-00:30:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:00", Rates.f24()}
+      expected_q: {"-00:30:00:00", Rates.f24()},
+      expected_r: {"00:00:00:00", Rates.f24()}
     },
     %{
       dividend: "01:00:00:00",
       divisor: 2,
-      expected_quotient: "00:30:00:00",
-      expected_remainder: "00:00:00:00"
+      expected_q: "00:30:00:00",
+      expected_r: "00:00:00:00"
     },
     %{
       dividend: {"01:00:00:01", Rates.f24()},
       divisor: 2,
-      expected_quotient: {"00:30:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:01", Rates.f24()}
+      expected_q: {"00:30:00:00", Rates.f24()},
+      expected_r: {"00:00:00:01", Rates.f24()}
     },
     %{
       dividend: {"-01:00:00:01", Rates.f24()},
       divisor: 2,
-      expected_quotient: {"-00:30:00:00", Rates.f24()},
-      expected_remainder: {"-00:00:00:01", Rates.f24()}
+      expected_q: {"-00:30:00:00", Rates.f24()},
+      expected_r: {"-00:00:00:01", Rates.f24()}
     },
     %{
       dividend: {"-01:00:00:01", Rates.f24()},
       divisor: -2,
-      expected_quotient: {"00:30:00:00", Rates.f24()},
-      expected_remainder: {"-00:00:00:01", Rates.f24()}
+      expected_q: {"00:30:00:00", Rates.f24()},
+      expected_r: {"-00:00:00:01", Rates.f24()}
     },
     %{
       dividend: "01:00:00:01",
       divisor: 2,
-      expected_quotient: "00:30:00:00",
-      expected_remainder: "00:00:00:01"
+      expected_q: "00:30:00:00",
+      expected_r: "00:00:00:01"
     },
     %{
       dividend: {"01:00:00:01", Rates.f24()},
       divisor: 4,
-      expected_quotient: {"00:15:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:01", Rates.f24()}
+      expected_q: {"00:15:00:00", Rates.f24()},
+      expected_r: {"00:00:00:01", Rates.f24()}
     },
     %{
       dividend: "01:00:00:01",
       divisor: 4,
-      expected_quotient: "00:15:00:00",
-      expected_remainder: "00:00:00:01"
+      expected_q: "00:15:00:00",
+      expected_r: "00:00:00:01"
     },
     %{
       dividend: "01:00:00:02",
       divisor: 4,
-      expected_quotient: "00:15:00:00",
-      expected_remainder: "00:00:00:02"
+      expected_q: "00:15:00:00",
+      expected_r: "00:00:00:02"
     },
     %{
       dividend: {"01:00:00:01", Rates.f24()},
       divisor: 1.5,
-      expected_quotient: {"00:40:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:01", Rates.f24()}
+      expected_q: {"00:40:00:00", Rates.f24()},
+      expected_r: {"00:00:00:01", Rates.f24()}
     },
     %{
       dividend: "01:00:00:01",
       divisor: 1.5,
-      expected_quotient: "00:40:00:00",
-      expected_remainder: "00:00:00:01"
+      expected_q: "00:40:00:00",
+      expected_r: "00:00:00:01"
+    }
+  ]
+
+  divrem_round_table = [
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [],
+      description: "round frames closest implicit",
+      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [],
+      description: "round frames closest implicit negative",
+      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :closest],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :closest],
+      description: "negative",
+      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :closest],
+      description: "towards zero",
+      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-234, 240), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :closest],
+      description: "towards zero negative",
+      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :floor],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :floor],
+      description: "frames negative",
+      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -1,
+      opts: [round_frames: :floor],
+      description: "dvisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :ceil],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :ceil],
+      description: "frames negative",
+      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -1,
+      opts: [round_frames: :ceil],
+      description: "divisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :trunc],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(-239, 240), rate: Rates.f24()},
+      b: 1,
+      opts: [round_frames: :trunc],
+      description: "dividend negative",
+      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()},
+      b: -1,
+      opts: [round_frames: :trunc],
+      description: "divisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 5 / 3,
+      opts: [],
+      description: "rem closest implicit",
+      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -5 / 3,
+      opts: [],
+      description: "rem closest implicit negative",
+      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 5 / 3,
+      opts: [round_remainder: :closest],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -5 / 3,
+      opts: [round_remainder: :closest],
+      description: "divisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 5 / 3,
+      opts: [round_remainder: :ceil],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -5 / 3,
+      opts: [round_remainder: :ceil],
+      description: "divisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: 5 / 3,
+      opts: [round_remainder: :floor],
+      description: "",
+      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+    },
+    %{
+      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      b: -5 / 3,
+      opts: [round_remainder: :floor],
+      description: "divisor negative",
+      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
     }
   ]
 
   describe "#divrem/2" do
     setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:dividend, :expected_quotient, :expected_remainder]
+    @describetag timecodes: [:dividend, :expected_q, :expected_r]
 
-    table_test "<%= dividend %> /% <%= divisor %> == <%= expected_quotient %>, <%= expected_remainder %>",
-               divrem_table,
-               test_case do
-      %{
-        dividend: dividend,
-        divisor: divisor,
-        expected_quotient: expected_quotient,
-        expected_remainder: expected_remainder
-      } = test_case
+    table_test "<%= dividend %> /% <%= divisor %> == <%= expected_q %>, <%= expected_r %>", divrem_table, test_case do
+      %{dividend: dividend, divisor: divisor, expected_q: expected_quotient, expected_r: expected_remainder} = test_case
 
       result = Timecode.divrem(dividend, divisor)
       assert result == {expected_quotient, expected_remainder}
     end
 
-    test "round | frames :closest | implicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected_q = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+    table_test "opts: | <%= opts %> <%= description %>", divrem_round_table, test_case do
+      %{a: a, b: b, opts: opts, expected_q: expected_quotient, expected_r: expected_remainder} = test_case
 
-      assert Timecode.divrem(a, b) == {expected_q, expected_r}
-    end
-
-    test "round | frames :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected_q = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_frames: :closest) == {expected_q, expected_r}
-    end
-
-    test "round | frames :floor" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected_q = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_frames: :floor) == {expected_q, expected_r}
-    end
-
-    test "round | frames :ceil" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected_q = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_frames: :ceil) == {expected_q, expected_r}
-    end
-
-    test "round | rem :closest | implicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b) == {expected_q, expected_r}
-    end
-
-    test "round | rem :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_remainder: :closest) == {expected_q, expected_r}
-    end
-
-    test "round | rem :ceil" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_remainder: :ceil) == {expected_q, expected_r}
-    end
-
-    test "round | rem :floor" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected_q = %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()}
-      expected_r = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
-
-      assert Timecode.divrem(a, b, round_remainder: :floor) == {expected_q, expected_r}
+      assert {quotient, remainder} = Timecode.divrem(a, b, opts)
+      assert quotient == expected_quotient
+      assert remainder == expected_remainder
     end
 
     test "round | frames :off | raises" do
@@ -1015,80 +1219,16 @@ defmodule Vtc.TimecodeTest.Ops do
 
   describe "#rem/2" do
     setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:dividend, :expected_quotient, :expected_remainder]
+    @describetag timecodes: [:dividend, :expected_q, :expected_r]
 
-    table_test "<%= dividend %> % <%= divisor %> == <%= expected_remainder %>", divrem_table, test_case do
-      %{
-        dividend: dividend,
-        divisor: divisor,
-        expected_remainder: expected
-      } = test_case
-
+    table_test "<%= dividend %> % <%= divisor %> == <%= expected_r %>", divrem_table, test_case do
+      %{dividend: dividend, divisor: divisor, expected_r: expected} = test_case
       assert Timecode.rem(dividend, divisor) == expected
     end
 
-    test "round | frames :closest | implicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b) == expected
-    end
-
-    test "round | frames :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_frames: :closest) == expected
-    end
-
-    test "round | frames :floor" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_frames: :floor) == expected
-    end
-
-    test "round | frames :ceil" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 1
-      expected = %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_frames: :ceil) == expected
-    end
-
-    test "round | rem :closest | implicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b) == expected
-    end
-
-    test "round | rem :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_remainder: :closest) == expected
-    end
-
-    test "round | rem :ceil" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected = %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_remainder: :ceil) == expected
-    end
-
-    test "round | rem :floor" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
-      b = 5 / 3
-      expected = %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
-
-      assert Timecode.rem(a, b, round_remainder: :floor) == expected
+    table_test "opts: | <%= opts %> <%= description %>", divrem_round_table, test_case do
+      %{a: a, b: b, opts: opts, expected_r: expected_remainder} = test_case
+      assert Timecode.rem(a, b, opts) == expected_remainder
     end
 
     test "round | frames :off | raises" do

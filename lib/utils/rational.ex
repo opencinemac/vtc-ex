@@ -36,7 +36,7 @@ defmodule Vtc.Utils.Rational do
   # implementation, only rounds up rather than down:
   # https://github.com/python/cpython/blob/3.11/Lib/fractions.py
   @spec round_closest(integer(), pos_integer()) :: integer()
-  defp round_closest(n, d) when n < 0, do: -round_closest(-n, d)
+  defp round_closest(n, d) when n * d < 0, do: -round_closest(-n, d)
   defp round_closest(n, d) when Kernel.rem(n, d) * 2 < d, do: div(n, d)
   defp round_closest(n, d), do: div(n, d) + 1
 
