@@ -53,7 +53,8 @@ defmodule Vtc.Test.Support.TestCase do
     Enum.map(timecodes, fn {field_name, value} -> {field_name, setup_timecode(value)} end)
   end
 
-  @spec setup_timecode(Frames.t() | {Frames.t(), Framerate.t()}) :: Timecode.t()
+  @spec setup_timecode(Timecode.t() | Frames.t() | {Frames.t(), Framerate.t()}) :: Timecode.t()
+  defp setup_timecode(%Timecode{} = value), do: value
   defp setup_timecode({frames, rate}), do: Timecode.with_frames!(frames, rate)
   defp setup_timecode(frames), do: setup_timecode({frames, Rates.f23_98()})
 
