@@ -141,7 +141,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
-    functions_schema = get_config(Migration.repo(), :functions_schema, :public)
+    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_framerate, :functions_schema, :public)
 
     if functions_schema != :public do
       Migration.execute("""
@@ -153,7 +153,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
       """)
     end
 
-    functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
+    functions_private_schema =
+      Postgres.Utils.get_type_config(Migration.repo(), :pg_framerate, :functions_private_schema, :public)
 
     if functions_private_schema != :public do
       Migration.execute("""
@@ -177,7 +178,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   def create_func_is_ntsc do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function(:is_ntsc, Migration.repo())}",
+        function(:is_ntsc, Migration.repo()),
         args: [input: :framerate],
         returns: :boolean,
         body: """
@@ -235,7 +236,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec create_field_constraints(atom(), atom() | String.t(), atom() | String.t()) :: :ok
   def create_field_constraints(table, target_value, field \\ nil) do
-    field = constraint_get_field_name(target_value, field)
+    field =
+      case {target_value, field} do
+        {target_value, nil} -> target_value
+        {_, field} -> field
+      end
 
     positive =
       Migration.constraint(
@@ -296,20 +301,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     :ok
   end
 
-  @spec constraint_get_field_name(atom() | String.t(), atom() | String.t()) :: atom() | String.t()
-  defp constraint_get_field_name(target, nil), do: target
-  defp constraint_get_field_name(_, field_name), do: field_name
-
   @doc """
   Returns the config-qualified name of the function for this type.
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
-  def function(name, repo), do: "#{function_prefix(repo)}#{name}"
-
-  @spec function_prefix(Ecto.Repo.t()) :: String.t()
-  defp function_prefix(repo), do: Postgres.Utils.type_function_prefix(repo, :pg_framerate)
-
-  # Fetches PgRational configuration option from `repo`'s configuration.
-  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
-  defp get_config(repo, opt, default), do: Postgres.Utils.get_type_config(repo, :pg_framerate, opt, default)
+  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_framerate)}#{name}"
 end

@@ -107,7 +107,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   - `body`: The function body.
   """
-  @spec create_plpgsql_function(atom(), create_func_opts()) :: raw_sql()
+  @spec create_plpgsql_function(String.t(), create_func_opts()) :: raw_sql()
   def create_plpgsql_function(name, opts) do
     args = Keyword.get(opts, :args, [])
     returns = Keyword.fetch!(opts, :returns)
@@ -158,7 +158,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native operator.
   """
-  @spec create_operator(atom(), atom(), atom(), atom(), commutator: atom(), negator: atom()) :: raw_sql()
+  @spec create_operator(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) :: raw_sql()
   def create_operator(name, left_type, right_type, func_name, opts \\ []) do
     commutator = Keyword.get(opts, :commutator)
     negator = Keyword.get(opts, :negator)
@@ -184,7 +184,8 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native CAST
   """
-  @spec create_operator_class(atom(), atom(), atom(), Keyword.t(pos_integer()), Keyword.t(pos_integer())) :: raw_sql()
+  @spec create_operator_class(atom(), atom(), atom(), Keyword.t(pos_integer()), [{String.t(), pos_integer()}]) ::
+          raw_sql()
   def create_operator_class(name, type, index_type, operators, functions) do
     operators_sql_list =
       Enum.map(operators, fn {operator, index} ->
@@ -212,7 +213,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native CAST
   """
-  @spec create_cast(atom(), atom(), atom()) :: raw_sql()
+  @spec create_cast(atom(), atom(), atom() | String.t()) :: raw_sql()
   def create_cast(left_type, right_type, func_name) do
     """
     DO $wrapper$ BEGIN
