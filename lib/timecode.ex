@@ -790,11 +790,7 @@ defmodule Vtc.Timecode do
           opts :: [round_frames: round(), round_remainder: round()]
         ) :: {t(), t()}
   def divrem(dividend, divisor, opts \\ []) do
-    round_frames = Keyword.get(opts, :round_frames, :closest)
-    round_remainder = Keyword.get(opts, :round_remainder, :closest)
-
-    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
-         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+    with {round_frames, round_remainder} <- validate_divrem_rounding(opts) do
       %{rate: rate} = dividend
 
       {quotient, remainder} =
@@ -813,7 +809,7 @@ defmodule Vtc.Timecode do
   @doc """
   Devides the total frame count of `dividend` by `devisor`, and returns the remainder.
 
-  The quotient is floored before the remainder is calculated.
+  The quotient is truncated before the remainder is calculated.
 
   ## Options
 
@@ -838,7 +834,30 @@ defmodule Vtc.Timecode do
           divisor :: Ratio.t() | number(),
           opts :: [round_frames: round(), round_remainder: round()]
         ) :: t()
-  def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(Ratio.new(divisor), opts) |> elem(1)
+  def rem(dividend, divisor, opts \\ []) do
+    with {round_frames, round_remainder} <- validate_divrem_rounding(opts) do
+      %{rate: rate} = dividend
+
+      dividend
+      |> frames(round: round_frames)
+      |> Ratio.new()
+      |> Rational.rem(Ratio.new(divisor))
+      |> Rational.round(round_remainder)
+      |> with_frames!(rate)
+    end
+  end
+
+  # Validates the rounding options for `divrem` and `rem`.
+  @spec validate_divrem_rounding(round_frames: round(), round_remainder: round()) :: {round(), round()}
+  def validate_divrem_rounding(opts) do
+    round_frames = Keyword.get(opts, :round_frames, :closest)
+    round_remainder = Keyword.get(opts, :round_remainder, :closest)
+
+    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
+         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+      {round_frames, round_remainder}
+    end
+  end
 
   @doc section: :arithmetic
   @doc """
