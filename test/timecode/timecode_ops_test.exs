@@ -600,7 +600,7 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :ceil],
-        description: "postive",
+        description: "positive",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
