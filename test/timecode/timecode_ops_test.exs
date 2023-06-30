@@ -357,49 +357,70 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [],
-        description: " | round :closest implicit",
+        description: "round :closest implicit",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        opts: [],
+        description: "round :closest implicit negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :closest],
-        description: " | explicit",
+        description: "",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(4, 240), rate: Rates.f24()},
         opts: [round: :closest],
-        description: " | down",
+        description: "towards zero",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(-4, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "towards zero negative",
+        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :floor],
-        description: " | positive",
+        description: "positive",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
         opts: [round: :floor],
-        description: " | negative",
+        description: "negative",
         expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :ceil],
-        description: " | positive",
+        description: "positive",
         expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(-1, 240), rate: Rates.f24()},
         opts: [round: :ceil],
-        description: " | negative",
+        description: "negative",
         expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
@@ -413,19 +434,19 @@ defmodule Vtc.TimecodeTest.Ops do
         a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
-        description: " | positive",
+        description: "positive",
         expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
         a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
         b: %Timecode{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
-        description: " | negative",
+        description: "negative",
         expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       }
     ]
 
-    table_test "opts: | <%= opts %><%= description %>", round_table, test_case do
+    table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
       assert Timecode.add(a, b, opts) == expected
     end
@@ -518,52 +539,103 @@ defmodule Vtc.TimecodeTest.Ops do
       assert Timecode.sub(a, b) == expected
     end
 
-    test "round | :closest | implied" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+    round_table = [
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [],
+        description: ":closest implicit",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [],
+        description: ":closest implicit negative",
+        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "explicit",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "explicit negative",
+        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(6, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "towards zero",
+        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(4, 240), rate: Rates.f24()},
+        opts: [round: :closest],
+        description: "towards zero negative",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        opts: [round: :floor],
+        description: "postivie",
+        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        opts: [round: :floor],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        opts: [round: :ceil],
+        description: "postive",
+        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        opts: [round: :ceil],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        opts: [round: :trunc],
+        description: "positive",
+        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        opts: [round: :trunc],
+        description: "negative",
+        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+      },
+      %{
+        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "",
+        expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      }
+    ]
 
-      assert Timecode.sub(a, b) == expected
-    end
-
-    test "round | :closest | explicit" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      assert Timecode.sub(a, b, round: :closest) == expected
-    end
-
-    test "round | :closest | down" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(6, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-
-      assert Timecode.sub(a, b, round: :closest) == expected
-    end
-
-    test "round | :floor" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-
-      assert Timecode.sub(a, b, round: :floor) == expected
-    end
-
-    test "round | :ceil" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      assert Timecode.sub(a, b, round: :ceil) == expected
-    end
-
-    test "round | :off | allow_partial_frames" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
-      expected = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-
-      assert Timecode.sub(a, b, round: :off, allow_partial_frames?: true) == expected
+    table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      assert Timecode.sub(a, b, opts) == expected
     end
 
     test "error | round | :off" do
