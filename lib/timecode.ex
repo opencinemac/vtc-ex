@@ -146,8 +146,9 @@ defmodule Vtc.Timecode do
   - `:closest`: Round the to the closet whole frame.
   - `:floor`: Always round down to the closest whole-frame.
   - `:ciel`: Always round up to the closest whole-frame.
+  - `:trunc`: Always round towards zero.
   """
-  @type round() :: :closest | :floor | :ceil
+  @type round() :: :closest | :floor | :ceil | :trunc
 
   @typedoc """
   As `round/0`, but includes `:off` option to disable rounding entirely. Not all
@@ -261,26 +262,17 @@ defmodule Vtc.Timecode do
   defp with_seconds_round_to_frame(seconds, _, :off), do: seconds
 
   defp with_seconds_round_to_frame(seconds, rate, round) do
-    divided = Ratio.div(seconds, rate.playback)
-    positive? = Ratio.gte?(rate.playback, %Ratio{numerator: 1, denominator: 1})
-
-    case {positive?, divided} do
-      {true, %{denominator: 1}} ->
-        seconds
-
-      _ ->
-        rate.playback
-        |> Ratio.mult(seconds)
-        |> Rational.round(round)
-        |> Ratio.new()
-        |> Ratio.div(rate.playback)
-    end
+    rate.playback
+    |> Ratio.mult(seconds)
+    |> Rational.round(round)
+    |> Ratio.new()
+    |> Ratio.div(rate.playback)
   end
 
   # Validates that seconds is cleanly divisible by `rate.playback`.
   @spec validate_whole_frames(Ratio.t(), Framerate.t(), maybe_round(), boolean()) :: :ok | {:error, ParseError.t()}
   defp validate_whole_frames(seconds, rate, :off, false) do
-    {_, remainder} = seconds |> Ratio.mult(rate.playback) |> Rational.divrem(Ratio.new(1, 1))
+    remainder = seconds |> Ratio.mult(rate.playback) |> Rational.rem(Ratio.new(1, 1))
 
     if Ratio.eq?(remainder, Ratio.new(0, 1)) do
       :ok
@@ -733,7 +725,7 @@ defmodule Vtc.Timecode do
   ## Options
 
   - `round`: How to round the result with respect to whole-frame values. Defaults to
-    `:floor` to match `divmod` and the expected meaning of `div` to mean integer
+    `:trunc` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
 
   - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
@@ -762,7 +754,7 @@ defmodule Vtc.Timecode do
           opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
         ) :: t()
   def div(dividend, divisor, opts \\ []) do
-    opts = Keyword.put_new(opts, :round, :floor)
+    opts = Keyword.put_new(opts, :round, :trunc)
     dividend.seconds |> Ratio.div(Ratio.new(divisor)) |> with_seconds!(dividend.rate, opts)
   end
 
@@ -772,7 +764,7 @@ defmodule Vtc.Timecode do
   and a remainder.
 
   The quotient returned is equivalent to `Timecode.div/3` with the `:round` option set
-  to `:floor`.
+  to `:trunc`.
 
   ## Options
 

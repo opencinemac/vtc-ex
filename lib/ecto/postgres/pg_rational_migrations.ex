@@ -467,27 +467,23 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_func_modulo() :: :ok
   def create_func_modulo do
-    abs = function(:abs, Migration.repo())
-    minus = function(:minus, Migration.repo())
-
     create_func =
       "#{private_function_prefix(Migration.repo())}modulo"
       |> :erlang.binary_to_atom(:utf8)
       |> Postgres.Utils.create_plpgsql_function(
         args: [dividend: :rational, divisor: :rational],
         declares: [
-          dividend_abs: {:rational, "#{abs}(dividend)"},
-          quotient: {:rational, "dividend_abs / divisor"},
-          quotient_floored: {:rational, "(floor((quotient).numerator::float / (quotient).denominator), 1)"},
-          remainder: {:rational, "dividend_abs - (divisor * quotient_floored)"}
+          numerator:
+            {:bigint,
+             """
+             ((dividend).numerator * (divisor).denominator)
+             % ((divisor).numerator * (dividend).denominator)
+             """},
+          denominator: {:bigint, "(dividend).denominator * (divisor).denominator"}
         ],
         returns: :rational,
         body: """
-        IF (divisor).numerator < 0 THEN
-          RETURN #{minus}(#{abs}(remainder));
-        ELSE
-          RETURN remainder;
-        END IF;
+        RETURN (numerator, denominator);
         """
       )
 

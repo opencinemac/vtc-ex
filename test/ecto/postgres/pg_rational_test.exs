@@ -574,7 +574,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
             ) do
-        {_, expected} = Rational.divrem(a, b)
+        expected = Rational.rem(a, b)
 
         query =
           Query.from(f in fragment("SELECT ? % ? as r", type(^a, PgRational), type(^b, PgRational)),
@@ -599,7 +599,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
                |> Repo.one!()
                |> PgRational.load()
 
-      {_, expected} = Rational.divrem(Ratio.new(23, 8), Ratio.new(4, 5))
+      expected = Rational.rem(Ratio.new(23, 8), Ratio.new(4, 5))
       assert result == expected
     end
   end

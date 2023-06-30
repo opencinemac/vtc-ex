@@ -757,12 +757,12 @@ defmodule Vtc.TimecodeTest.Ops do
       dividend: {"-01:00:00:01", Rates.f24()},
       divisor: 2,
       expected_quotient: {"-00:30:00:00", Rates.f24()},
-      expected_remainder: {"00:00:00:01", Rates.f24()}
+      expected_remainder: {"-00:00:00:01", Rates.f24()}
     },
     %{
       dividend: {"-01:00:00:01", Rates.f24()},
       divisor: -2,
-      expected_quotient: {"00:30:00:01", Rates.f24()},
+      expected_quotient: {"00:30:00:00", Rates.f24()},
       expected_remainder: {"-00:00:00:01", Rates.f24()}
     },
     %{

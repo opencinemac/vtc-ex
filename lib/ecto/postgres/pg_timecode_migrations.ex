@@ -159,12 +159,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
         declares: [rounded: :bigint],
         returns: :timecode,
         body: """
-        IF (rate).playback > (1, 1)::rational AND (seconds % (rate).playback) = (0, 1)::rational THEN
-          RETURN (seconds, rate);
-        ELSE
-          SELECT #{rational_round}((rate).playback * seconds) INTO rounded;
-          RETURN (((rounded, 1)::rational / (rate).playback), rate);
-        END IF;
+        SELECT #{rational_round}((rate).playback * seconds) INTO rounded;
+        RETURN (((rounded, 1)::rational / (rate).playback), rate);
         """
       )
 

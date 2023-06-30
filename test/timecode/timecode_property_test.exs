@@ -85,7 +85,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
 
     seconds_per_frame = Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
 
-    assert {_, %Ratio{numerator: 0, denominator: 1}} = Rational.divrem(seconds, seconds_per_frame)
+    assert %Ratio{numerator: 0, denominator: 1} = Rational.rem(seconds, seconds_per_frame)
   end
 end
 
@@ -332,23 +332,144 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
         end
       end
     end
+
+    property "abs(div(-a, +b)) = abs(div(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+
+          pos_quotient = Timecode.div(dividend, divisor)
+          neg_quotient = Timecode.div(neg_dividend, divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+          assert Timecode.lte?(neg_quotient, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+        end)
+      end
+    end
+
+    property "abs(div(+a, -b)) = abs(div(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_divisor = Ratio.minus(divisor)
+
+          pos_quotient = Timecode.div(dividend, divisor)
+          neg_quotient = Timecode.div(dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+          assert Timecode.lte?(neg_quotient, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+        end)
+      end
+    end
+
+    property "abs(div(-Bencheea, -b)) = abs(div(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+          neg_divisor = Ratio.minus(divisor)
+
+          pos_quotient = Timecode.div(dividend, divisor)
+          neg_quotient = Timecode.div(neg_dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+          assert Timecode.gte?(neg_quotient, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+        end)
+      end
+    end
   end
 
   describe "#divrem/2" do
-    property "quotient returns same as div/3 with :floor" do
+    property "quotient returns same as div/3 with :trunc" do
       check all(
-              dividend <-
-                StreamData.filter(
-                  StreamDataVtc.timecode(non_negative?: true, rate_opts: [type: [:whole, :drop, :non_drop]]),
-                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
-                ),
+              dividend <- StreamDataVtc.timecode(non_negative?: true, rate_opts: [type: [:whole, :drop, :non_drop]]),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          div_result = Timecode.div(dividend, divisor, round: :floor)
+          div_result = Timecode.div(dividend, divisor, round: :trunc)
           {divrem_result, _} = Timecode.divrem(dividend, divisor)
 
           assert divrem_result == div_result
+        end)
+      end
+    end
+
+    property "abs(divrem(-a, +b)) = abs(divrem(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+
+          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Timecode.divrem(neg_dividend, divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.lte?(neg_quotient, zero)
+          assert Timecode.lte?(neg_remainder, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
+        end)
+      end
+    end
+
+    property "abs(divrem(+a, -b)) = divrem(div(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_divisor = Ratio.minus(divisor)
+
+          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Timecode.divrem(dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.lte?(neg_quotient, zero)
+          assert Timecode.gte?(neg_remainder, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
+        end)
+      end
+    end
+
+    property "abs(divrem(-a, -b)) = abs(divrem(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+          neg_divisor = Ratio.minus(divisor)
+
+          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Timecode.divrem(neg_dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.gte?(neg_quotient, zero)
+          assert Timecode.lte?(neg_remainder, zero)
+
+          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
         end)
       end
     end
@@ -357,11 +478,7 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#rem/2" do
     property "returns same as divrem/3" do
       check all(
-              dividend <-
-                StreamData.filter(
-                  StreamDataVtc.timecode(non_negative?: true),
-                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
-                ),
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
@@ -369,6 +486,64 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
           rem_result = Timecode.rem(dividend, divisor)
 
           assert rem_result == divrem_result
+        end)
+      end
+    end
+
+    property "abs(rem(-a, +b)) = abs(rem(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+
+          pos_result = Timecode.rem(dividend, divisor)
+          neg_result = Timecode.rem(neg_dividend, divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.lte?(neg_result, zero)
+          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
+        end)
+      end
+    end
+
+    property "abs(rem(a, -b)) = abs(rem(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_divisor = Ratio.minus(divisor)
+
+          pos_result = Timecode.rem(dividend, divisor)
+          neg_result = Timecode.rem(dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.gte?(neg_result, zero)
+          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
+        end)
+      end
+    end
+
+    property "abs(rem(-a, -b)) = abs(rem(+a, +b))" do
+      check all(
+              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              divisor <- StreamDataVtc.rational(positive?: true)
+            ) do
+        StreamDataVtc.run_test_rescue_drop_overflow(fn ->
+          neg_dividend = Timecode.minus(dividend)
+          neg_divisor = Ratio.minus(divisor)
+
+          pos_result = Timecode.rem(dividend, divisor)
+          neg_result = Timecode.rem(neg_dividend, neg_divisor)
+
+          zero = Timecode.with_frames!(0, dividend.rate)
+
+          assert Timecode.lte?(neg_result, zero)
+          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
         end)
       end
     end
