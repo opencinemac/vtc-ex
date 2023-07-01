@@ -471,6 +471,81 @@ defmodule Vtc.TimecodeTest.Parse do
       end
     end)
 
+  with_seconds_round_table = [
+    %{
+      input: Ratio.new(239, 240),
+      opts: [],
+      description: "round :closest implied",
+      expected: Ratio.new(1)
+    },
+    %{
+      input: Ratio.new(-239, 240),
+      opts: [],
+      description: "round :closest implied negative",
+      expected: Ratio.new(-1)
+    },
+    %{
+      input: Ratio.new(239, 240),
+      opts: [round: :closest],
+      description: "",
+      expected: Ratio.new(1)
+    },
+    %{
+      input: Ratio.new(-239, 240),
+      opts: [round: :closest],
+      description: "negative",
+      expected: Ratio.new(-1)
+    },
+    %{
+      input: Ratio.new(234, 240),
+      opts: [round: :closest],
+      description: "towards zero",
+      expected: Ratio.new(23, 24)
+    },
+    %{
+      input: Ratio.new(-234, 240),
+      opts: [round: :closest],
+      description: "towards zero negative",
+      expected: Ratio.new(-23, 24)
+    },
+    %{
+      input: Ratio.new(239, 240),
+      opts: [round: :floor],
+      description: "",
+      expected: Ratio.new(23, 24)
+    },
+    %{
+      input: Ratio.new(-231, 240),
+      opts: [round: :floor],
+      description: "negative",
+      expected: Ratio.new(-1)
+    },
+    %{
+      input: Ratio.new(231, 240),
+      opts: [round: :ceil],
+      description: "",
+      expected: Ratio.new(1)
+    },
+    %{
+      input: Ratio.new(-239, 240),
+      opts: [round: :ceil],
+      description: "negative",
+      expected: Ratio.new(-23, 24)
+    },
+    %{
+      input: Ratio.new(239, 240),
+      opts: [round: :off, allow_partial_frames?: true],
+      description: "",
+      expected: Ratio.new(239, 240)
+    },
+    %{
+      input: Ratio.new(-239, 240),
+      opts: [round: :off, allow_partial_frames?: true],
+      description: "negative",
+      expected: Ratio.new(-239, 240)
+    }
+  ]
+
   describe "#with_seconds/3" do
     setup context, do: TestCase.setup_negates(context)
 
@@ -491,6 +566,8 @@ defmodule Vtc.TimecodeTest.Parse do
       |> check_parsed(test_case)
     end
 
+    # Sub 1fps framerates can cause issues with our validations, so we want to test
+    # some examples of that here.
     round_sub_1_fps_table = [
       %{input: Ratio.new(3, 1), expected: Ratio.new(3, 1)},
       %{input: Ratio.new(-3, 1), expected: Ratio.new(-3, 1)},
@@ -510,34 +587,9 @@ defmodule Vtc.TimecodeTest.Parse do
       assert result.seconds == expected
     end
 
-    test "round | :closest | implied" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24())
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :closest | explicit" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :closest)
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :closest | down" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(234, 240), Rates.f24(), round: :closest)
-      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-    end
-
-    test "round | :floor" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :floor)
-      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-    end
-
-    test "round | :ceil" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(231, 240), Rates.f24(), round: :ceil)
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :off | allow_partial_frames" do
-      {:ok, result} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off, allow_partial_frames?: true)
-      assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+    table_test "opts: <%= opts %> <%= description %>", with_seconds_round_table, test_case do
+      %{input: input, opts: opts, expected: expected} = test_case
+      {:ok, %Timecode{seconds: ^expected}} = Timecode.with_seconds(input, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do
@@ -579,34 +631,9 @@ defmodule Vtc.TimecodeTest.Parse do
       |> check_parsed!(test_case)
     end
 
-    test "round | :closest | implied" do
-      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24())
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :closest | explicit" do
-      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :closest)
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :closest | down" do
-      result = Timecode.with_seconds!(Ratio.new(234, 240), Rates.f24(), round: :closest)
-      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-    end
-
-    test "round | :floor" do
-      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :floor)
-      assert result == %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-    end
-
-    test "round | :ceil" do
-      result = Timecode.with_seconds!(Ratio.new(231, 240), Rates.f24(), round: :ceil)
-      assert result == %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-    end
-
-    test "round | :off | allow_partial_frames" do
-      result = Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off, allow_partial_frames?: true)
-      assert result == %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+    table_test "opts: <%= opts %> <%= description %>", with_seconds_round_table, test_case do
+      %{input: input, opts: opts, expected: expected} = test_case
+      %Timecode{seconds: ^expected} = Timecode.with_seconds!(input, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do
@@ -725,70 +752,84 @@ defmodule Vtc.TimecodeTest.Parse do
   @ppro_ticks_per_frame div(PremiereTicks.per_second(), 24)
 
   describe "#with_seconds/3 | Premiere Ticks" do
-    test "round | :closest | implied" do
-      {:ok, timecode} =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24())
+    round_table = [
+      %{
+        input: div(@ppro_ticks_per_frame, 2),
+        opts: [],
+        description: "round :closest implied",
+        expected: Ratio.new(1, 24)
+      },
+      %{
+        input: div(-@ppro_ticks_per_frame, 2),
+        opts: [],
+        description: "round :closest implied negative",
+        expected: Ratio.new(-1, 24)
+      },
+      %{
+        input: div(@ppro_ticks_per_frame, 2),
+        opts: [round: :closest],
+        description: "",
+        expected: Ratio.new(1, 24)
+      },
+      %{
+        input: div(-@ppro_ticks_per_frame, 2),
+        opts: [round: :closest],
+        description: "negative",
+        expected: Ratio.new(-1, 24)
+      },
+      %{
+        input: div(@ppro_ticks_per_frame, 2) - 1,
+        opts: [round: :closest],
+        description: "towards zero",
+        expected: Ratio.new(0)
+      },
+      %{
+        input: -(div(@ppro_ticks_per_frame, 2) - 1),
+        opts: [round: :closest],
+        description: "towards zero negative",
+        expected: Ratio.new(0)
+      },
+      %{
+        input: div(@ppro_ticks_per_frame, 4),
+        opts: [round: :ceil],
+        description: "",
+        expected: Ratio.new(1, 24)
+      },
+      %{
+        input: div(-@ppro_ticks_per_frame, 4),
+        opts: [round: :ceil],
+        description: "negative",
+        expected: Ratio.new(0)
+      },
+      %{
+        input: @ppro_ticks_per_frame - 1,
+        opts: [round: :floor],
+        description: "",
+        expected: Ratio.new(0)
+      },
+      %{
+        input: -(@ppro_ticks_per_frame - 1),
+        opts: [round: :floor],
+        description: "negative",
+        expected: Ratio.new(-1, 24)
+      },
+      %{
+        input: PremiereTicks.per_second() - 1,
+        opts: [round: :off, allow_partial_frames?: true],
+        description: "",
+        expected:
+          Ratio.new(
+            PremiereTicks.per_second() - 1,
+            PremiereTicks.per_second()
+          )
+      }
+    ]
 
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
+    table_test "opts: <%= opts %> <%= description %>", round_table, test_case do
+      %{input: input, opts: opts, expected: expected} = test_case
 
-    test "round | :closest | explicit" do
-      {:ok, timecode} =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24(), round: :closest)
-
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
-
-    test "round | :closest | down" do
-      {:ok, timecode} =
-        @ppro_ticks_per_frame
-        |> div(2)
-        |> then(&(&1 - 1))
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24(), round: :closest)
-
-      assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-    end
-
-    test "round | :ceil" do
-      {:ok, timecode} =
-        @ppro_ticks_per_frame
-        |> div(4)
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24(), round: :ceil)
-
-      assert timecode == %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
-    end
-
-    test "round | :floor" do
-      {:ok, timecode} =
-        (@ppro_ticks_per_frame - 1)
-        |> then(&%PremiereTicks{in: &1})
-        |> Timecode.with_seconds(Rates.f24(), round: :floor)
-
-      assert timecode == %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
-    end
-
-    test "round | :off | allow_partial_frames" do
-      assert {:ok, timecode} =
-               (PremiereTicks.per_second() - 1)
-               |> then(&%PremiereTicks{in: &1})
-               |> Timecode.with_seconds(Rates.f24(), round: :off, allow_partial_frames?: true)
-
-      assert timecode == %Timecode{
-               seconds:
-                 Ratio.new(
-                   PremiereTicks.per_second() - 1,
-                   PremiereTicks.per_second()
-                 ),
-               rate: Rates.f24()
-             }
+      premiere_ticks = %PremiereTicks{in: input}
+      %Timecode{seconds: ^expected} = Timecode.with_seconds!(premiere_ticks, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do

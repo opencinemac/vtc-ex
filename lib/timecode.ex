@@ -143,10 +143,17 @@ defmodule Vtc.Timecode do
   @typedoc """
   Valid values for rounding options.
 
-  - `:closest`: Round the to the closet whole frame.
-  - `:floor`: Always round down to the closest whole-frame.
-  - `:ciel`: Always round up to the closest whole-frame.
-  - `:trunc`: Always round towards zero.
+  - `:closest`: Round the to the closet whole frame. Rounds away from zero when
+    value is equidistant from two whole-frames.
+
+  - `:floor`: Always round down to the closest whole-frame. Negative numbers round away
+     from zero
+
+  - `:ciel`: Always round up to the closest whole-frame. Negative numbers round towards
+     zero.
+
+  - `:trunc`: Always round towards zero to the closest whole frame. Negative numbers
+    round up and positive numbers round down.
   """
   @type round() :: :closest | :floor | :ceil | :trunc
 
