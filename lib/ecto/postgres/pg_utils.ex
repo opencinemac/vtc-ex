@@ -107,7 +107,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   - `body`: The function body.
   """
-  @spec create_plpgsql_function(atom(), create_func_opts()) :: raw_sql()
+  @spec create_plpgsql_function(String.t(), create_func_opts()) :: raw_sql()
   def create_plpgsql_function(name, opts) do
     args = Keyword.get(opts, :args, [])
     returns = Keyword.fetch!(opts, :returns)
@@ -138,6 +138,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
         CREATE FUNCTION #{name}(#{args})
           RETURNS #{returns}
           LANGUAGE plpgsql
+          STRICT
           IMMUTABLE
           LEAKPROOF
           PARALLEL SAFE
@@ -157,7 +158,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native operator.
   """
-  @spec create_operator(atom(), atom(), atom(), atom(), commutator: atom(), negator: atom()) :: raw_sql()
+  @spec create_operator(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) :: raw_sql()
   def create_operator(name, left_type, right_type, func_name, opts \\ []) do
     commutator = Keyword.get(opts, :commutator)
     negator = Keyword.get(opts, :negator)
@@ -183,7 +184,8 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native CAST
   """
-  @spec create_operator_class(atom(), atom(), atom(), Keyword.t(pos_integer()), Keyword.t(pos_integer())) :: raw_sql()
+  @spec create_operator_class(atom(), atom(), atom(), Keyword.t(pos_integer()), [{String.t(), pos_integer()}]) ::
+          raw_sql()
   def create_operator_class(name, type, index_type, operators, functions) do
     operators_sql_list =
       Enum.map(operators, fn {operator, index} ->
@@ -211,7 +213,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native CAST
   """
-  @spec create_cast(atom(), atom(), atom()) :: raw_sql()
+  @spec create_cast(atom(), atom(), atom() | String.t()) :: raw_sql()
   def create_cast(left_type, right_type, func_name) do
     """
     DO $wrapper$ BEGIN
@@ -220,5 +222,38 @@ defmodule Vtc.Ecto.Postgres.Utils do
       THEN null;
     END $wrapper$;
     """
+  end
+
+  @doc """
+  Returns a configuration option for a specific vtc Postgres type and Repo.
+  """
+  @spec get_type_config(Ecto.Repo.t(), atom(), atom(), Keyword.value()) :: Keyword.value()
+  def get_type_config(repo, type_name, opt, default),
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name) |> Keyword.get(opt, default)
+
+  @doc """
+  Returns a the public function prefix for a specific vtc Postgres type and Repo.
+  """
+  @spec type_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  def type_function_prefix(repo, type_name), do: calculate_prefix(repo, type_name, :functions_schema)
+
+  @spec type_private_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  def type_private_function_prefix(repo, type_name), do: calculate_prefix(repo, type_name, :functions_private_schema)
+
+  # Calculate a function prefix for a specific schema and vtc postgres type based on the
+  # Repo configuration.
+  @spec calculate_prefix(Ecto.Repo.t(), atom(), atom()) :: String.t()
+  defp calculate_prefix(repo, type_name, schema_config_opt) do
+    functions_schema = get_type_config(repo, type_name, schema_config_opt, :public)
+    custom_prefix = get_type_config(repo, type_name, :functions_prefix, "")
+
+    functions_prefix =
+      cond do
+        functions_schema == :public and custom_prefix == "" -> "rational_"
+        custom_prefix != "" -> "#{custom_prefix}_"
+        true -> ""
+      end
+
+    "#{functions_schema}.#{functions_prefix}"
   end
 end

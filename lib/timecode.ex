@@ -143,11 +143,19 @@ defmodule Vtc.Timecode do
   @typedoc """
   Valid values for rounding options.
 
-  - `:closest`: Round the to the closet whole frame.
-  - `:floor`: Always round down to the closest whole-frame.
-  - `:ciel`: Always round up to the closest whole-frame.
+  - `:closest`: Round the to the closet whole frame. Rounds away from zero when
+    value is equidistant from two whole-frames.
+
+  - `:floor`: Always round down to the closest whole-frame. Negative numbers round away
+     from zero
+
+  - `:ciel`: Always round up to the closest whole-frame. Negative numbers round towards
+     zero.
+
+  - `:trunc`: Always round towards zero to the closest whole frame. Negative numbers
+    round up and positive numbers round down.
   """
-  @type round() :: :closest | :floor | :ceil
+  @type round() :: :closest | :floor | :ceil | :trunc
 
   @typedoc """
   As `round/0`, but includes `:off` option to disable rounding entirely. Not all
@@ -240,8 +248,11 @@ defmodule Vtc.Timecode do
   "<00:00:01:00 <23.98 NTSC>>"
   ```
   """
-  @spec with_seconds(Seconds.t(), Framerate.t(), opts :: [round: maybe_round(), allow_partial_frames?: boolean()]) ::
-          parse_result()
+  @spec with_seconds(
+          Seconds.t(),
+          Framerate.t(),
+          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+        ) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
     allow_partial_frames? = Keyword.get(opts, :allow_partial_frames?, false)
@@ -258,23 +269,17 @@ defmodule Vtc.Timecode do
   defp with_seconds_round_to_frame(seconds, _, :off), do: seconds
 
   defp with_seconds_round_to_frame(seconds, rate, round) do
-    case Ratio.div(seconds, rate.playback) do
-      %Ratio{denominator: 1} ->
-        seconds
-
-      %Ratio{} ->
-        rate.playback
-        |> Ratio.mult(seconds)
-        |> Rational.round(round)
-        |> Ratio.new()
-        |> Ratio.div(rate.playback)
-    end
+    rate.playback
+    |> Ratio.mult(seconds)
+    |> Rational.round(round)
+    |> Ratio.new()
+    |> Ratio.div(rate.playback)
   end
 
   # Validates that seconds is cleanly divisible by `rate.playback`.
   @spec validate_whole_frames(Ratio.t(), Framerate.t(), maybe_round(), boolean()) :: :ok | {:error, ParseError.t()}
   defp validate_whole_frames(seconds, rate, :off, false) do
-    {_, remainder} = seconds |> Ratio.mult(rate.playback) |> Rational.divrem(Ratio.new(1, 1))
+    remainder = seconds |> Ratio.mult(rate.playback) |> Rational.rem(Ratio.new(1, 1))
 
     if Ratio.eq?(remainder, Ratio.new(0, 1)) do
       :ok
@@ -727,7 +732,7 @@ defmodule Vtc.Timecode do
   ## Options
 
   - `round`: How to round the result with respect to whole-frame values. Defaults to
-    `:floor` to match `divmod` and the expected meaning of `div` to mean integer
+    `:trunc` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
 
   - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
@@ -756,7 +761,7 @@ defmodule Vtc.Timecode do
           opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
         ) :: t()
   def div(dividend, divisor, opts \\ []) do
-    opts = Keyword.put_new(opts, :round, :floor)
+    opts = Keyword.put_new(opts, :round, :trunc)
     dividend.seconds |> Ratio.div(Ratio.new(divisor)) |> with_seconds!(dividend.rate, opts)
   end
 
@@ -766,7 +771,7 @@ defmodule Vtc.Timecode do
   and a remainder.
 
   The quotient returned is equivalent to `Timecode.div/3` with the `:round` option set
-  to `:floor`.
+  to `:trunc`.
 
   ## Options
 
@@ -792,11 +797,7 @@ defmodule Vtc.Timecode do
           opts :: [round_frames: round(), round_remainder: round()]
         ) :: {t(), t()}
   def divrem(dividend, divisor, opts \\ []) do
-    round_frames = Keyword.get(opts, :round_frames, :closest)
-    round_remainder = Keyword.get(opts, :round_remainder, :closest)
-
-    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
-         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+    with {round_frames, round_remainder} <- validate_divrem_rounding(opts) do
       %{rate: rate} = dividend
 
       {quotient, remainder} =
@@ -815,7 +816,7 @@ defmodule Vtc.Timecode do
   @doc """
   Devides the total frame count of `dividend` by `devisor`, and returns the remainder.
 
-  The quotient is floored before the remainder is calculated.
+  The quotient is truncated before the remainder is calculated.
 
   ## Options
 
@@ -840,7 +841,30 @@ defmodule Vtc.Timecode do
           divisor :: Ratio.t() | number(),
           opts :: [round_frames: round(), round_remainder: round()]
         ) :: t()
-  def rem(dividend, divisor, opts \\ []), do: dividend |> divrem(Ratio.new(divisor), opts) |> elem(1)
+  def rem(dividend, divisor, opts \\ []) do
+    with {round_frames, round_remainder} <- validate_divrem_rounding(opts) do
+      %{rate: rate} = dividend
+
+      dividend
+      |> frames(round: round_frames)
+      |> Ratio.new()
+      |> Rational.rem(Ratio.new(divisor))
+      |> Rational.round(round_remainder)
+      |> with_frames!(rate)
+    end
+  end
+
+  # Validates the rounding options for `divrem` and `rem`.
+  @spec validate_divrem_rounding(round_frames: round(), round_remainder: round()) :: {round(), round()}
+  def validate_divrem_rounding(opts) do
+    round_frames = Keyword.get(opts, :round_frames, :closest)
+    round_remainder = Keyword.get(opts, :round_remainder, :closest)
+
+    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
+         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+      {round_frames, round_remainder}
+    end
+  end
 
   @doc section: :arithmetic
   @doc """

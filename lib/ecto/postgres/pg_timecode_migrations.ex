@@ -6,6 +6,9 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
+  alias Vtc.Ecto.Postgres
+  alias Vtc.Ecto.Postgres.PgFramerate
+  alias Vtc.Ecto.Postgres.PgRational
 
   require Ecto.Migration
 
@@ -81,10 +84,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   """
   @spec create_all() :: :ok
   def create_all do
-    :ok = create_type_timecode()
-    :ok = create_function_schemas()
+    create_type_timecode()
+    create_function_schemas()
 
-    :ok
+    create_func_with_seconds()
   end
 
   @doc section: :migrations_types
@@ -93,59 +96,133 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   """
   @spec create_type_timecode() :: :ok
   def create_type_timecode do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE timecode AS (
-            seconds rational,
-            rate framerate
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE timecode AS (
+          seconds rational,
+          rate framerate
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for timecode functions based on your repo's
-  settings.
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgTimecode.Migrations.html#create_all/0-configuring-database-objects)
+  section above.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
-    functions_schema = get_config(Migration.repo(), :functions_schema, :public)
+    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_timecode, :functions_schema, :public)
 
     if functions_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
-    functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
+    functions_private_schema =
+      Postgres.Utils.get_type_config(Migration.repo(), :pg_timecode, :functions_private_schema, :public)
 
     if functions_private_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_private_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     :ok
   end
 
-  # Fetches PgRational configuration option from `repo`'s configuration.
-  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
-  defp get_config(repo, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_timecode) |> Keyword.get(opt, default)
+  @doc section: :migrations_functions
+  @doc """
+  Creates `timecode_private.new(seconds, rate)` that rounds `seconds` to the
+  nearest whole frame based on `rate` and returns a constructed timecode.
+  """
+  @spec create_func_with_seconds() :: :ok
+  def create_func_with_seconds do
+    rational_round = PgRational.Migrations.function(:round, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        function(:with_seconds, Migration.repo()),
+        args: [seconds: :rational, rate: :framerate],
+        declares: [rounded: :bigint],
+        returns: :timecode,
+        body: """
+        SELECT #{rational_round}((rate).playback * seconds) INTO rounded;
+        RETURN (((rounded, 1)::rational / (rate).playback), rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_constraints
+  @doc """
+  Creates basic constraints for a [PgTimecode](`Vtc.Ecto.Postgres.PgTimecode`) /
+  [Timecode](`Vtc.Timecode`) database field.
+
+  ## Constraints created:
+
+  - `{field}_rate_positive`: Checks that the playback speed is positive.
+
+  - `{field}_rate_ntsc_tags`: Checks that both `drop` and `non_drop` are not set at the
+    same time.
+
+  - `{field}_rate_ntsc_valid`: Checks that NTSC framerates are mathematically sound,
+    i.e., that the rate is equal to `(round(rate.playback) * 1000) / 1001`.
+
+  - `{field}_rate_ntsc_drop_valid`: Checks that NTSC, drop-frame framerates are valid,
+    i.e, are cleanly divisible by `30_000/1001`.
+
+  - `{field_name}_seconds_divisible_by_rate`: Checks that the `seconds` value of the
+    timecode is cleanly divisible by the `rate.playback` value.
+
+  ## Examples
+
+  ```elixir
+  create table("my_table", primary_key: false) do
+    add(:id, :uuid, primary_key: true, null: false)
+    add(:a, Timecode.type())
+    add(:b, Timecode.type())
+  end
+
+  PgRational.migration_add_field_constraints(:my_table, :a)
+  PgRational.migration_add_field_constraints(:my_table, :b)
+  ```
+  """
+  @spec create_field_constraints(atom(), atom()) :: :ok
+  def create_field_constraints(table, field) do
+    PgFramerate.Migrations.create_field_constraints(table, "(#{field}).rate", :"#{field}_rate")
+
+    seconds_divisible_by_rate =
+      Migration.constraint(
+        table,
+        "#{field}_seconds_divisible_by_rate",
+        check: """
+        ((#{field}).seconds * (#{field}).rate.playback) % (1, 1)::rational = (0, 1)::rational
+        """
+      )
+
+    Migration.create(seconds_divisible_by_rate)
+
+    :ok
+  end
+
+  @doc """
+  Returns the config-qualified name of the function for this type.
+  """
+  @spec function(atom(), Ecto.Repo.t()) :: String.t()
+  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_timecode)}#{name}"
 end

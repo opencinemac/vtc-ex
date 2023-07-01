@@ -6,6 +6,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Postgres database.
   """
   alias Ecto.Migration
+  alias Ecto.Migration.Constraint
   alias Vtc.Ecto.Postgres
 
   require Ecto.Migration
@@ -105,45 +106,46 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_all() :: :ok
   def create_all do
-    :ok = create_type()
-    :ok = create_function_schemas()
+    create_type()
+    create_function_schemas()
 
-    :ok = create_func_greatest_common_denominator()
-    :ok = create_func_simplify()
+    create_func_greatest_common_denominator()
+    create_func_simplify()
 
-    :ok = create_func_minus()
-    :ok = create_func_round()
-    :ok = create_func_add()
-    :ok = create_func_sub()
-    :ok = create_func_mult()
-    :ok = create_func_div()
+    create_func_minus()
+    create_func_abs()
+    create_func_round()
+    create_func_add()
+    create_func_sub()
+    create_func_mult()
+    create_func_div()
+    create_func_modulo()
 
-    :ok = create_op_add()
-    :ok = create_op_sub()
-    :ok = create_op_mult()
-    :ok = create_op_div()
+    create_op_add()
+    create_op_sub()
+    create_op_mult()
+    create_op_div()
+    create_op_modulo()
 
-    :ok = create_func_cmp()
-    :ok = create_func_eq()
-    :ok = create_func_neq()
-    :ok = create_func_lt()
-    :ok = create_func_lte()
-    :ok = create_func_gt()
-    :ok = create_func_gte()
+    create_func_cmp()
+    create_func_eq()
+    create_func_neq()
+    create_func_lt()
+    create_func_lte()
+    create_func_gt()
+    create_func_gte()
 
-    :ok = create_op_eq()
-    :ok = create_op_neq()
-    :ok = create_op_neq2()
-    :ok = create_op_lt()
-    :ok = create_op_lte()
-    :ok = create_op_gt()
-    :ok = create_op_gte()
-    :ok = create_op_class_btree()
+    create_op_eq()
+    create_op_neq()
+    create_op_neq2()
+    create_op_lt()
+    create_op_lte()
+    create_op_gt()
+    create_op_gte()
+    create_op_class_btree()
 
-    :ok = create_func_cast_to_double_precison()
-    :ok = create_cast_double_precision()
-
-    :ok
+    create_func_cast_to_double_precison()
+    create_cast_double_precision()
   end
 
   @doc section: :migrations_types
@@ -156,52 +158,49 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_type() :: :ok
   def create_type do
-    :ok =
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE TYPE rational AS (
-            numerator bigint,
-            denominator bigint
-          );
-          EXCEPTION WHEN duplicate_object
-            THEN null;
-        END $$;
-      """)
-
-    :ok
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE rational AS (
+          numerator bigint,
+          denominator bigint
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
   end
 
   @doc section: :migrations_types
   @doc """
-  Creates schemas to act as namespaces for timecode functions based on your repo's
-  settings.
+  Up to two schemas are created as detailed by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
+  section above.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
-    functions_schema = get_config(Migration.repo(), :functions_schema, :public)
+    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_rational, :functions_schema, :public)
 
     if functions_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
-    functions_private_schema = get_config(Migration.repo(), :functions_private_schema, :public)
+    functions_private_schema =
+      Postgres.Utils.get_type_config(Migration.repo(), :pg_rational, :functions_private_schema, :public)
 
     if functions_private_schema != :public do
-      :ok =
-        Migration.execute("""
-          DO $$ BEGIN
-            CREATE SCHEMA #{functions_private_schema};
-            EXCEPTION WHEN duplicate_schema
-              THEN null;
-          END $$;
-        """)
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
     end
 
     :ok
@@ -216,7 +215,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_greatest_common_denominator do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}greatest_common_denominator",
+        private_function(:greatest_common_denominator, Migration.repo()),
         args: [a: :bigint, b: :bigint],
         returns: :bigint,
         declares: [result: :bigint],
@@ -225,7 +224,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
           CASE
             WHEN b = 0 THEN ABS(a)
             WHEN a = 0 THEN ABS(b)
-            ELSE #{private_function_prefix(Migration.repo())}greatest_common_denominator(b, a % b)
+            ELSE #{private_function(:greatest_common_denominator, Migration.repo())}(b, a % b)
           END
         ) INTO result;
 
@@ -233,9 +232,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -247,31 +244,26 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_simplify do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}simplify",
+        private_function(:simplify, Migration.repo()),
         args: [input: :rational],
         returns: :rational,
         declares: [
           gcd:
             {:bigint,
-             "#{private_function_prefix(Migration.repo())}greatest_common_denominator(input.numerator, input.denominator)"},
+             "#{private_function(:greatest_common_denominator, Migration.repo())}(input.numerator, input.denominator)"},
           denominator: {:bigint, "ABS(input.denominator / gcd)"},
           numerator: {:bigint, "input.numerator / gcd"}
         ],
         body: """
-        SELECT (
-          CASE
-            WHEN input.denominator < 0 THEN numerator * -1
-            ELSE numerator
-          END
-        ) INTO numerator;
-
-        RETURN (numerator, denominator)::rational;
+        IF (input).denominator < 0 THEN
+          RETURN  (numerator * -1, denominator);
+        ELSE
+          RETURN (numerator, denominator);
+        END IF;
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -283,7 +275,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_minus do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function_prefix(Migration.repo())}minus",
+        function(:minus, Migration.repo()),
         args: [input: :rational],
         returns: :rational,
         body: """
@@ -291,9 +283,27 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
+    Migration.execute(create_func)
+  end
 
-    :ok
+  @doc section: :migrations_functions
+  @doc """
+  Creates `rational.abs(rat)` function that returns the absolute value of the rational
+  value.
+  """
+  @spec create_func_abs() :: :ok
+  def create_func_abs do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        function(:abs, Migration.repo()),
+        args: [input: :rational],
+        returns: :rational,
+        body: """
+        RETURN (ABS((input).numerator), ABS((input).denominator))::rational;
+        """
+      )
+
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -305,7 +315,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_round do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{function_prefix(Migration.repo())}round",
+        function(:round, Migration.repo()),
         args: [input: :rational],
         declares: [result: :bigint],
         returns: :bigint,
@@ -313,8 +323,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         SELECT (
           CASE
             WHEN (input).numerator < 0 THEN
-              #{function_prefix(Migration.repo())}round(
-                #{function_prefix(Migration.repo())}minus(input)
+              #{function(:round, Migration.repo())}(
+                #{function(:minus, Migration.repo())}(input)
               ) * -1
             WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
               (input).numerator / (input).denominator
@@ -327,9 +337,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -340,7 +348,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_cast_to_double_precison do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}cast_to_float",
+        private_function(:cast_to_double, Migration.repo()),
         args: [value: :rational],
         returns: :"double precision",
         body: """
@@ -348,28 +356,26 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   ## ARITHMATIC BACKING FUNCS
 
   @doc section: :migrations_functions
   @doc """
-  Creates Creates `rational_private.add(a, b)` backing function for the `+` operator
+  Creates `rational_private.add(a, b)` backing function for the `+` operator
   between two rationals.
   """
   @spec create_func_add() :: :ok
   def create_func_add do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}add",
+        private_function(:add, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "((a).numerator * (b).denominator) + ((b).numerator * (a).denominator)"},
           denominator: {:bigint, "(a).denominator * (b).denominator"},
-          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
         ],
         returns: :rational,
         body: """
@@ -377,9 +383,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -391,12 +395,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_sub do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}sub",
+        private_function(:sub, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
           b_numerator: {:bigint, "(b).numerator * -1"},
           b_negated: {:rational, "(b_numerator, (b).denominator)"},
-          result: {:rational, "#{private_function_prefix(Migration.repo())}add(a, b_negated)"}
+          result: {:rational, "#{private_function(:add, Migration.repo())}(a, b_negated)"}
         ],
         returns: :rational,
         body: """
@@ -404,9 +408,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -418,12 +420,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_mult do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}mult",
+        private_function(:mult, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "(a).numerator * (b).numerator"},
           denominator: {:bigint, "(a).denominator * (b).denominator"},
-          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
         ],
         returns: :rational,
         body: """
@@ -431,9 +433,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -445,12 +445,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_div do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}div",
+        private_function(:div, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "(a).numerator * (b).denominator"},
           denominator: {:bigint, "(a).denominator * (b).numerator"},
-          result: {:rational, "#{private_function_prefix(Migration.repo())}simplify((numerator, denominator))"}
+          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
         ],
         returns: :rational,
         body: """
@@ -458,9 +458,36 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
+    Migration.execute(create_func)
+  end
 
-    :ok
+  @doc section: :migrations_functions
+  @doc """
+  Creates Creates `rational_private.modulo(a, b)` backing function for the `%` operator
+  between two rationals.
+  """
+  @spec create_func_modulo() :: :ok
+  def create_func_modulo do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:modulo, Migration.repo()),
+        args: [dividend: :rational, divisor: :rational],
+        declares: [
+          numerator:
+            {:bigint,
+             """
+             ((dividend).numerator * (divisor).denominator)
+             % ((divisor).numerator * (dividend).denominator)
+             """},
+          denominator: {:bigint, "(dividend).denominator * (divisor).denominator"}
+        ],
+        returns: :rational,
+        body: """
+        RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+        """
+      )
+
+    Migration.execute(create_func)
   end
 
   ## COMPARISON BACKING FUNCS
@@ -479,7 +506,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_cmp do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}cmp",
+        private_function(:cmp, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
           a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
@@ -500,9 +527,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -513,17 +538,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_eq do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}eq",
+        private_function(:eq, Migration.repo()),
         args: [a: :rational, b: :rational],
         returns: :boolean,
         body: """
-        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = 0;
+        RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 0;
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -534,17 +557,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_neq do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}neq",
+        private_function(:neq, Migration.repo()),
         args: [a: :rational, b: :rational],
         returns: :boolean,
         body: """
-        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) != 0;
+        RETURN #{private_function(:cmp, Migration.repo())}(a, b) != 0;
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -555,17 +576,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_lt do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}lt",
+        private_function(:lt, Migration.repo()),
         args: [a: :rational, b: :rational],
         returns: :boolean,
         body: """
-        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = -1;
+        RETURN #{private_function(:cmp, Migration.repo())}(a, b) = -1;
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -576,10 +595,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_lte do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}lte",
+        private_function(:lte, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
-          cmp: {:integer, "#{private_function_prefix(Migration.repo())}cmp(a, b)"},
+          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"},
           cmp_array: :"integer[]"
         ],
         returns: :boolean,
@@ -589,9 +608,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -602,17 +619,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_gt do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}gt",
+        private_function(:gt, Migration.repo()),
         args: [a: :rational, b: :rational],
         returns: :boolean,
         body: """
-        RETURN #{private_function_prefix(Migration.repo())}cmp(a, b) = 1;
+        RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 1;
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_functions
@@ -623,10 +638,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def create_func_gte do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        :"#{private_function_prefix(Migration.repo())}gte",
+        private_function(:gte, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
-          cmp: {:integer, "#{private_function_prefix(Migration.repo())}cmp(a, b)"},
+          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"},
           cmp_array: :"integer[]"
         ],
         returns: :boolean,
@@ -636,9 +651,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         """
       )
 
-    :ok = Migration.execute(create_func)
-
-    :ok
+    Migration.execute(create_func)
   end
 
   ## ARITHMATIC OPS
@@ -654,13 +667,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :+,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}add",
+        private_function(:add, Migration.repo()),
         commutator: :+
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -674,12 +685,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :-,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}sub"
+        private_function(:sub, Migration.repo())
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -693,13 +702,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :*,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}mult",
+        private_function(:mult, Migration.repo()),
         commutator: :*
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -713,12 +720,27 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :/,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}div"
+        private_function(:div, Migration.repo())
       )
 
-    :ok = Migration.execute(create_op)
+    Migration.execute(create_op)
+  end
 
-    :ok
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :rational, :rational `%` operator.
+  """
+  @spec create_op_modulo() :: :ok
+  def create_op_modulo do
+    create_op =
+      Postgres.Utils.create_operator(
+        :%,
+        :rational,
+        :rational,
+        private_function(:modulo, Migration.repo())
+      )
+
+    Migration.execute(create_op)
   end
 
   ## COMPARISON OPS
@@ -734,14 +756,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :=,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}eq",
+        private_function(:eq, Migration.repo()),
         commutator: :=,
         negator: :<>
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -755,14 +775,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :<>,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}neq",
+        private_function(:neq, Migration.repo()),
         commutator: :<>,
         negator: :=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -776,14 +794,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :!=,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}neq",
+        private_function(:neq, Migration.repo()),
         commutator: :!=,
         negator: :=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -797,14 +813,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :<,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}lt",
+        private_function(:lt, Migration.repo()),
         commutator: :>,
         negator: :>=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -818,14 +832,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :<=,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}lte",
+        private_function(:lte, Migration.repo()),
         commutator: :>=,
         negator: :>
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -839,14 +851,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :>,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}gt",
+        private_function(:gt, Migration.repo()),
         commutator: :<,
         negator: :<=
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   @doc section: :migrations_operators
@@ -860,14 +870,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :>=,
         :rational,
         :rational,
-        :"#{private_function_prefix(Migration.repo())}gte",
+        private_function(:gte, Migration.repo()),
         commutator: :<=,
         negator: :<
       )
 
-    :ok = Migration.execute(create_op)
-
-    :ok
+    Migration.execute(create_op)
   end
 
   ## OPERATOR CLASSES
@@ -886,13 +894,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
           >: 5
         ],
         [
-          {:"#{private_function_prefix(Migration.repo())}cmp", 1}
+          {private_function(:cmp, Migration.repo()), 1}
         ]
       )
 
-    :ok = Migration.execute(create_class)
-
-    :ok
+    Migration.execute(create_class)
   end
 
   ## CASTS
@@ -911,12 +917,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       Postgres.Utils.create_cast(
         :rational,
         :"double precision",
-        :"#{private_function_prefix(Migration.repo())}cast_to_float"
+        private_function(:cast_to_double, Migration.repo())
       )
 
-    :ok = Migration.execute(create_cast)
-
-    :ok
+    Migration.execute(create_cast)
   end
 
   @doc section: :migrations_constraints
@@ -943,7 +947,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_field_constraints(atom(), atom()) :: :ok
   def create_field_constraints(table, field_name) do
-    Migration.create(
+    constraint =
       Migration.constraint(
         table,
         "#{field_name}_denominator_positive",
@@ -951,38 +955,24 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         (#{field_name}).denominator > 0
         """
       )
-    )
+
+    %Constraint{} = Migration.create(constraint)
 
     :ok
   end
 
-  # Fetches PgRational configuration option from `repo`'s configuration.
-  @spec get_config(Ecto.Repo.t(), atom(), Keyword.value()) :: Keyword.value()
-  defp get_config(repo, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(:pg_rational) |> Keyword.get(opt, default)
-
-  @spec private_function_prefix(Ecto.Repo.t()) :: String.t()
-  defp private_function_prefix(repo) do
-    functions_private_schema = get_config(repo, :functions_private_schema, :public)
-    functions_prefix = get_config(repo, :functions_prefix, "")
-
-    functions_prefix =
-      if functions_prefix == "" and functions_private_schema == :public, do: "rational", else: functions_prefix
-
-    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
-
-    "#{functions_private_schema}.#{functions_prefix}"
+  @doc """
+  Returns the config-qualified name of the function for this type.
+  """
+  @spec function(atom(), Ecto.Repo.t()) :: String.t()
+  def function(name, repo) do
+    function_prefix = Postgres.Utils.type_function_prefix(repo, :pg_rational)
+    "#{function_prefix}#{name}"
   end
 
-  @spec function_prefix(Ecto.Repo.t()) :: String.t()
-  defp function_prefix(repo) do
-    functions_schema = get_config(repo, :functions_schema, :public)
-    functions_prefix = get_config(repo, :functions_prefix, "")
-
-    functions_prefix = if functions_prefix == "" and functions_schema == :public, do: "rational", else: functions_prefix
-
-    functions_prefix = if functions_prefix == "", do: "", else: "#{functions_prefix}_"
-
-    "#{functions_schema}.#{functions_prefix}"
+  @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
+  defp private_function(name, repo) do
+    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :pg_rational)
+    "#{function_prefix}#{name}"
   end
 end
