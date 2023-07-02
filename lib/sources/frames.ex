@@ -1,7 +1,7 @@
 defprotocol Vtc.Source.Frames do
   @moduledoc """
   Protocol which types can implement to be passed as the main value of
-  `Timecode.with_frames/2`.
+  `Framestamp.with_frames/2`.
 
   ## Implementations
 
@@ -17,18 +17,18 @@ defprotocol Vtc.Source.Frames do
 
     - Feet+Frames ("5400+00")
 
-  - [TimecodeStr](`Vtc.Source.Frames.TimecodeStr`)
+  - [SMPTETimecodeStr](`Vtc.Source.Frames.SMPTETimecodeStr`)
 
   - [FeetAndFrames](`Vtc.Source.Frames.FeetAndFrames`)
   """
 
   alias Vtc.Framerate
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   @typedoc """
   Result type of `frames/2`.
   """
-  @type result() :: {:ok, integer()} | {:error, Timecode.ParseError.t()}
+  @type result() :: {:ok, integer()} | {:error, Framestamp.ParseError.t()}
 
   @doc """
   Returns the value as a frame count.
@@ -37,7 +37,7 @@ defprotocol Vtc.Source.Frames do
 
   - **value**: The source value.
 
-  - **rate**: The framerate of the timecode being parsed.
+  - **rate**: The framerate of the framestamp being parsed.
 
   # Returns
 

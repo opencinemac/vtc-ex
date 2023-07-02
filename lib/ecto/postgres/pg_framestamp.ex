@@ -1,25 +1,25 @@
 use Vtc.Ecto.Postgres.Utils
 
-defpgmodule Vtc.Ecto.Postgres.PgTimecode do
+defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   @moduledoc """
   Defines a composite type for storing rational values as a
   [PgRational](`Vtc.Ecto.Postgres.PgRational`) real-world playbck seconds,
   [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) pair.
 
   These values are cast to
-  [Timecode](`Vtc.Timecode`) structs for use in application code.
+  [Framestamp](`Vtc.Framestamp`) structs for use in application code.
 
   The composite types is defined as follows:
 
   ```sql
-  CREATE TYPE timecode as (
+  CREATE TYPE framestamp as (
     seconds rational,
     rate framerate
   )
   ```
 
   ```sql
-  SELECT ((18018, 5), ((24000, 1001), '{non_drop}'))::timecode
+  SELECT ((18018, 5), ((24000, 1001), '{non_drop}'))::framestamp
   ```
 
   ## Field migrations
@@ -27,15 +27,15 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   You can create `framerate` fields during a migration like so:
 
   ```elixir
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   create table("events") do
-    add(:in, Timecode.type())
-    add(:out, Timecode.type())
+    add(:in, Framestamp.type())
+    add(:out, Framestamp.type())
   end
   ```
 
-  [Timecode](`Vtc.Timecode`) re-exports the `Ecto.Type` implementation of this module,
+  [Framestamp](`Vtc.Framestamp`) re-exports the `Ecto.Type` implementation of this module,
   and can be used any place this module would be used.
 
   ## Schema fields
@@ -47,16 +47,16 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   @moduledoc false
   use Ecto.Schema
 
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   @type t() :: %__MODULE__{
-          in: Timecode.t(),
-          out: Timecode.t()
+          in: Framestamp.t(),
+          out: Framestamp.t()
         }
 
   schema "events" do
-    field(:in, Timecode)
-    field(:out, Timecode)
+    field(:in, Framestamp)
+    field(:out, Framestamp)
   end
   ```
 
@@ -74,7 +74,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
 
   Framerate values can be cast from the following values in changesets:
 
-  - [Timecode](`Vtc.Timecode`) structs.
+  - [Framestamp](`Vtc.Framestamp`) structs.
 
   - Maps with the following format:
 
@@ -94,12 +94,12 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
 
   ## Fragments
 
-  Timecode values must be explicitly cast using
+  Framestamp values must be explicitly cast using
   [type/2](https://hexdocs.pm/ecto/Ecto.Query.html#module-interpolation-and-casting):
 
   ```elixir
-  timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  query = Query.from(f in fragment("SELECT ? as r", type(^timecode, Timecode)), select: f.r)
+  framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  query = Query.from(f in fragment("SELECT ? as r", type(^framestamp, Framestamp)), select: f.r)
   ```
   """
 
@@ -109,8 +109,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Framerate
-  alias Vtc.Source.Frames.TimecodeStr
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
+  alias Vtc.Source.Frames.SMPTETimecodeStr
 
   @doc section: :ecto_migrations
   @doc """
@@ -119,7 +119,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   Can be used in migrations as the fields type.
   """
   @impl Ecto.Type
-  def type, do: :timecode
+  def type, do: :framestamp
 
   @typedoc """
   Type of the raw composite value that will be sent to / received from the database.
@@ -129,8 +129,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   # Handles casting PgRational fields in `Ecto.Changeset`s.
   @doc false
   @impl Ecto.Type
-  @spec cast(Timecode.t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, Framerate.t()} | :error
-  def cast(%Timecode{} = timecode), do: {:ok, timecode}
+  @spec cast(Framestamp.t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, Framerate.t()} | :error
+  def cast(%Framestamp{} = framestamp), do: {:ok, framestamp}
 
   def cast(json) when is_map(json) do
     schema = %{
@@ -144,7 +144,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
       |> Changeset.validate_required([:smpte_timecode, :rate])
 
     with {:ok, %{smpte_timecode: timecode_str, rate: rate}} <- Changeset.apply_action(changeset, :loaded),
-         {:ok, _} = result <- Timecode.with_frames(%TimecodeStr{in: timecode_str}, rate) do
+         {:ok, _} = result <- Framestamp.with_frames(%SMPTETimecodeStr{in: timecode_str}, rate) do
       result
     else
       _ -> :error
@@ -157,11 +157,11 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   # application.
   @doc false
   @impl Ecto.Type
-  @spec load(db_record()) :: {:ok, Timecode.t()} | :error
+  @spec load(db_record()) :: {:ok, Framestamp.t()} | :error
   def load({seconds, rate}) do
     with {:ok, seconds} <- PgRational.load(seconds),
          {:ok, framerate} <- PgFramerate.load(rate),
-         {:ok, _} = result <- Timecode.with_seconds(seconds, framerate, round: :off) do
+         {:ok, _} = result <- Framestamp.with_seconds(seconds, framerate, round: :off) do
       result
     else
       _ -> :error
@@ -173,10 +173,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode do
   # Handles converting Ratio structs into database records.
   @doc false
   @impl Ecto.Type
-  @spec dump(Timecode.t()) :: {:ok, db_record()} | :error
-  def dump(%Timecode{} = timecode) do
-    with {:ok, seconds} <- PgRational.dump(timecode.seconds),
-         {:ok, framerate} <- PgFramerate.dump(timecode.rate) do
+  @spec dump(Framestamp.t()) :: {:ok, db_record()} | :error
+  def dump(%Framestamp{} = framestamp) do
+    with {:ok, seconds} <- PgRational.dump(framestamp.seconds),
+         {:ok, framerate} <- PgFramerate.dump(framestamp.rate) do
       {:ok, {seconds, framerate}}
     end
   end

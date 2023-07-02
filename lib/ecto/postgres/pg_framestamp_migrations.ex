@@ -1,8 +1,8 @@
 use Vtc.Ecto.Postgres.Utils
 
-defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
+defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @moduledoc """
-  Migrations for adding timecode types, functions and constraints to a
+  Migrations for adding framestamp types, functions and constraints to a
   Postgres database.
   """
   alias Ecto.Migration
@@ -25,7 +25,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   Calling this macro creates the following type definitions:
 
   ```sql
-  CREATE TYPE timecode AS (
+  CREATE TYPE framestamp AS (
     seconds rational,
     rate framerate
   );
@@ -34,7 +34,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   ## Schemas Created
 
   Up to two schemas are created as detailed by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgTimecode.Migrations.html#create_all/0-configuring-database-objects)
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
   section below.
 
   ## Configuring Database Objects
@@ -47,10 +47,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     adapter: Ecto.Adapters.Postgres,
     ...
     vtc: [
-      pg_timecode: [
-        functions_schema: :timecode,
-        functions_private_schema: :timecode_private,
-        functions_prefix: "timecode"
+      pg_framestamp: [
+        functions_schema: :framestamp,
+        functions_private_schema: :framestamp_private,
+        functions_prefix: "framestamp"
       ]
     ]
   ```
@@ -61,10 +61,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     compatibility guarantees and application code support. Default: `:public`.
 
   - `functions_private_schema:` The schema for for developer-only "private" functions
-    that support the functions in the "timecode" schema. Will NOT have backwards
+    that support the functions in the "framestamp" schema. Will NOT have backwards
     compatibility guarantees NOR application code support. Default: `:public`.
 
-  - `functions_prefix`: A prefix to add before all functions. Defaults to "timecode"
+  - `functions_prefix`: A prefix to add before all functions. Defaults to "framestamp"
     for any function created in the "public" schema, and "" otherwise.
 
   ## Examples
@@ -73,18 +73,18 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   defmodule MyMigration do
     use Ecto.Migration
 
-    alias Vtc.Ecto.Postgres.PgTimecode
-    require PgTimecode.Migrations
+    alias Vtc.Ecto.Postgres.PgFramestamp
+    require PgFramestamp.Migrations
 
     def change do
-      PgTimecode.Migrations.create_all()
+      PgFramestamp.Migrations.create_all()
     end
   end
   ```
   """
   @spec create_all() :: :ok
   def create_all do
-    create_type_timecode()
+    create_type_framestamp()
     create_function_schemas()
 
     create_func_with_seconds()
@@ -92,13 +92,13 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Adds `timecode` composite type.
+  Adds `framestamp` composite type.
   """
-  @spec create_type_timecode() :: :ok
-  def create_type_timecode do
+  @spec create_type_framestamp() :: :ok
+  def create_type_framestamp do
     Migration.execute("""
       DO $$ BEGIN
-        CREATE TYPE timecode AS (
+        CREATE TYPE framestamp AS (
           seconds rational,
           rate framerate
         );
@@ -111,12 +111,12 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   @doc section: :migrations_types
   @doc """
   Up to two schemas are created as detailed by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgTimecode.Migrations.html#create_all/0-configuring-database-objects)
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
   @spec create_function_schemas() :: :ok
   def create_function_schemas do
-    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_timecode, :functions_schema, :public)
+    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_framestamp, :functions_schema, :public)
 
     if functions_schema != :public do
       Migration.execute("""
@@ -129,7 +129,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     end
 
     functions_private_schema =
-      Postgres.Utils.get_type_config(Migration.repo(), :pg_timecode, :functions_private_schema, :public)
+      Postgres.Utils.get_type_config(Migration.repo(), :pg_framestamp, :functions_private_schema, :public)
 
     if functions_private_schema != :public do
       Migration.execute("""
@@ -146,8 +146,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `timecode_private.new(seconds, rate)` that rounds `seconds` to the
-  nearest whole frame based on `rate` and returns a constructed timecode.
+  Creates `framestamp_private.new(seconds, rate)` that rounds `seconds` to the
+  nearest whole frame based on `rate` and returns a constructed framestamp.
   """
   @spec create_func_with_seconds() :: :ok
   def create_func_with_seconds do
@@ -158,7 +158,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
         function(:with_seconds, Migration.repo()),
         args: [seconds: :rational, rate: :framerate],
         declares: [rounded: :bigint],
-        returns: :timecode,
+        returns: :framestamp,
         body: """
         SELECT #{rational_round}((rate).playback * seconds) INTO rounded;
         RETURN (((rounded, 1)::rational / (rate).playback), rate);
@@ -170,8 +170,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
 
   @doc section: :migrations_constraints
   @doc """
-  Creates basic constraints for a [PgTimecode](`Vtc.Ecto.Postgres.PgTimecode`) /
-  [Timecode](`Vtc.Timecode`) database field.
+  Creates basic constraints for a [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) /
+  [Framestamp](`Vtc.Framestamp`) database field.
 
   ## Constraints created:
 
@@ -187,15 +187,15 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
     i.e, are cleanly divisible by `30_000/1001`.
 
   - `{field_name}_seconds_divisible_by_rate`: Checks that the `seconds` value of the
-    timecode is cleanly divisible by the `rate.playback` value.
+    framestamp is cleanly divisible by the `rate.playback` value.
 
   ## Examples
 
   ```elixir
   create table("my_table", primary_key: false) do
     add(:id, :uuid, primary_key: true, null: false)
-    add(:a, Timecode.type())
-    add(:b, Timecode.type())
+    add(:a, Framestamp.type())
+    add(:b, Framestamp.type())
   end
 
   PgRational.migration_add_field_constraints(:my_table, :a)
@@ -224,5 +224,5 @@ defpgmodule Vtc.Ecto.Postgres.PgTimecode.Migrations do
   Returns the config-qualified name of the function for this type.
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
-  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_timecode)}#{name}"
+  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_framestamp)}#{name}"
 end

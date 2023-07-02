@@ -1,81 +1,159 @@
-defmodule Vtc.Timecode do
+defmodule Vtc.Framestamp do
   @moduledoc """
   Represents a particular frame in a video clip.
 
-  New Timecode values are created with the `with_seconds/3` and `with_frames/2`, and
+  New Framestamp values are created with the `with_seconds/3` and `with_frames/2`, and
   other function prefaced by `with_*`.
+
+  Vtc express a philosophy of working with Timecode that is defined by two major
+  conceits:
+
+  1. A frame identifier is incomplete without a framerate.
+     [More here](Vtc.Framestamp.html#module-why-include-framerate).
+
+  2. All frame identifiers commonly used in Video production boil down to being an
+     expression of either the real-world seconds of a frame, OR a squential index
+     number. [More here](Vtc.Framestamp.html#module-parsing-seconds-t-or-frames-t).
+
+  ## What is a framestamp?
+
+  Framestamp, as a concept, is the brainchild of Vtc itself. A framestamp is defined by
+  the following information:
+
+  - the real-world time that a frame occurred at, measured since SMPTE timecode
+    "midnight", as represented by a rational value
+
+  - The framerate of the media the framestamp was generated for, as represented by a
+    rational frames-per-second value.
+
+  - Any associated metadata about the source representation the framestamp was parsed
+    from, such as SMPTE NTSC non-drop timecode.
+
+  So a fully-formed framestamp for `01:00:00:00` at `23.98 NTSC` would be
+  `18018/5 @ 24000/1001 NTSC non-drop`.
+
+  ### Why prefer seconds?
+
+  SMPTE [timecode](history.html), shown above, is the canonical way we identify an
+  individual frame in professional video workflows. As a human readable data type,
+  timecode strings are great. You can easily locate, compare, and add timecode strings
+  at a glance.
+
+  Why then, does Vtc come up with a new representation?
+
+  Well, SMPTE timecode strings are *not* as great for computers. Let's take a quick look
+  at what we want from a good frame identifier:
+
+  - Uniquely identify a frame in a specific video stream.
+
+  - Sort by real-world occurrence.
+
+  - Add / subtract values.
+
+  - All of the above, in mixed-framerate contexts.
+
+  The last point is key, timecode is great... *if* all of your media is running at the
+  same framerate. For instance, when syncing footage and audio between two cameras --
+  one running at 24fps, and one running at 48fps -- `01:00:00:13` and `01:00:00:26` are
+  equivalent values, as they were captured at the same point in time, and should be
+  synced together. Timecode is an expression of *frame index* more than *frame seconds*,
+  and as such, cannot be lexically sorted in mixed-rate settings. Further,
+  a computer cannot add "01:30:00:00" to "01:00:00:00" without converting it to some
+  sort of numerical value.
+
+  Many programs convert timecode directly to an integer frame number for arithamtic and
+  comparison operations where each frame on the clock is issued a continuous index,
+  zero `0` is `00:00:00:00`. Frame numbers, though, have the same issue with mixed-rate
+  values as timecode; `26` at 48 frames-per-second represents the same real-world time
+  as `13` at 24 frames-per-seconds, and preserving that equality is important for
+  operations like jam-syncing.
+
+  So that leaves us with real-world seconds. Convert timecode values -- even ones
+  captured in mixed rates -- to seconds, then add and sort to your heart's content.
+
+  ### Why rational numbers?
+
+  We'll avoid a deep-dive over why we use a rational value over a float or decimal, but
+  you can read more on that choice
+  [here]([why we use rational values](the_rational_rationale.html).
+
+  The short version is that many common SMPTE-specified framerates are defined as
+  irrational numbers. For instance, `23.98 NTSC` is defined as `24000/1001`
+  frames-per-second.
+
+  In order to avoid off-by-one errors when using `seconds`, we need to avoid resolving
+  values like `1001/24000` -- the value for frame `1` at `23.98 NTSC` -- into any sort
+  of decimal representation, since `1001/24000` is an irrational value and cannot be
+  cleanly represented as a decimal. It's digits ride off into the sunset.
+
+  ### Why include framerate?
+
+  SMPTE timecode does not include a framerate in it's specification for frame
+  identifiers, i.e `01:00:00:00`. So why does `Vtc`?
+
+  Lets say that we are working with a given video file, and you are handed the timecode
+  `01:00:00:12`. What frame does that belong to?
+
+  Without a framerate, you cannot know. If we are talking about `23.98 NTSC` media, it
+  belongs to frame `86,400`, but if we are talking about `59.94 NTSC NDF`,  frame then
+  it belongs to frame `216,000`, and if we are talking about `59.94 NTSC DF` media then
+  it belongs to frame `215,784`.
+
+  What about the other direction. We need to calculate the SMPTE timecode for frame
+  `48`, which we previously parsed from a timecode. Well if it was originally parsed
+  using `23.98 NTSC` footage, then it is TC `00:00:02:00`, but if it is `59.94 NTSC`
+  then it is TC `00:00:00:48`. Framerate is implicitly required for a SMPTE timecode
+  to be comprehensible.
+
+  The story is the same with seconds. How many seconds does `01:00:00:00` represent?
+  At `23.98 NTSC`, it represents `18018/5` seconds, but at `24fps true` it represents
+  `3600/1` seconds.
+
+  We cannot know what frame a seconds value represents, or what seconds value a frame
+  represents, without knowing that scalar value's associated framerate. It's like having
+  a timestamp without a timezone. Even in systems where all timestamps are converted to
+  UTC, we often keep the timezone information around because it's just too useful in
+  mixed-timezone settings, and you can't be *sure* what a given timezone represents
+  in a vacuum if you don't have the associated timezone.
+
+  Framerate -- especially in mixed rate settings, which Vtc considers a first-class use
+  case -- is required to sensibly execute many operations, like casting in an out of
+  SMPTE Timecode, adding two timecodes together, etc.
+
+  For this reason we package the framerate of our media stream together with the scalar
+  value that represents a frame in that stream, and take the onus of transporting these
+  two values together off of the caller.
 
   ## Struct Fields
 
-  - `seconds`: The real-world seconds elapsed since 01:00:00:00 as a rational value.
-    (Note: The Ratio module automatically will coerce itself to an integer whenever
-    possible, so this value may be an integer when exactly a whole-second value).
+  - `seconds`: The real-world seconds elapsed since 'midnight' as a rational value.
 
-  - `rate`: the Framerate of the timecode.
-
-  ## Sorting Support
-
-  [Timecode](`Vtc.Timecode`) implements `compare/2`, and as such, can be used wherever
-  the standard library calls for a `Sorter` module. Let's see it in action:
-
-  ```elixir
-  iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-  iex>
-  iex> sorted = Enum.sort([tc_02, tc_01], Timecode)
-  iex> inspect(sorted)
-  "[<01:00:00:00 <23.98 NTSC>>, <02:00:00:00 <23.98 NTSC>>]"
-  iex> sorted = Enum.sort([tc_01, tc_02], {:desc, Timecode})
-  iex> inspect(sorted)
-  "[<02:00:00:00 <23.98 NTSC>>, <01:00:00:00 <23.98 NTSC>>]"
-  iex> max = Enum.max([tc_02, tc_01], Timecode)
-  iex> inspect(max)
-  "<02:00:00:00 <23.98 NTSC>>"
-  iex> min = Enum.min([tc_02, tc_01], Timecode)
-  iex> inspect(min)
-  "<01:00:00:00 <23.98 NTSC>>"
-  iex> data_01 = %{id: 2, tc: tc_01}
-  iex> data_02 = %{id: 1, tc: tc_02}
-  iex> sorted = Enum.sort_by([data_02, data_01], & &1.tc, Timecode)
-  iex> inspect(sorted)
-  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
-  ```
-
-  ## Arithmetic Autocasting
-
-  For operators that take two `timecode values`, likt `add/3` or `compare/2`, as long as
-  one argument is a [Timecode](`Vtc.Timecode`) value, `a` or `b` May be any value that
-  implements the [Frames](`Vtc.Source.Frames`) protocol, such as a timecode string, and
-  will be assumed to be the same framerate as the other. This is mostly to support quick
-  scripting.
-
-  If parsing the value fails during casting, the function raises a
-  `Vtc.Timecode.ParseError`.
+  - `rate`: the [Framerate](`Vtc.Framerate`) of the `Framestamp`.
 
   ## Parsing: Seconds.t() or Frames.t()
 
   Parsing functions preappend `with_` to their name. When you give a value to a parsing
   function, it is the same value that would be returned by the euivalent unit
-  conversion. So a value passed to [with_frames](`Vtc.Timecode.with_frames/2`) is the
-  same value [frames](`Vtc.Timecode.frames/1`) would return:
+  conversion. So a value passed to [with_frames](`Vtc.Framestamp.with_frames/2`) is the
+  same value [frames](`Vtc.Framestamp.frames/1`) would return:
 
   ```elixir
-  iex> {:ok, timecode} = Timecode.with_frames(24, Rates.f23_98())
-  iex> inspect(timecode)
+  iex> {:ok, framestamp} = Framestamp.with_frames(24, Rates.f23_98())
+  iex> inspect(framestamp)
   "<00:00:01:00 <23.98 NTSC>>"
-  iex> Timecode.frames(timecode)
+  iex> Framestamp.frames(framestamp)
   24
   ```
 
-  The `Timecode` module only has two basic construction / parsing methods:
-  [with_seconds](`Vtc.Timecode.with_seconds/2`) and
-  [with_frames](`Vtc.Timecode.with_frames/2`).
+  The `Framestamp` module only has two basic construction / parsing methods:
+  [with_seconds](`Vtc.Framestamp.with_seconds/2`) and
+  [with_frames](`Vtc.Framestamp.with_frames/2`).
 
   At first blush, this may seem... odd. Where is `with_timecode/2`? Or
   `with_premiere_ticks/2`? We can render these formats, so why isn't there a parser for
   them? Well there is, sort of: the two functions above.
 
-  One of the major conceits of Vtc is that all of the various ways of representing a
+  Vtc's second major conceit is that all of the various ways of representing a
   video frame's timestamp boil down to EITHER:
 
   - a) A representation of an index number for that frame
@@ -84,8 +162,8 @@ defmodule Vtc.Timecode do
 
   - b) A representation of the real-world seconds the frame occurred at.
 
-  Timecode is really a human-readable way to represent a frame number. Same with film
-  feet+frames.
+  SMPTE timecode is really a human-readable way to represent a frame number. Same with
+  film feet+frames.
 
   Premiere Ticks, on the other hand, represents a real-world seconds value, as broken
   down in `1/254_016_000_000ths` of a second.
@@ -94,38 +172,83 @@ defmodule Vtc.Timecode do
   a [Frames](`Vtc.Source.Frames`) protocol for types that represent a frame count, and a
   [Seconds](`Vtc.Source.Seconds`) protocol for types that represent a time-scalar.
 
-  All timecode representations eventually get funnelled through one of these protocols.
-  For instance, when the `String` implementation of the protocol detects a SMPTE
-  timecode string, it wraps the value in a [TimecodeStr](`Vtc.Source.Frames.TimecodeStr`)
-  struct which handles converting that string to a frame number thorough implementing
-  the [Frames](`Vtc.Source.Frames`) protocol. That frame number is then taken by
-  [with_frames](`Vtc.Timecode.with_frames/2`) and converted to a rational seconds value.
+  All framestamp representations eventually get funneled through one of these
+  protocols. For instance, when the `String` implementation of the protocol detects a
+  SMPTE timecode string, it wraps the value in a
+  [SMPTETimecodeStr](`Vtc.Source.Frames.SMPTETimecodeStr`) struct which handles converting that
+  string to a frame number thorough implementing the [Frames](`Vtc.Source.Frames`)
+  protocol. That frame number is then taken by
+  [with_frames](`Vtc.Framestamp.with_frames/2`) and converted to a rational seconds
+  value.
 
   Going through protocols allows callers to define their own types that work with Vtc's
   parsing functions directly.
 
+  ## Sorting Support
+
+  [Framestamp](`Vtc.Framestamp`) implements `compare/2`, and as such, can be used wherever
+  the standard library calls for a `Sorter` module. Let's see it in action:
+
+  ```elixir
+  iex> stamp_01 = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_02 = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+  iex>
+  iex> sorted = Enum.sort([stamp_02, stamp_01], Framestamp)
+  iex> inspect(sorted)
+  "[<01:00:00:00 <23.98 NTSC>>, <02:00:00:00 <23.98 NTSC>>]"
+  iex> sorted = Enum.sort([stamp_01, stamp_02], {:desc, Framestamp})
+  iex> inspect(sorted)
+  "[<02:00:00:00 <23.98 NTSC>>, <01:00:00:00 <23.98 NTSC>>]"
+  iex> max = Enum.max([stamp_02, stamp_01], Framestamp)
+  iex> inspect(max)
+  "<02:00:00:00 <23.98 NTSC>>"
+  iex> min = Enum.min([stamp_02, stamp_01], Framestamp)
+  iex> inspect(min)
+  "<01:00:00:00 <23.98 NTSC>>"
+  iex> data_01 = %{id: 2, tc: stamp_01}
+  iex> data_02 = %{id: 1, tc: stamp_02}
+  iex> sorted = Enum.sort_by([data_02, data_01], & &1.tc, Framestamp)
+  iex> inspect(sorted)
+  "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
+  ```
+
+  ## Arithmetic Autocasting
+
+  For operators that take two `Framestamp` values, likt `add/3` or `compare/2`, as long
+  as one argument is a [Framestamp](`Vtc.Framestamp`) value, `a` or `b` May be any value
+  that implements the [Frames](`Vtc.Source.Frames`) protocol, such as a timecode string,
+  and will be assumed to be the same framerate as the other.
+
+  > #### Production code {: .tip}
+  >
+  > Autocasting exists to support quick scratch scripts and we suggest that it not be,
+  > relied upon in production application code.
+
+  If parsing the value fails during casting, the function raises a
+  `Vtc.Framestamp.ParseError`.
+
   ## Using as an Ecto Type
 
-  See [PgTimecode](`Vtc.Ecto.Postgres.PgTimecode`) for information on how to use
+  See [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) for information on how to use
   `Framerate` in your postgres database as a native type.
   """
   use Vtc.Ecto.Postgres.Utils
 
   import Kernel, except: [div: 2, rem: 2, abs: 1]
 
-  alias Vtc.Ecto.Postgres.PgTimecode
+  alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.FilmFormat
   alias Vtc.Framerate
+  alias Vtc.Framestamp
+  alias Vtc.Framestamp.Eval
+  alias Vtc.Framestamp.ParseError
+  alias Vtc.SMPTETimecode.Sections
   alias Vtc.Source.Frames
   alias Vtc.Source.Frames.FeetAndFrames
-  alias Vtc.Source.Frames.TimecodeStr
+  alias Vtc.Source.Frames.SMPTETimecodeStr
   alias Vtc.Source.Seconds
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Source.Seconds.RuntimeStr
-  alias Vtc.Timecode
-  alias Vtc.Timecode.Eval
-  alias Vtc.Timecode.ParseError
-  alias Vtc.Timecode.Sections
   alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
 
@@ -133,7 +256,7 @@ defmodule Vtc.Timecode do
   defstruct [:seconds, :rate]
 
   @typedoc """
-  [Timecode](`Vtc.Timecode`) type.
+  [Framestamp](`Vtc.Framestamp`) type.
   """
   @type t() :: %__MODULE__{
           seconds: Ratio.t(),
@@ -171,7 +294,7 @@ defmodule Vtc.Timecode do
 
   @doc section: :parse
   @doc """
-  Returns a new [Timecode](`Vtc.Timecode`) with a `:seconds` field value equal to the
+  Returns a new [Framestamp](`Vtc.Framestamp`) with a `:seconds` field value equal to the
   `seconds` arg.
 
   ## Arguments
@@ -179,7 +302,7 @@ defmodule Vtc.Timecode do
   - `seconds`: A value which can be represented as a number of real-world seconds.
     Must implement the [Seconds](`Vtc.Source.Seconds`) protocol.
 
-  - `rate`: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the framestamp.
 
   ## Options
 
@@ -194,7 +317,7 @@ defmodule Vtc.Timecode do
   Accetps runtime strings...
 
   ```elixir
-  iex> result = Timecode.with_seconds("01:00:00.5", Rates.f23_98())
+  iex> result = Framestamp.with_seconds("01:00:00.5", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
@@ -202,7 +325,7 @@ defmodule Vtc.Timecode do
   ... floats...
 
   ```elixir
-  iex> result = Timecode.with_seconds(3600.5, Rates.f23_98())
+  iex> result = Framestamp.with_seconds(3600.5, Rates.f23_98())
   iex> inspect(result)
   "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
@@ -210,7 +333,7 @@ defmodule Vtc.Timecode do
   ... integers...
 
   ```elixir
-  iex> result = Timecode.with_seconds(3600, Rates.f23_98())
+  iex> result = Framestamp.with_seconds(3600, Rates.f23_98())
   iex> inspect(result)
   "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
@@ -218,7 +341,7 @@ defmodule Vtc.Timecode do
   ... integer Strings...
 
   ```elixir
-  iex> result = Timecode.with_seconds("3600", Rates.f23_98())
+  iex> result = Framestamp.with_seconds("3600", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
@@ -226,7 +349,7 @@ defmodule Vtc.Timecode do
   ... and float strings.
 
   ```elixir
-  iex> result = Timecode.with_seconds("3600.5", Rates.f23_98())
+  iex> result = Framestamp.with_seconds("3600.5", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <00:59:56:22 <23.98 NTSC>>}"
   ```
@@ -243,7 +366,7 @@ defmodule Vtc.Timecode do
   iex>
   iex> input = %PremiereTicks{in: 254_016_000_000}
   iex>
-  iex> result = Timecode.with_seconds!(input, Rates.f23_98())
+  iex> result = Framestamp.with_seconds!(input, Rates.f23_98())
   iex> inspect(result)
   "<00:00:01:00 <23.98 NTSC>>"
   ```
@@ -307,7 +430,7 @@ defmodule Vtc.Timecode do
 
   @doc section: :parse
   @doc """
-  Returns a new [Timecode](`Vtc.Timecode`) with a `frames/2` return value equal to the
+  Returns a new [Framestamp](`Vtc.Framestamp`) with a `frames/2` return value equal to the
   `frames` arg.
 
   ## Arguments
@@ -315,7 +438,7 @@ defmodule Vtc.Timecode do
   - `frames`: A value which can be represented as a frame number / frame count. Must
     implement the [Frames](`Vtc.Source.Frames`) protocol.
 
-  - `rate`: Frame-per-second playback value of the timecode.
+  - `rate`: Frame-per-second playback value of the framestamp.
 
   ## Options
 
@@ -323,10 +446,10 @@ defmodule Vtc.Timecode do
 
   ## Examples
 
-  Accepts timecode strings...
+  Accepts SMPTE timecode strings...
 
   ```elixir
-  iex> result = Timecode.with_frames("01:00:00:00", Rates.f23_98())
+  iex> result = Framestamp.with_frames("01:00:00:00", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
@@ -334,7 +457,7 @@ defmodule Vtc.Timecode do
   ... feet+frames strings...
 
   ```elixir
-  iex> result = Timecode.with_frames("5400+00", Rates.f23_98())
+  iex> result = Framestamp.with_frames("5400+00", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
@@ -347,7 +470,7 @@ defmodule Vtc.Timecode do
   iex>
   iex> {:ok, feet_and_frames} = FeetAndFrames.from_string("5400+00", film_format: :ff16mm)
   iex>
-  iex> result = Timecode.with_frames(feet_and_frames, Rates.f23_98())
+  iex> result = Framestamp.with_frames(feet_and_frames, Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:15:00:00 <23.98 NTSC>>}"
   ```
@@ -355,7 +478,7 @@ defmodule Vtc.Timecode do
   ... integers...
 
   ```elixir
-  iex> result = Timecode.with_frames(86_400, Rates.f23_98())
+  iex> result = Framestamp.with_frames(86_400, Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
@@ -363,7 +486,7 @@ defmodule Vtc.Timecode do
   ... and integer strings.
 
   ```elixir
-  iex> result = Timecode.with_frames("86400", Rates.f23_98())
+  iex> result = Framestamp.with_frames("86400", Rates.f23_98())
   iex> inspect(result)
   "{:ok, <01:00:00:00 <23.98 NTSC>>}"
   ```
@@ -381,7 +504,7 @@ defmodule Vtc.Timecode do
 
   @doc section: :parse
   @doc """
-  As `Timecode.with_frames/3`, but raises on error.
+  As `Framestamp.with_frames/3`, but raises on error.
   """
   @spec with_frames!(Frames.t(), Framerate.t()) :: t()
   def with_frames!(frames, rate) do
@@ -403,30 +526,30 @@ defmodule Vtc.Timecode do
 
   @doc section: :manipulate
   @doc """
-  Rebases `timecode` to a new framerate.
+  Rebases `framestamp` to a new framerate.
 
   The real-world seconds are recalculated using the same frame count as if they were
-  being played back at `new_rate` instead of `timecode.rate`.
+  being played back at `new_rate` instead of `framestamp.rate`.
 
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> {:ok, rebased} = Timecode.rebase(timecode, Rates.f47_95())
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> {:ok, rebased} = Framestamp.rebase(framestamp, Rates.f47_95())
   iex> inspect(rebased)
   "<00:30:00:00 <47.95 NTSC>>"
   ```
   """
   @spec rebase(t(), Framerate.t()) :: parse_result()
-  def rebase(%{rate: rate} = timecode, rate), do: {:ok, timecode}
-  def rebase(timecode, new_rate), do: timecode |> frames() |> with_frames(new_rate)
+  def rebase(%{rate: rate} = framestamp, rate), do: {:ok, framestamp}
+  def rebase(framestamp, new_rate), do: framestamp |> frames() |> with_frames(new_rate)
 
   @doc section: :manipulate
   @doc """
   As `rebase/2`, but raises on error.
   """
   @spec rebase!(t(), Framerate.t()) :: t()
-  def rebase!(timecode, new_rate), do: timecode |> rebase(new_rate) |> handle_raise_function()
+  def rebase!(framestamp, new_rate), do: framestamp |> rebase(new_rate) |> handle_raise_function()
 
   @doc section: :compare
   @doc """
@@ -440,20 +563,20 @@ defmodule Vtc.Timecode do
 
   ## Examples
 
-  Using two timecodes, `01:00:00:00` NTSC is greater than `01:00:00:00` true because it
-  represents more real-world time.
+  Using two framestamps parsed from SMPTE timecode, `01:00:00:00` NTSC is greater than
+  `01:00:00:00` true because it represents more real-world time.
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f24())
-  iex> :gt = Timecode.compare(a, b)
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:00:00:00", Rates.f24())
+  iex> :gt = Framestamp.compare(a, b)
   ```
 
-  Using a timecode and a bare string:
+  Using a framestamp and a bare string:
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> :eq = Timecode.compare(timecode, "01:00:00:00")
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> :eq = Framestamp.compare(framestamp, "01:00:00:00")
   ```
   """
   @spec compare(a :: t() | Frames.t(), b :: t() | Frames.t()) :: :lt | :eq | :gt
@@ -471,27 +594,27 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> true = Timecode.eq?(a, b)
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> true = Framestamp.eq?(a, b)
   ```
 
-  Timecodes with the *same* string representation, but *different* real-world seconds
-  values, are *not* equal:
+  Framestamps with the *same* string timecofe representation, but *different* real-world
+  seconds values, are *not* equal:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f24())
-  iex> false = Timecode.eq?(a, b)
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:00:00:00", Rates.f24())
+  iex> false = Framestamp.eq?(a, b)
   ```
 
-  But Timecodes with the *different* string representation, but the *same* real-world
-  seconds values, *are* equal:
+  But Framestamps with the *different* SMPTE timecode string representation, but the
+  *same* real-world seconds values, *are* equal:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:12", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:00:00:24", Rates.f47_95())
-  iex> true = Timecode.eq?(a, b)
+  iex> a = Framestamp.with_frames!("01:00:00:12", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:00:00:24", Rates.f47_95())
+  iex> true = Framestamp.eq?(a, b)
   ```
   """
   @spec eq?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
@@ -507,10 +630,10 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-  iex> true = Timecode.lt?(a, b)
-  iex> false = Timecode.lt?(b, a)
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+  iex> true = Framestamp.lt?(a, b)
+  iex> false = Framestamp.lt?(b, a)
   ```
   """
   @spec lt?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
@@ -548,7 +671,7 @@ defmodule Vtc.Timecode do
 
   @doc section: :arithmetic
   @doc """
-  Add two timecodes.
+  Add two framestamps.
 
   Uses the real-world seconds representation. When the rates of `a` and `b` are not
   equal, the result will inheret the framerate of `a` and be rounded to the seconds
@@ -567,34 +690,34 @@ defmodule Vtc.Timecode do
 
   ## Examples
 
-  Two timecodes running at the same rate:
+  Two framestamps running at the same rate:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:30:21:17", Rates.f23_98())
   iex>
-  iex> result = Timecode.add(a, b)
+  iex> result = Framestamp.add(a, b)
   iex> inspect(result)
   "<02:30:21:17 <23.98 NTSC>>"
   ```
 
-  Two timecodes running at different rates:
+  Two framestamps running at different rates:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Timecode.add(a, b)
+  iex> result = Framestamp.add(a, b)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
   ```
 
-  Using a timecode and a bare string:
+  Using a framestamps and a bare string:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.add(a, "01:30:21:17")
+  iex> result = Framestamp.add(a, "01:30:21:17")
   iex> inspect(result)
   "<02:30:21:17 <23.98 NTSC>>"
   ```
@@ -626,13 +749,13 @@ defmodule Vtc.Timecode do
 
   ## Examples
 
-  Two timecodes running at the same rate:
+  Two framestamps running at the same rate:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.sub(a, b)
+  iex> result = Framestamp.sub(a, b)
   iex> inspect(result)
   "<00:30:21:17 <23.98 NTSC>>"
   ```
@@ -640,31 +763,31 @@ defmodule Vtc.Timecode do
   When `b` is greater than `a`, the result is negative:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.sub(a, b)
+  iex> result = Framestamp.sub(a, b)
   iex> inspect(result)
   "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
-  Two timecodes running at different rates:
+  Two framestamps running at different rates:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:02", Rates.f23_98())
-  iex> b = Timecode.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Timecode.sub(a, b)
+  iex> result = Framestamp.sub(a, b)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
   ```
 
-  Using a timecode and a bare string:
+  Using a framestamps and a bare string:
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:30:21:17", Rates.f23_98())
   iex>
-  iex> result = Timecode.sub(a, "01:00:00:00")
+  iex> result = Framestamp.sub(a, "01:00:00:00")
   iex> inspect(result)
   "<00:30:21:17 <23.98 NTSC>>"
   ```
@@ -675,9 +798,9 @@ defmodule Vtc.Timecode do
     a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
   end
 
-  # Casts args for ops with two timecodes as long as at least one argument is a
-  # timecode. The non-timecode argument inherents the framerate of the timecode
-  # argument.
+  # Casts args for ops with two values as long as at least one argument is a
+  # `Framestamp`. The non-`Framestamp` argument inherents the `Framerate` of the
+  # `Framestamp` argument.
   @spec cast_op_args(t() | Frames.t(), t() | Frames.t()) :: {t(), t()}
   defp cast_op_args(%__MODULE__{} = a, %__MODULE__{} = b), do: {a, b}
   defp cast_op_args(%__MODULE__{} = a, b), do: {a, with_frames!(b, a.rate)}
@@ -702,15 +825,15 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.mult(a, 2)
+  iex> result = Framestamp.mult(a, 2)
   iex> inspect(result)
   "<02:00:00:00 <23.98 NTSC>>"
 
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.mult(a, 0.5)
+  iex> result = Framestamp.mult(a, 0.5)
   iex> inspect(result)
   "<00:30:00:00 <23.98 NTSC>>"
   ```
@@ -742,15 +865,15 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> dividend = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.div(dividend, 2)
+  iex> result = Framestamp.div(dividend, 2)
   iex> inspect(result)
   "<00:30:00:00 <23.98 NTSC>>"
 
-  iex> dividend = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> dividend = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.div(dividend, 0.5)
+  iex> result = Framestamp.div(dividend, 0.5)
   iex> inspect(result)
   "<02:00:00:00 <23.98 NTSC>>"
   ```
@@ -770,7 +893,7 @@ defmodule Vtc.Timecode do
   Divides the total frame count of `dividend` by `divisor` and returns both a quotient
   and a remainder.
 
-  The quotient returned is equivalent to `Timecode.div/3` with the `:round` option set
+  The quotient returned is equivalent to `Framestamp.div/3` with the `:round` option set
   to `:trunc`.
 
   ## Options
@@ -784,9 +907,9 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+  iex> dividend = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
   iex>
-  iex> result = Timecode.divrem(dividend, 4)
+  iex> result = Framestamp.divrem(dividend, 4)
   iex> inspect(result)
   "{<00:15:00:00 <23.98 NTSC>>, <00:00:00:01 <23.98 NTSC>>}"
   ```
@@ -829,9 +952,9 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> dividend = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+  iex> dividend = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
   iex>
-  iex> result = Timecode.rem(dividend, 4)
+  iex> result = Framestamp.rem(dividend, 4)
   iex> inspect(result)
   "<00:00:00:01 <23.98 NTSC>>"
   ```
@@ -876,23 +999,23 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.minus(tc)
+  iex> result = Framestamp.minus(stamp)
   iex> inspect(result)
   "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
   ```elixir
-  iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> stamp = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.minus(tc)
+  iex> result = Framestamp.minus(stamp)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
   ```
   """
   @spec minus(t()) :: t()
-  def minus(tc), do: %{tc | seconds: Ratio.minus(tc.seconds)}
+  def minus(framestamp), do: %{framestamp | seconds: Ratio.minus(framestamp.seconds)}
 
   @doc section: :arithmetic
   @doc """
@@ -901,36 +1024,37 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> tc = Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> stamp = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.abs(tc)
+  iex> result = Framestamp.abs(stamp)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
   ```
 
   ```elixir
-  iex> tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.abs(tc)
+  iex> result = Framestamp.abs(stamp)
   iex> inspect(result)
   "<01:00:00:00 <23.98 NTSC>>"
   ```
   """
   @spec abs(t()) :: t()
-  def abs(tc), do: %{tc | seconds: Ratio.abs(tc.seconds)}
+  def abs(framestamp), do: %{framestamp | seconds: Ratio.abs(framestamp.seconds)}
 
   @doc section: :arithmetic
   @doc """
-  Evalutes timecode mathematical expressions in a `do` block.
+  Evalutes [Framestamp](`Vtc.Framestamp`) mathematical expressions in a `do` block.
 
-  Any code captured within this macro can use Kernel operators to work with timecode
-  values instead of module functions like `add/2`.
+  Any code captured within this macro can use Kernel operators to work with
+  [Framestamp](`Vtc.Framestamp`) values instead of module functions like `add/2`.
 
   ## Options
 
-  - `at`: The Framerate to cast non-timecode values to. If this value is not set, then
-    at least one value in each operation must be a [Timecode](`Vtc.Timecode`). This
-    value can be any value accepted by `Framerate.new/2`.
+  - `at`: The Framerate to cast non-[Framestamp](`Vtc.Framestamp`) values to. If this
+    value is not set, then at least one value in each operation must be a
+    [Framestamp](`Vtc.Framestamp`). This value can be any value accepted by
+    [Framerate.new/2](`Vtc.Framerate.new/2`).
 
   - `ntsc`: The `ntsc` value to use when creating a new Framerate with `at`. Not needed
     if `at` is a [Framerate](`Vtc.Framerate`) value.
@@ -942,14 +1066,14 @@ defmodule Vtc.Timecode do
   statement.
 
   ```elixir
-  iex> require Timecode
+  iex> require Framestamp
   iex>
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
-  iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
+  iex> c = Framestamp.with_frames!("00:15:00:00", Rates.f23_98())
   iex>
   iex> result =
-  iex>   Timecode.eval do
+  iex>   Framestamp.eval do
   iex>     a + b * 2 - c
   iex>   end
   iex>
@@ -960,27 +1084,27 @@ defmodule Vtc.Timecode do
   Or if you want to do it in one line:
 
   ```elixir
-  iex> require Timecode
+  iex> require Framestamp
   iex>
-  iex> a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
-  iex> c = Timecode.with_frames!("00:15:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
+  iex> c = Framestamp.with_frames!("00:15:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.eval(a + b * 2 - c)
+  iex> result = Framestamp.eval(a + b * 2 - c)
   iex>
   iex> inspect(result)
   "<01:45:00:00 <23.98 NTSC>>"
   ```
 
-  Just like the regular [Timecode](`Vtc.Timecode`) functions, only one value in an
-  arithmetic expression needs to be a [Timecode](`Vtc.Timecode`) value. In the case
+  Just like the regular [Framestamp](`Vtc.Framestamp`) functions, only one value in an
+  arithmetic expression needs to be a [Framestamp](`Vtc.Framestamp`) value. In the case
   above, since multiplication happens first, that's `b`:
 
   ```elixir
-  iex> b = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
   iex>
   iex> result =
-  iex>   Timecode.eval do
+  iex>   Framestamp.eval do
   iex>     "01:00:00:00" + b * 2 - "00:15:00:00"
   iex>   end
   iex>
@@ -994,7 +1118,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> result =
-  iex>   Timecode.eval at: Rates.f23_98() do
+  iex>   Framestamp.eval at: Rates.f23_98() do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
   iex>
@@ -1006,7 +1130,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> result =
-  iex>   Timecode.eval at: 23.98 do
+  iex>   Framestamp.eval at: 23.98 do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
   iex>
@@ -1019,7 +1143,7 @@ defmodule Vtc.Timecode do
 
   ```elixir
   iex> result =
-  iex>   Timecode.eval at: 24, ntsc: nil do
+  iex>   Framestamp.eval at: 24, ntsc: nil do
   iex>     "01:00:00:00" + "00:30:00:00" * 2 - "00:15:00:00"
   iex>   end
   iex>
@@ -1032,8 +1156,8 @@ defmodule Vtc.Timecode do
 
   @doc section: :convert
   @doc """
-  Returns the number of frames that would have elapsed between 00:00:00:00 and
-  `timecode`.
+  Returns the number of frames that would have elapsed between `00:00:00:00` and
+  [Framestamp](`Vtc.Framestamp`).
 
   ## Options
 
@@ -1041,9 +1165,10 @@ defmodule Vtc.Timecode do
 
   ## What it is
 
-  Frame number / frames count is the number of a frame if the timecode started at
-  00:00:00:00 and had been running until the current value. A timecode of '00:00:00:10'
-  has a frame number of 10. A timecode of '01:00:00:00' has a frame number of 86400.
+  Frame number / frames count is the number of a frame if the SMPTE timecode started at
+  00:00:00:00 and had been running until the current value. A SMPTE timecode of
+  '00:00:00:10' has a frame number of 10. A SMPTE timecode of '01:00:00:00' has a frame
+  number of 86400.
 
   ## Where you see it
 
@@ -1065,48 +1190,48 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.frames(timecode)
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Framestamp.frames(framestamp)
   86400
   ```
   """
   @spec frames(t(), opts :: [round: round()]) :: integer()
-  def frames(timecode, opts \\ []) do
+  def frames(framestamp, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      timecode.seconds
-      |> Ratio.mult(timecode.rate.playback)
+      framestamp.seconds
+      |> Ratio.mult(framestamp.rate.playback)
       |> Rational.round(round)
     end
   end
 
   @doc section: :convert
   @doc """
-  The individual sections of a timecode string as i64 values.
+  The individual sections of a SMPTE timecode string as i64 values.
 
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.sections(timecode)
+  iex> result = Framestamp.smpte_timecode_sections(framestamp)
   iex> inspect(result)
-  "%Vtc.Timecode.Sections{negative?: false, hours: 1, minutes: 0, seconds: 0, frames: 0}"
+  "%Vtc.SMPTETimecode.Sections{negative?: false, hours: 1, minutes: 0, seconds: 0, frames: 0}"
   ```
   """
-  @spec sections(t(), opts :: [round: round()]) :: Sections.t()
-  def sections(timecode, opts \\ []) do
+  @spec smpte_timecode_sections(t(), opts :: [round: round()]) :: Sections.t()
+  def smpte_timecode_sections(framestamp, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      Sections.from_timecode(timecode, opts)
+      Sections.from_framestamp(framestamp, opts)
     end
   end
 
   @doc section: :convert
   @doc """
-  Returns the the formatted SMPTE timecode
+  Returns the the formatted SMPTE timecode for a [Framestamp](`Vtc.Framestamp`).
 
   Ex: `01:00:00:00`. Drop frame timecode will be rendered with a ';' sperator before the
   frames field.
@@ -1135,17 +1260,17 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!(86_400, Rates.f23_98())
-  iex> Timecode.timecode(timecode)
+  iex> framestamp = Framestamp.with_frames!(86_400, Rates.f23_98())
+  iex> Framestamp.smpte_timecode(framestamp)
   "01:00:00:00"
   ```
   """
-  @spec timecode(t(), opts :: [round: round()]) :: String.t()
-  def timecode(timecode, opts \\ []), do: timecode |> TimecodeStr.from_timecode(opts) |> then(& &1.in)
+  @spec smpte_timecode(t(), opts :: [round: round()]) :: String.t()
+  def smpte_timecode(framestamp, opts \\ []), do: framestamp |> SMPTETimecodeStr.from_framestamp(opts) |> then(& &1.in)
 
   @doc section: :convert
   @doc """
-  Runtime Returns the true, real-world runtime of `timecode` in HH:MM:SS.FFFFFFFFF
+  Runtime Returns the true, real-world runtime of `framestamp` in `HH:MM:SS.FFFFFFFFF`
   format.
 
   Trailing zeroes are trimmed from the end of the return value. If the entire fractal
@@ -1160,8 +1285,8 @@ defmodule Vtc.Timecode do
 
   ## What it is
 
-  The formatted version of seconds. It looks like timecode, but with a decimal seconds
-  value instead of a frame number place.
+  The human-readable version of `seconds`. It looks like timecode, but with a decimal
+  seconds value instead of a frame number place.
 
   ## Where you see it
 
@@ -1176,7 +1301,7 @@ defmodule Vtc.Timecode do
   ## Note
 
   The true runtime will often diverge from the hours, minutes, and seconds
-  value of the timecode representation when dealing with non-whole-frame
+  value of the SMPTE timecode representation when dealing with non-whole-frame
   framerates. Even drop-frame timecode does not continuously adhere 1:1 to the
   actual runtime. For instance, <01:00:00;00 <29.97 NTSC DF>> has a true runtime of
   '00:59:59.9964', and <01:00:00:00 <23.98 NTSC>> has a true runtime of
@@ -1185,17 +1310,17 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.runtime(timecode)
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Framestamp.runtime(framestamp)
   "01:00:03.6"
   ```
   """
   @spec runtime(t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: String.t()
-  def runtime(timecode, opts \\ []), do: timecode |> RuntimeStr.from_timecode(opts) |> then(& &1.in)
+  def runtime(framestamp, opts \\ []), do: framestamp |> RuntimeStr.from_framestamp(opts) |> then(& &1.in)
 
   @doc section: :convert
   @doc """
-  Returns the number of elapsed ticks `timecode` represents in Adobe Premiere Pro.
+  Returns the number of elapsed ticks `framestamp` represents in Adobe Premiere Pro.
 
   ## Options
 
@@ -1227,23 +1352,23 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> Timecode.premiere_ticks(timecode)
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> Framestamp.premiere_ticks(framestamp)
   915372057600000
   ```
   """
   @spec premiere_ticks(t(), opts :: [round: round()]) :: integer()
-  def premiere_ticks(timecode, opts \\ []) do
+  def premiere_ticks(framestamp, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
 
     with :ok <- ensure_round_enabled(round) do
-      timecode |> PremiereTicks.from_timecode(opts) |> then(& &1.in)
+      framestamp |> PremiereTicks.from_framestamp(opts) |> then(& &1.in)
     end
   end
 
   @doc section: :convert
   @doc """
-  Returns the number of physical film feet and frames `timecode` represents if shot
+  Returns the number of physical film feet and frames `framestamp` represents if shot
   on film.
 
   Ex: '5400+13'.
@@ -1281,9 +1406,9 @@ defmodule Vtc.Timecode do
   Defaults to 35mm, 4perf:
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.feet_and_frames(timecode)
+  iex> result = Framestamp.feet_and_frames(framestamp)
   iex> inspect(result)
   "<5400+00 :ff35mm_4perf>"
   ```
@@ -1293,9 +1418,9 @@ defmodule Vtc.Timecode do
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
   iex>
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.feet_and_frames(timecode)
+  iex> result = Framestamp.feet_and_frames(framestamp)
   iex> String.Chars.to_string(result)
   "5400+00"
   ```
@@ -1305,15 +1430,15 @@ defmodule Vtc.Timecode do
   ## Examples
 
   ```elixir
-  iex> timecode = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> framestamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Timecode.feet_and_frames(timecode, film_format: :ff16mm)
+  iex> result = Framestamp.feet_and_frames(framestamp, film_format: :ff16mm)
   iex> inspect(result)
   "<4320+00 :ff16mm>"
   ```
   """
   @spec feet_and_frames(t(), opts :: [fiim_format: FilmFormat.t(), round: round()]) :: FeetAndFrames.t()
-  def feet_and_frames(timecode, opts \\ []), do: FeetAndFrames.from_timecode(timecode, opts)
+  def feet_and_frames(framestamp, opts \\ []), do: FeetAndFrames.from_framestamp(framestamp, opts)
 
   # Ensures that rounding is enabled for functions that cannot meaningfully turn
   # rounding off, such as those that must return an integer.
@@ -1331,34 +1456,34 @@ defmodule Vtc.Timecode do
 
     @impl Ecto.Type
     @spec type() :: atom()
-    defdelegate type, to: PgTimecode
+    defdelegate type, to: PgFramestamp
 
     @impl Ecto.Type
     @spec cast(t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, t()} | :error
-    defdelegate cast(value), to: PgTimecode
+    defdelegate cast(value), to: PgFramestamp
 
     @impl Ecto.Type
-    @spec load(PgTimecode.db_record()) :: {:ok, t()} | :error
-    defdelegate load(value), to: PgTimecode
+    @spec load(PgFramestamp.db_record()) :: {:ok, t()} | :error
+    defdelegate load(value), to: PgFramestamp
 
     @impl Ecto.Type
-    @spec dump(t()) :: {:ok, PgTimecode.db_record()} | :error
-    defdelegate dump(value), to: PgTimecode
+    @spec dump(t()) :: {:ok, PgFramestamp.db_record()} | :error
+    defdelegate dump(value), to: PgFramestamp
   end
 end
 
-defimpl Inspect, for: Vtc.Timecode do
-  alias Vtc.Timecode
+defimpl Inspect, for: Vtc.Framestamp do
+  alias Vtc.Framestamp
 
-  @spec inspect(Timecode.t(), Elixir.Inspect.Opts.t()) :: String.t()
-  def inspect(timecode, _opts) do
-    "<#{Timecode.timecode(timecode)} #{inspect(timecode.rate)}>"
+  @spec inspect(Framestamp.t(), Elixir.Inspect.Opts.t()) :: String.t()
+  def inspect(framestamp, _opts) do
+    "<#{Framestamp.smpte_timecode(framestamp)} #{inspect(framestamp.rate)}>"
   end
 end
 
-defimpl String.Chars, for: Vtc.Timecode do
-  alias Vtc.Timecode
+defimpl String.Chars, for: Vtc.Framestamp do
+  alias Vtc.Framestamp
 
-  @spec to_string(Timecode.t()) :: String.t()
-  def to_string(timecode), do: inspect(timecode)
+  @spec to_string(Framestamp.t()) :: String.t()
+  def to_string(framestamp), do: inspect(framestamp)
 end

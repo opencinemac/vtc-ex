@@ -1,7 +1,7 @@
 defprotocol Vtc.Source.Seconds do
   @moduledoc """
   Protocol which types can implement to be passed as the main value of
-  `Timecode.with_seconds/3`.
+  `Framestamp.with_seconds/3`.
 
   ## Implementations
 
@@ -18,12 +18,12 @@ defprotocol Vtc.Source.Seconds do
   """
 
   alias Vtc.Framerate
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   @typedoc """
   Result type of `seconds/2`.
   """
-  @type result() :: {:ok, Ratio.t()} | {:error, Timecode.ParseError.t()}
+  @type result() :: {:ok, Ratio.t()} | {:error, Framestamp.ParseError.t()}
 
   @doc """
   Returns the value as a rational, real-world seconds value.
@@ -32,7 +32,7 @@ defprotocol Vtc.Source.Seconds do
 
   - **value**: The source value.
 
-  - **rate**: The framerate of the timecode being parsed.
+  - **rate**: The framerate of the framestamp being parsed.
 
   ## Returns
 

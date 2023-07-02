@@ -4,13 +4,13 @@ defmodule Vtc.DocsTest do
   use ExUnit.Case, async: true
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Range
   alias Vtc.Rates
   alias Vtc.Source
-  alias Vtc.Timecode
 
   doctest Range
   doctest Framerate
-  doctest Timecode
+  doctest Framestamp
   doctest Source.Frames.FeetAndFrames
 end

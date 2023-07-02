@@ -1,6 +1,6 @@
 # Long property tests are put in their own module so they can be run concurrently.
 
-defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
+defmodule Vtc.FramestampTest.Properties.Parse.Helpers do
   @moduledoc false
 
   use ExUnit.Case
@@ -44,7 +44,7 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
         integer(1..23),
         integer(0..59),
         integer(0..59),
-        integer(0..((rate |> Framerate.timebase() |> Rational.round()) - 1)),
+        integer(0..((rate |> Framerate.smpte_timebase() |> Rational.round()) - 1)),
         boolean()
       },
       fn {hours, minutes, seconds, frames, negative?} = values ->
@@ -79,9 +79,9 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
     if negative?, do: "-" <> timecode_string, else: timecode_string
   end
 
-  @spec assert_frame_rounded(Timecode.t()) :: term()
-  def assert_frame_rounded(timecode) do
-    %{seconds: seconds, rate: %{playback: playback_rate}} = timecode
+  @spec assert_frame_rounded(Framestamp.t()) :: term()
+  def assert_frame_rounded(framestamp) do
+    %{seconds: seconds, rate: %{playback: playback_rate}} = framestamp
 
     seconds_per_frame = Ratio.new(Ratio.denominator(playback_rate), Ratio.numerator(playback_rate))
 
@@ -89,18 +89,18 @@ defmodule Vtc.TimecodeTest.Properties.Parse.Helpers do
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
+defmodule Vtc.FramestampTest.Properties.ParseRoundTripDrop do
   @moduledoc false
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
+  import Vtc.FramestampTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.TestUtls.StreamDataVtc
-  alias Vtc.Timecode
 
   describe "parse round trip" do
     property "timecode | ntsc | drop" do
@@ -118,30 +118,30 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
         } = timecode_values
 
         if frames < 2 * rate_multiplier and rem(minutes, 10) != 0 and seconds == 0 do
-          assert_raise Timecode.ParseError, fn -> Timecode.with_frames!(timecode_string, rate) end
+          assert_raise Framestamp.ParseError, fn -> Framestamp.with_frames!(timecode_string, rate) end
         else
-          timecode = Timecode.with_frames!(timecode_string, rate)
-          assert Timecode.timecode(timecode) == timecode_string
+          framestamp = Framestamp.with_frames!(timecode_string, rate)
+          assert Framestamp.smpte_timecode(framestamp) == timecode_string
         end
       end
     end
   end
 
   property "timecode round trip" do
-    check all(timecode <- StreamDataVtc.timecode(rate_opts: [type: [:whole, :non_drop, :drop]])) do
-      timecode_str = Timecode.timecode(timecode)
+    check all(framestamp <- StreamDataVtc.framestamp(rate_opts: [type: [:whole, :non_drop, :drop]])) do
+      timecode_str = Framestamp.smpte_timecode(framestamp)
 
-      assert {:ok, result} = Timecode.with_frames(timecode_str, timecode.rate)
-      assert result == timecode
+      assert {:ok, result} = Framestamp.with_frames(timecode_str, framestamp.rate)
+      assert result == framestamp
     end
   end
 
   property "59.94 frames round trip" do
     check all(frames <- StreamData.integer(-5_178_816..5_178_816)) do
-      assert {:ok, timecode} = Timecode.with_frames(frames, Rates.f59_94_df())
-      Timecode.frames(timecode) == frames
+      assert {:ok, framestamp} = Framestamp.with_frames(frames, Rates.f59_94_df())
+      Framestamp.frames(framestamp) == frames
 
-      assert {:ok, ^timecode} = Timecode.with_frames(frames, Rates.f59_94_df())
+      assert {:ok, ^framestamp} = Framestamp.with_frames(frames, Rates.f59_94_df())
     end
   end
 
@@ -150,22 +150,22 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripDrop do
             seconds <- StreamDataVtc.rational(),
             framerate <- StreamDataVtc.framerate()
           ) do
-      assert {:ok, timecode} = Timecode.with_seconds(seconds, framerate)
-      assert {:ok, ^timecode} = Timecode.with_seconds(timecode.seconds, framerate, round: :off)
+      assert {:ok, framestamp} = Framestamp.with_seconds(seconds, framerate)
+      assert {:ok, ^framestamp} = Framestamp.with_seconds(framestamp.seconds, framerate, round: :off)
     end
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
+defmodule Vtc.FramestampTest.Properties.ParseRoundTripNonDrop do
   @moduledoc false
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
+  import Vtc.FramestampTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   describe "parse round trip" do
     property "timecode | ntsc | non_drop" do
@@ -175,8 +175,8 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
               max_runs: 100
             ) do
         %{timecode_string: timecode_string} = timecode_values
-        timecode = Timecode.with_frames!(timecode_string, rate)
-        assert Timecode.timecode(timecode) == timecode_string
+        framestamp = Framestamp.with_frames!(timecode_string, rate)
+        assert Framestamp.smpte_timecode(framestamp) == timecode_string
       end
     end
 
@@ -186,8 +186,8 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
               rate <- frame_rate_gen(),
               max_runs: 20
             ) do
-        timecode = Timecode.with_frames!(frames, rate)
-        assert Timecode.frames(timecode) == frames
+        framestamp = Framestamp.with_frames!(frames, rate)
+        assert Framestamp.frames(framestamp) == frames
       end
     end
 
@@ -198,67 +198,67 @@ defmodule Vtc.TimecodeTest.Properties.ParseRoundTripNonDrop do
                 map(integer(), fn scalar -> Ratio.mult(rate.playback, Ratio.new(scalar)) end),
               max_runs: 20
             ) do
-        timecode = Timecode.with_seconds!(seconds, rate)
-        assert timecode.seconds == seconds
+        framestamp = Framestamp.with_seconds!(seconds, rate)
+        assert framestamp.seconds == seconds
       end
     end
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.Rebase do
+defmodule Vtc.FramestampTest.Properties.Rebase do
   @moduledoc false
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
+  import Vtc.FramestampTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.TestUtls.StreamDataVtc
-  alias Vtc.Timecode
 
   describe "#rebase/2" do
     property "round trip rebases do not lose accuracy" do
       check all(
-              timecode <- StreamDataVtc.timecode(),
+              framestamp <- StreamDataVtc.framestamp(),
               new_rate <- StreamDataVtc.framerate(),
               max_runs: 20
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          assert rebased = Timecode.rebase!(timecode, new_rate)
-          assert ^timecode = Timecode.rebase!(rebased, timecode.rate)
+          assert rebased = Framestamp.rebase!(framestamp, new_rate)
+          assert ^framestamp = Framestamp.rebase!(rebased, framestamp.rate)
         end)
       end
     end
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.Arithmetic do
+defmodule Vtc.FramestampTest.Properties.Arithmetic do
   @moduledoc false
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import Vtc.TimecodeTest.Properties.Parse.Helpers
+  import Vtc.FramestampTest.Properties.Parse.Helpers
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.TestUtls.StreamDataVtc
-  alias Vtc.Timecode
 
   property "add/sub symmetry" do
     check all(
             rate <- StreamDataVtc.framerate(),
-            a <- StreamDataVtc.timecode(non_negative?: true, rate: rate),
-            b <- StreamDataVtc.timecode(non_negative?: true, rate: rate)
+            a <- StreamDataVtc.framestamp(non_negative?: true, rate: rate),
+            b <- StreamDataVtc.framestamp(non_negative?: true, rate: rate)
           ) do
-      added = Timecode.add(a, b)
+      added = Framestamp.add(a, b)
 
-      assert Timecode.compare(added, a) == :gt
-      assert Timecode.compare(added, b) == :gt
+      assert Framestamp.compare(added, a) == :gt
+      assert Framestamp.compare(added, b) == :gt
 
-      subtracted = Timecode.sub(added, b)
-      assert Timecode.compare(subtracted, a) == :eq
+      subtracted = Framestamp.sub(added, b)
+      assert Framestamp.compare(subtracted, a) == :eq
     end
   end
 
@@ -267,14 +267,14 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
       check all(
               a <-
                 StreamData.filter(
-                  StreamDataVtc.timecode(rate_opts: [type: [:whole, :drop, :non_drop]]),
+                  StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]]),
                   &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
                 ),
               multiplier <- float()
             ) do
         %{rate: rate} = a
 
-        assert %Timecode{rate: ^rate} = result = Timecode.mult(a, multiplier)
+        assert %Framestamp{rate: ^rate} = result = Framestamp.mult(a, multiplier)
         assert_frame_rounded(result)
       end
     end
@@ -282,16 +282,16 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
     property "basic comparisons" do
       check all(
               rate <- StreamDataVtc.framerate(),
-              original <- StreamDataVtc.timecode(non_negative?: true, rate: rate),
+              original <- StreamDataVtc.framestamp(non_negative?: true, rate: rate),
               scalar <- StreamDataVtc.rational()
             ) do
-        multiplied = Timecode.mult(original, scalar)
+        multiplied = Framestamp.mult(original, scalar)
 
         case {Ratio.compare(scalar, 0), Ratio.compare(scalar, 1)} do
-          {:eq, _} -> assert multiplied == Timecode.with_frames!(0, rate)
-          {_, :eq} -> assert Timecode.compare(multiplied, original) == :eq
-          {_, :lt} -> assert Timecode.compare(multiplied, original) == :lt
-          {_, :gt} -> assert Timecode.compare(multiplied, original) == :gt
+          {:eq, _} -> assert multiplied == Framestamp.with_frames!(0, rate)
+          {_, :eq} -> assert Framestamp.compare(multiplied, original) == :eq
+          {_, :lt} -> assert Framestamp.compare(multiplied, original) == :lt
+          {_, :gt} -> assert Framestamp.compare(multiplied, original) == :gt
         end
       end
     end
@@ -302,14 +302,14 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
       check all(
               a <-
                 StreamData.filter(
-                  StreamDataVtc.timecode(rate_opts: [type: [:whole, :drop, :non_drop]]),
+                  StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]]),
                   &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
                 ),
               multiplier <- filter(float(), &(&1 != 0))
             ) do
         %{rate: rate} = a
 
-        assert %Timecode{rate: ^rate} = result = Timecode.div(a, multiplier)
+        assert %Framestamp{rate: ^rate} = result = Framestamp.div(a, multiplier)
         assert_frame_rounded(result)
       end
     end
@@ -321,72 +321,72 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
               divisor <- filter(ratio(), &(&1 != Ratio.new(0)))
             ) do
         %{timecode_string: tc_string} = tc_info
-        dividend = Timecode.with_frames!(tc_string, rate)
-        quotient = Timecode.div(dividend, divisor)
+        dividend = Framestamp.with_frames!(tc_string, rate)
+        quotient = Framestamp.div(dividend, divisor)
 
         case {Ratio.compare(divisor, 0), Ratio.compare(divisor, 1)} do
-          {:lt, _} -> assert Timecode.compare(quotient, dividend) == :lt
-          {:gt, :lt} -> assert Timecode.compare(quotient, dividend) == :gt
-          {_, :eq} -> assert Timecode.compare(quotient, dividend) == :eq
-          {:gt, :gt} -> assert Timecode.compare(quotient, dividend) == :lt
+          {:lt, _} -> assert Framestamp.compare(quotient, dividend) == :lt
+          {:gt, :lt} -> assert Framestamp.compare(quotient, dividend) == :gt
+          {_, :eq} -> assert Framestamp.compare(quotient, dividend) == :eq
+          {:gt, :gt} -> assert Framestamp.compare(quotient, dividend) == :lt
         end
       end
     end
 
     property "abs(div(-a, +b)) = abs(div(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
 
-          pos_quotient = Timecode.div(dividend, divisor)
-          neg_quotient = Timecode.div(neg_dividend, divisor)
+          pos_quotient = Framestamp.div(dividend, divisor)
+          neg_quotient = Framestamp.div(neg_dividend, divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
-          assert Timecode.lte?(neg_quotient, zero)
+          zero = Framestamp.with_frames!(0, dividend.rate)
+          assert Framestamp.lte?(neg_quotient, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
         end)
       end
     end
 
     property "abs(div(+a, -b)) = abs(div(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
           neg_divisor = Ratio.minus(divisor)
 
-          pos_quotient = Timecode.div(dividend, divisor)
-          neg_quotient = Timecode.div(dividend, neg_divisor)
+          pos_quotient = Framestamp.div(dividend, divisor)
+          neg_quotient = Framestamp.div(dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
-          assert Timecode.lte?(neg_quotient, zero)
+          zero = Framestamp.with_frames!(0, dividend.rate)
+          assert Framestamp.lte?(neg_quotient, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
         end)
       end
     end
 
     property "abs(div(-Bencheea, -b)) = abs(div(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
           neg_divisor = Ratio.minus(divisor)
 
-          pos_quotient = Timecode.div(dividend, divisor)
-          neg_quotient = Timecode.div(neg_dividend, neg_divisor)
+          pos_quotient = Framestamp.div(dividend, divisor)
+          neg_quotient = Framestamp.div(neg_dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
-          assert Timecode.gte?(neg_quotient, zero)
+          zero = Framestamp.with_frames!(0, dividend.rate)
+          assert Framestamp.gte?(neg_quotient, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
         end)
       end
     end
@@ -395,12 +395,12 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#divrem/2" do
     property "quotient returns same as div/3 with :trunc" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true, rate_opts: [type: [:whole, :drop, :non_drop]]),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true, rate_opts: [type: [:whole, :drop, :non_drop]]),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          div_result = Timecode.div(dividend, divisor, round: :trunc)
-          {divrem_result, _} = Timecode.divrem(dividend, divisor)
+          div_result = Framestamp.div(dividend, divisor, round: :trunc)
+          {divrem_result, _} = Framestamp.divrem(dividend, divisor)
 
           assert divrem_result == div_result
         end)
@@ -409,67 +409,67 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
     property "abs(divrem(-a, +b)) = abs(divrem(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
 
-          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
-          {neg_quotient, neg_remainder} = Timecode.divrem(neg_dividend, divisor)
+          {pos_quotient, pos_remainder} = Framestamp.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Framestamp.divrem(neg_dividend, divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.lte?(neg_quotient, zero)
-          assert Timecode.lte?(neg_remainder, zero)
+          assert Framestamp.lte?(neg_quotient, zero)
+          assert Framestamp.lte?(neg_remainder, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
-          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
+          assert Framestamp.abs(pos_remainder) == Framestamp.abs(neg_remainder)
         end)
       end
     end
 
     property "abs(divrem(+a, -b)) = divrem(div(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
           neg_divisor = Ratio.minus(divisor)
 
-          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
-          {neg_quotient, neg_remainder} = Timecode.divrem(dividend, neg_divisor)
+          {pos_quotient, pos_remainder} = Framestamp.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Framestamp.divrem(dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.lte?(neg_quotient, zero)
-          assert Timecode.gte?(neg_remainder, zero)
+          assert Framestamp.lte?(neg_quotient, zero)
+          assert Framestamp.gte?(neg_remainder, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
-          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
+          assert Framestamp.abs(pos_remainder) == Framestamp.abs(neg_remainder)
         end)
       end
     end
 
     property "abs(divrem(-a, -b)) = abs(divrem(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
           neg_divisor = Ratio.minus(divisor)
 
-          {pos_quotient, pos_remainder} = Timecode.divrem(dividend, divisor)
-          {neg_quotient, neg_remainder} = Timecode.divrem(neg_dividend, neg_divisor)
+          {pos_quotient, pos_remainder} = Framestamp.divrem(dividend, divisor)
+          {neg_quotient, neg_remainder} = Framestamp.divrem(neg_dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.gte?(neg_quotient, zero)
-          assert Timecode.lte?(neg_remainder, zero)
+          assert Framestamp.gte?(neg_quotient, zero)
+          assert Framestamp.lte?(neg_remainder, zero)
 
-          assert Timecode.abs(pos_quotient) == Timecode.abs(neg_quotient)
-          assert Timecode.abs(pos_remainder) == Timecode.abs(neg_remainder)
+          assert Framestamp.abs(pos_quotient) == Framestamp.abs(neg_quotient)
+          assert Framestamp.abs(pos_remainder) == Framestamp.abs(neg_remainder)
         end)
       end
     end
@@ -478,12 +478,12 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
   describe "#rem/2" do
     property "returns same as divrem/3" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- filter(StreamDataVtc.rational(), &(&1 != Ratio.new(0)))
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          {_, divrem_result} = Timecode.divrem(dividend, divisor)
-          rem_result = Timecode.rem(dividend, divisor)
+          {_, divrem_result} = Framestamp.divrem(dividend, divisor)
+          rem_result = Framestamp.rem(dividend, divisor)
 
           assert rem_result == divrem_result
         end)
@@ -492,58 +492,58 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
     property "abs(rem(-a, +b)) = abs(rem(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
 
-          pos_result = Timecode.rem(dividend, divisor)
-          neg_result = Timecode.rem(neg_dividend, divisor)
+          pos_result = Framestamp.rem(dividend, divisor)
+          neg_result = Framestamp.rem(neg_dividend, divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.lte?(neg_result, zero)
-          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
+          assert Framestamp.lte?(neg_result, zero)
+          assert Framestamp.abs(pos_result) == Framestamp.abs(neg_result)
         end)
       end
     end
 
     property "abs(rem(a, -b)) = abs(rem(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
           neg_divisor = Ratio.minus(divisor)
 
-          pos_result = Timecode.rem(dividend, divisor)
-          neg_result = Timecode.rem(dividend, neg_divisor)
+          pos_result = Framestamp.rem(dividend, divisor)
+          neg_result = Framestamp.rem(dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.gte?(neg_result, zero)
-          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
+          assert Framestamp.gte?(neg_result, zero)
+          assert Framestamp.abs(pos_result) == Framestamp.abs(neg_result)
         end)
       end
     end
 
     property "abs(rem(-a, -b)) = abs(rem(+a, +b))" do
       check all(
-              dividend <- StreamDataVtc.timecode(non_negative?: true),
+              dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
             ) do
         StreamDataVtc.run_test_rescue_drop_overflow(fn ->
-          neg_dividend = Timecode.minus(dividend)
+          neg_dividend = Framestamp.minus(dividend)
           neg_divisor = Ratio.minus(divisor)
 
-          pos_result = Timecode.rem(dividend, divisor)
-          neg_result = Timecode.rem(neg_dividend, neg_divisor)
+          pos_result = Framestamp.rem(dividend, divisor)
+          neg_result = Framestamp.rem(neg_dividend, neg_divisor)
 
-          zero = Timecode.with_frames!(0, dividend.rate)
+          zero = Framestamp.with_frames!(0, dividend.rate)
 
-          assert Timecode.lte?(neg_result, zero)
-          assert Timecode.abs(pos_result) == Timecode.abs(neg_result)
+          assert Framestamp.lte?(neg_result, zero)
+          assert Framestamp.abs(pos_result) == Framestamp.abs(neg_result)
         end)
       end
     end
@@ -551,23 +551,23 @@ defmodule Vtc.TimecodeTest.Properties.Arithmetic do
 
   describe "#abs/2" do
     property "returns input of negate/1" do
-      check all(positive <- StreamDataVtc.timecode(non_negative?: true)) do
-        negative = Timecode.minus(positive)
-        assert Timecode.abs(positive) == Timecode.abs(negative)
+      check all(positive <- StreamDataVtc.framestamp(non_negative?: true)) do
+        negative = Framestamp.minus(positive)
+        assert Framestamp.abs(positive) == Framestamp.abs(negative)
       end
     end
   end
 end
 
-defmodule Vtc.TimecodeTest.Properties.Compare do
+defmodule Vtc.FramestampTest.Properties.Compare do
   @moduledoc false
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Rates
-  alias Vtc.Timecode
 
   property "#if a.rate = b.rate then a and b comparison should equal the comparison of their frame count" do
     check all(
@@ -579,8 +579,8 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
       ntsc = if ntsc?, do: :non_drop, else: nil
       rate = Framerate.new!(rate_x, ntsc: ntsc, coerce_ntsc?: ntsc?)
 
-      a = Timecode.with_frames!(a_frames, rate)
-      b = Timecode.with_frames!(b_frames, rate)
+      a = Framestamp.with_frames!(a_frames, rate)
+      b = Framestamp.with_frames!(b_frames, rate)
 
       expected =
         cond do
@@ -589,52 +589,52 @@ defmodule Vtc.TimecodeTest.Properties.Compare do
           true -> :gt
         end
 
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
   end
 
   property "#eq?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
-      a = Timecode.with_frames!(a_frames, Rates.f23_98())
-      b = Timecode.with_frames!(b_frames, Rates.f23_98())
+      a = Framestamp.with_frames!(a_frames, Rates.f23_98())
+      b = Framestamp.with_frames!(b_frames, Rates.f23_98())
 
-      assert Timecode.eq?(a, b) == (a_frames == b_frames)
+      assert Framestamp.eq?(a, b) == (a_frames == b_frames)
     end
   end
 
   property "#lt?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
-      a = Timecode.with_frames!(a_frames, Rates.f23_98())
-      b = Timecode.with_frames!(b_frames, Rates.f23_98())
+      a = Framestamp.with_frames!(a_frames, Rates.f23_98())
+      b = Framestamp.with_frames!(b_frames, Rates.f23_98())
 
-      assert Timecode.lt?(a, b) == a_frames < b_frames
+      assert Framestamp.lt?(a, b) == a_frames < b_frames
     end
   end
 
   property "#lte?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
-      a = Timecode.with_frames!(a_frames, Rates.f23_98())
-      b = Timecode.with_frames!(b_frames, Rates.f23_98())
+      a = Framestamp.with_frames!(a_frames, Rates.f23_98())
+      b = Framestamp.with_frames!(b_frames, Rates.f23_98())
 
-      assert Timecode.lte?(a, b) == a_frames <= b_frames
+      assert Framestamp.lte?(a, b) == a_frames <= b_frames
     end
   end
 
   property "#gt?/2 always matches compare/2" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
-      a = Timecode.with_frames!(a_frames, Rates.f23_98())
-      b = Timecode.with_frames!(b_frames, Rates.f23_98())
+      a = Framestamp.with_frames!(a_frames, Rates.f23_98())
+      b = Framestamp.with_frames!(b_frames, Rates.f23_98())
 
-      assert Timecode.gt?(a, b) == a_frames > b_frames
+      assert Framestamp.gt?(a, b) == a_frames > b_frames
     end
   end
 
   property "#gte?/2 always matches frame comparson" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
-      a = Timecode.with_frames!(a_frames, Rates.f23_98())
-      b = Timecode.with_frames!(b_frames, Rates.f23_98())
+      a = Framestamp.with_frames!(a_frames, Rates.f23_98())
+      b = Framestamp.with_frames!(b_frames, Rates.f23_98())
 
-      assert Timecode.gte?(a, b) == a_frames >= b_frames
+      assert Framestamp.gte?(a, b) == a_frames >= b_frames
     end
   end
 end

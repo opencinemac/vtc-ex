@@ -1,18 +1,18 @@
 defmodule Vtc.Utils.Parse do
   @moduledoc false
 
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
 
   @doc """
   Applies regex and returns the appropriate error when not correct.
   """
-  @spec apply_regex(Regex.t(), String.t()) :: {:ok, map()} | {:error, Timecode.ParseError.t()}
+  @spec apply_regex(Regex.t(), String.t()) :: {:ok, map()} | {:error, Framestamp.ParseError.t()}
   def apply_regex(regex, value) do
     regex
     |> Regex.named_captures(value)
     |> then(fn
       matched when is_map(matched) -> {:ok, matched}
-      nil -> {:error, %Timecode.ParseError{reason: :unrecognized_format}}
+      nil -> {:error, %Framestamp.ParseError{reason: :unrecognized_format}}
     end)
   end
 

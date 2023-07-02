@@ -1,7 +1,8 @@
 defmodule Vtc.Utils.DropFrame do
   @moduledoc false
   alias Vtc.Framerate
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
+  alias Vtc.SMPTETimecode
   alias Vtc.Utils.Rational
 
   @doc """
@@ -10,8 +11,8 @@ defmodule Vtc.Utils.DropFrame do
   Algorithm adapted from:
   https://www.davidheidelberger.com/2010/06/10/drop-frame-timecode/
   """
-  @spec parse_adjustment(Timecode.Sections.t(), Framerate.t()) ::
-          {:ok, integer()} | {:error, Timecode.ParseError.t()}
+  @spec parse_adjustment(SMPTETimecode.Sections.t(), Framerate.t()) ::
+          {:ok, integer()} | {:error, Framestamp.ParseError.t()}
   def parse_adjustment(sections, %{ntsc: :drop} = rate) do
     drop_rate = frames_dropped_per_minute(rate)
 
@@ -26,14 +27,14 @@ defmodule Vtc.Utils.DropFrame do
 
   # Validates that the frame value from our string is not a frame that should have been
   # skipped on a non-tenth minute.s
-  @spec parse_adjustment_validate(Timecode.Sections.t(), integer()) ::
-          :ok | {:error, Timecode.ParseError.t()}
+  @spec parse_adjustment_validate(SMPTETimecode.Sections.t(), integer()) ::
+          :ok | {:error, Framestamp.ParseError.t()}
   defp parse_adjustment_validate(sections, drop_rate) do
     tenth_minute? = rem(sections.minutes, 10) == 0
     minute_boundary? = sections.seconds == 0
 
     if sections.frames < drop_rate and not tenth_minute? and minute_boundary? do
-      {:error, %Timecode.ParseError{reason: :bad_drop_frames}}
+      {:error, %Framestamp.ParseError{reason: :bad_drop_frames}}
     else
       :ok
     end
@@ -72,7 +73,7 @@ defmodule Vtc.Utils.DropFrame do
   # Get the number of frames that need to be dropped per minute (minus the 10th miute).
   @spec frames_dropped_per_minute(Framerate.t()) :: integer()
   defp frames_dropped_per_minute(rate) do
-    time_base = rate |> Framerate.timebase() |> Rational.round()
+    time_base = rate |> Framerate.smpte_timebase() |> Rational.round()
     round(time_base * 0.066666)
   end
 

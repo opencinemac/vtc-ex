@@ -1,12 +1,12 @@
 defmodule Vtc.Test.Support.TestCase do
   @moduledoc false
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Range
   alias Vtc.Rates
   alias Vtc.Source.Frames
   alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
-  alias Vtc.Timecode
 
   @spec __using__(Keyword.t()) :: Macro.t()
   defmacro __using__(_) do
@@ -53,9 +53,9 @@ defmodule Vtc.Test.Support.TestCase do
     Enum.map(timecodes, fn {field_name, value} -> {field_name, setup_timecode(value)} end)
   end
 
-  @spec setup_timecode(Timecode.t() | Frames.t() | {Frames.t(), Framerate.t()}) :: Timecode.t()
-  defp setup_timecode(%Timecode{} = value), do: value
-  defp setup_timecode({frames, rate}), do: Timecode.with_frames!(frames, rate)
+  @spec setup_timecode(Framestamp.t() | Frames.t() | {Frames.t(), Framerate.t()}) :: Framestamp.t()
+  defp setup_timecode(%Framestamp{} = value), do: value
+  defp setup_timecode({frames, rate}), do: Framestamp.with_frames!(frames, rate)
   defp setup_timecode(frames), do: setup_timecode({frames, Rates.f23_98()})
 
   @doc """
@@ -75,11 +75,11 @@ defmodule Vtc.Test.Support.TestCase do
 
   @spec setup_negate(input) :: input | {:error, any()} when input: any()
   defp setup_negate(%Range{} = range) do
-    %Range{in: in_tc, out: out_tc} = range
-    %Range{range | in: Timecode.minus(out_tc), out: Timecode.minus(in_tc)}
+    %Range{in: in_stamp, out: out_stamp} = range
+    %Range{range | in: Framestamp.minus(out_stamp), out: Framestamp.minus(in_stamp)}
   end
 
-  defp setup_negate(%Timecode{} = timecode), do: Timecode.minus(timecode)
+  defp setup_negate(%Framestamp{} = timecode), do: Framestamp.minus(timecode)
   defp setup_negate(%Ratio{} = ratio), do: Ratio.minus(ratio)
   defp setup_negate(%PremiereTicks{in: ticks}), do: %PremiereTicks{in: -ticks}
 

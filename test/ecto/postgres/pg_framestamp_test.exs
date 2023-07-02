@@ -1,4 +1,4 @@
-defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
+defmodule Vtc.Ecto.Postgres.PgFramestampTest do
   use Vtc.Test.Support.EctoCase, async: true
   use ExUnitProperties
 
@@ -6,10 +6,10 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
   alias Ecto.Query
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Rates
-  alias Vtc.Test.Support.TimecodeSchema01
+  alias Vtc.Test.Support.FramestampSchema01
   alias Vtc.TestUtls.StreamDataVtc
-  alias Vtc.Timecode
 
   require Query
 
@@ -23,7 +23,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
             ntsc: :non_drop
           }
         },
-        expected: Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+        expected: Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
       },
       %{
         input: %{
@@ -33,7 +33,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
             ntsc: :non_drop
           }
         },
-        expected: Timecode.with_frames!("-01:00:00:00", Rates.f23_98())
+        expected: Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
       },
       %{
         input: %{
@@ -43,7 +43,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
             ntsc: :drop
           }
         },
-        expected: Timecode.with_frames!("01:00:00:00", Rates.f29_97_df())
+        expected: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df())
       },
       %{
         input: %{
@@ -53,7 +53,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
             ntsc: :drop
           }
         },
-        expected: Timecode.with_frames!("-01:00:00:00", Rates.f29_97_df())
+        expected: Framestamp.with_frames!("-01:00:00:00", Rates.f29_97_df())
       },
       %{
         input: %{
@@ -63,28 +63,28 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
             ntsc: "non_drop"
           }
         },
-        expected: Timecode.with_frames!("01:00:00:00", Rates.f29_97_ndf())
+        expected: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_ndf())
       }
     ]
 
     table_test "<%= expected %>", cast_table, test_case do
       %{input: input, expected: expected} = test_case
-      assert {:ok, ^expected} = Timecode.cast(input)
+      assert {:ok, ^expected} = Framestamp.cast(input)
     end
 
     table_test "<%= expected %> | string keys", cast_table, test_case do
       %{input: input, expected: expected} = test_case
       input = convert_input_to_string_keys(input)
 
-      assert {:ok, ^expected} = Timecode.cast(input)
+      assert {:ok, ^expected} = Framestamp.cast(input)
     end
 
     table_test "<%= expected %> | through changeset", cast_table, test_case do
       %{input: input, expected: expected} = test_case
 
       assert {:ok, record} =
-               %TimecodeSchema01{}
-               |> TimecodeSchema01.changeset(%{a: input, b: input})
+               %FramestampSchema01{}
+               |> FramestampSchema01.changeset(%{a: input, b: input})
                |> Changeset.apply_action(:test)
 
       assert record.a == expected
@@ -96,8 +96,8 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
       input = convert_input_to_string_keys(input)
 
       assert {:ok, record} =
-               %TimecodeSchema01{}
-               |> TimecodeSchema01.changeset(%{a: input, b: input})
+               %FramestampSchema01{}
+               |> FramestampSchema01.changeset(%{a: input, b: input})
                |> Changeset.apply_action(:test)
 
       assert record.a == expected
@@ -170,52 +170,52 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
 
     table_test "fails on <%= name %>", bad_cast_table, test_case do
       %{input: input} = test_case
-      assert :error = Timecode.cast(input)
+      assert :error = Framestamp.cast(input)
     end
 
-    property "succeeds on good timecode json" do
-      check all(timecode <- StreamDataVtc.timecode(rate_opts: [type: [:whole, :drop, :non_drop]])) do
+    property "succeeds on good framestamp json" do
+      check all(framestamp <- StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]])) do
         input = %{
-          smpte_timecode: Timecode.timecode(timecode),
+          smpte_timecode: Framestamp.smpte_timecode(framestamp),
           rate: %{
-            playback: [timecode.rate.playback.numerator, timecode.rate.playback.denominator],
-            ntsc: timecode.rate.ntsc
+            playback: [framestamp.rate.playback.numerator, framestamp.rate.playback.denominator],
+            ntsc: framestamp.rate.ntsc
           }
         }
 
-        timecode_str = Timecode.timecode(timecode)
-        assert {:ok, parsed} = Timecode.with_frames(timecode_str, timecode.rate)
-        assert parsed == timecode
+        timecode_str = Framestamp.smpte_timecode(framestamp)
+        assert {:ok, parsed} = Framestamp.with_frames(timecode_str, framestamp.rate)
+        assert parsed == framestamp
 
-        assert {:ok, result} = Timecode.cast(input)
-        assert result == timecode
+        assert {:ok, result} = Framestamp.cast(input)
+        assert result == framestamp
       end
     end
   end
 
   serialization_table = [
     %{
-      app_value: Timecode.with_frames!("01:00:00:00", Rates.f23_98()),
+      app_value: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
       db_value: {{18_018, 5}, {{24_000, 1001}, ["non_drop"]}}
     },
     %{
-      app_value: Timecode.with_frames!("-01:00:00:00", Rates.f23_98()),
+      app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f23_98()),
       db_value: {{-18_018, 5}, {{24_000, 1001}, ["non_drop"]}}
     },
     %{
-      app_value: Timecode.with_frames!("01:00:00:00", Rates.f29_97_df()),
+      app_value: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df()),
       db_value: {{8_999_991, 2500}, {{30_000, 1001}, ["drop"]}}
     },
     %{
-      app_value: Timecode.with_frames!("-01:00:00:00", Rates.f29_97_df()),
+      app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f29_97_df()),
       db_value: {{-8_999_991, 2500}, {{30_000, 1001}, ["drop"]}}
     },
     %{
-      app_value: Timecode.with_frames!("01:00:00:00", Rates.f24()),
+      app_value: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
       db_value: {{3600, 1}, {{24, 1}, []}}
     },
     %{
-      app_value: Timecode.with_frames!("-01:00:00:00", Rates.f24()),
+      app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f24()),
       db_value: {{-3600, 1}, {{24, 1}, []}}
     }
   ]
@@ -223,7 +223,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
   describe "#dump/1" do
     table_test "succeeds on <%= app_value %>", serialization_table, test_case do
       %{db_value: db_value, app_value: app_value} = test_case
-      assert {:ok, ^db_value} = Timecode.dump(app_value)
+      assert {:ok, ^db_value} = Framestamp.dump(app_value)
     end
 
     bad_dump_table = [
@@ -235,14 +235,14 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
 
     table_test "fails on <%= input %>", bad_dump_table, test_case do
       %{input: input} = test_case
-      assert :error = Timecode.dump(input)
+      assert :error = Framestamp.dump(input)
     end
   end
 
   describe "#load/1" do
     table_test "succeeds on <%= app_value %>", serialization_table, test_case do
       %{db_value: db_value, app_value: app_value} = test_case
-      assert {:ok, ^app_value} = Timecode.load(db_value)
+      assert {:ok, ^app_value} = Framestamp.load(db_value)
     end
 
     bad_load_table = [
@@ -254,14 +254,14 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
 
     table_test "fails on <%= name %>", bad_load_table, test_case do
       %{input: input} = test_case
-      assert :error = Timecode.load(input)
+      assert :error = Framestamp.load(input)
     end
   end
 
   property "dump/1 -> load/1 round trip" do
-    check all(timecode <- StreamDataVtc.timecode()) do
-      assert {:ok, dumped} = Timecode.dump(timecode)
-      assert {:ok, ^timecode} = Timecode.load(dumped)
+    check all(framestamp <- StreamDataVtc.framestamp()) do
+      assert {:ok, dumped} = Framestamp.dump(framestamp)
+      assert {:ok, ^framestamp} = Framestamp.load(dumped)
     end
   end
 
@@ -269,29 +269,29 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
     table_test "placeholder | <%= app_value %>", serialization_table, test_case do
       %{app_value: app_value, db_value: db_value} = test_case
 
-      query = Query.from(f in fragment("SELECT ? as r", type(^app_value, Timecode)), select: f.r)
+      query = Query.from(f in fragment("SELECT ? as r", type(^app_value, Framestamp)), select: f.r)
       assert Repo.one!(query) == db_value
     end
 
     table_test "seconds field | <%= app_value %>", serialization_table, test_case do
       %{db_value: {expected, _}, app_value: app_value} = test_case
 
-      query = Query.from(f in fragment("SELECT (?).seconds as r", type(^app_value, Timecode)), select: f.r)
+      query = Query.from(f in fragment("SELECT (?).seconds as r", type(^app_value, Framestamp)), select: f.r)
       assert Repo.one!(query) == expected
     end
 
     table_test "rate field | <%= app_value %>", serialization_table, test_case do
       %{db_value: {_, expected}, app_value: app_value} = test_case
 
-      query = Query.from(f in fragment("SELECT (?).rate as r", type(^app_value, Timecode)), select: f.r)
+      query = Query.from(f in fragment("SELECT (?).rate as r", type(^app_value, Framestamp)), select: f.r)
       assert Repo.one!(query) == expected
     end
 
-    property "succeeds on good timecode" do
-      check all(timecode <- StreamDataVtc.timecode()) do
-        query = Query.from(f in fragment("SELECT ? as r", type(^timecode, Timecode)), select: f.r)
+    property "succeeds on good framestamp" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        query = Query.from(f in fragment("SELECT ? as r", type(^framestamp, Framestamp)), select: f.r)
         assert record = Repo.one!(query)
-        assert {:ok, ^timecode} = Timecode.load(record)
+        assert {:ok, ^framestamp} = Framestamp.load(record)
       end
     end
   end
@@ -301,15 +301,15 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
       %{app_value: app_value} = test_case
 
       assert {:ok, inserted} =
-               %TimecodeSchema01{}
-               |> TimecodeSchema01.changeset(%{a: app_value})
+               %FramestampSchema01{}
+               |> FramestampSchema01.changeset(%{a: app_value})
                |> Repo.insert()
 
-      assert %TimecodeSchema01{} = inserted
+      assert %FramestampSchema01{} = inserted
       assert inserted.a == app_value
       assert inserted.b == nil
 
-      assert %TimecodeSchema01{} = record = Repo.get(TimecodeSchema01, inserted.id)
+      assert %FramestampSchema01{} = record = Repo.get(FramestampSchema01, inserted.id)
       assert record.a == app_value
       assert record.b == nil
     end
@@ -318,33 +318,33 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
       %{app_value: app_value} = test_case
 
       assert {:ok, inserted} =
-               %TimecodeSchema01{}
-               |> TimecodeSchema01.changeset(%{b: app_value})
+               %FramestampSchema01{}
+               |> FramestampSchema01.changeset(%{b: app_value})
                |> Repo.insert()
 
-      assert %TimecodeSchema01{} = inserted
+      assert %FramestampSchema01{} = inserted
       assert inserted.a == nil
       assert inserted.b == app_value
 
-      assert %TimecodeSchema01{} = record = Repo.get(TimecodeSchema01, inserted.id)
+      assert %FramestampSchema01{} = record = Repo.get(FramestampSchema01, inserted.id)
       assert record.a == nil
       assert record.b == app_value
     end
 
-    property "succeeds on good timecode" do
-      check all(timecode <- StreamDataVtc.timecode()) do
+    property "succeeds on good framestamp" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
         assert {:ok, inserted} =
-                 %TimecodeSchema01{}
-                 |> TimecodeSchema01.changeset(%{a: timecode, b: timecode})
+                 %FramestampSchema01{}
+                 |> FramestampSchema01.changeset(%{a: framestamp, b: framestamp})
                  |> Repo.insert()
 
-        assert %TimecodeSchema01{} = inserted
-        assert inserted.a == timecode
-        assert inserted.b == timecode
+        assert %FramestampSchema01{} = inserted
+        assert inserted.a == framestamp
+        assert inserted.b == framestamp
 
-        assert %TimecodeSchema01{} = record = Repo.get(TimecodeSchema01, inserted.id)
-        assert record.a == timecode
-        assert record.b == timecode
+        assert %FramestampSchema01{} = record = Repo.get(FramestampSchema01, inserted.id)
+        assert record.a == framestamp
+        assert record.b == framestamp
       end
     end
 
@@ -411,7 +411,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
         expected_constraint: "b_rate_ntsc_drop_valid"
       },
       %{
-        name: "timecode bad seconds",
+        name: "framestamp bad seconds",
         value: "((1, 1), ((24000, 1001), '{non_drop}'))",
         field: :b,
         expected_code: :check_violation,
@@ -422,11 +422,11 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
     table_test "error <%= name %>", bad_insert_table, test_case do
       %{value: value, expected_code: expected_code, field: field} = test_case
 
-      value_str = "#{value}::timecode"
+      value_str = "#{value}::framestamp"
       {a, b} = if field == :a, do: {value_str, "NULL"}, else: {"NULL", value_str}
 
       id = Ecto.UUID.generate()
-      query = "INSERT INTO timecodes_01 (id, a, b) VALUES ('#{id}', #{a}, #{b})"
+      query = "INSERT INTO framestamps_01 (id, a, b) VALUES ('#{id}', #{a}, #{b})"
 
       assert {:error, error} = Repo.query(query)
       assert %Postgrex.Error{postgres: %{code: ^expected_code} = postgres} = error
@@ -437,18 +437,18 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
     end
   end
 
-  describe "#Postgres timecode.with_seconds/2" do
-    property "matches Timecode.with_seconds/2" do
+  describe "#Postgres framestamp.with_seconds/2" do
+    property "matches Framestamp.with_seconds/2" do
       check all(
               seconds <- StreamDataVtc.rational(),
               framerate <- StreamDataVtc.framerate()
             ) do
-        expected = Timecode.with_seconds!(seconds, framerate)
+        expected = Framestamp.with_seconds!(seconds, framerate)
 
         query =
           Query.from(
             f in fragment(
-              "SELECT timecode.with_seconds(?, ?) as r",
+              "SELECT framestamp.with_seconds(?, ?) as r",
               type(^seconds, PgRational),
               type(^framerate, Framerate)
             ),
@@ -456,7 +456,7 @@ defmodule Vtc.Ecto.Postgres.PgTimecodeTest do
           )
 
         assert record = Repo.one!(query)
-        assert {:ok, ^expected} = Timecode.load(record)
+        assert {:ok, ^expected} = Framestamp.load(record)
       end
     end
   end
