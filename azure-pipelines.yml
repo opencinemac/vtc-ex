@@ -23,6 +23,7 @@ trigger:
 
 pr:
   - dev
+  - version-branch/*
 
 variables:
   # Link to the variables template.
