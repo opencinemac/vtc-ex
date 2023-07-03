@@ -17,11 +17,11 @@ defmodule Vtc.Framestamp do
 
   ## What is a framestamp?
 
-  Framestamp, as a concept, is the brainchild of Vtc itself. A framestamp is defined by
-  the following information:
+  Framestamps are an expression of Vtc's philosophy about working with timecode in
+  application code. On a technical level, a framestamp is comprised of:
 
-  - the real-world time that a frame occurred at, measured since SMPTE timecode
-    "midnight", as represented by a rational value
+  - The real-world time that a frame occurred at, as represented by a rational value,
+    measured in seconds since SMPTE timecode "midnight".
 
   - The framerate of the media the framestamp was generated for, as represented by a
     rational frames-per-second value.
