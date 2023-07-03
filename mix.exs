@@ -26,9 +26,9 @@ defmodule Vtc.MixProject do
           "CONTRIBUTING.md"
         ],
         groups_for_modules: [
-          "Core API": [Vtc.Timecode, Vtc.Framerate, Vtc.Range],
-          Data: [Vtc.Timecode.Sections, Vtc.Rates, Vtc.FilmFormat],
-          "Frames Formats": [Frames.FeetAndFrames, Frames.TimecodeStr],
+          "Core API": [Vtc.Framestamp, Vtc.Framerate, Vtc.Range],
+          Data: [Vtc.SMPTETimecode.Sections, Vtc.Rates, Vtc.FilmFormat],
+          "Frames Formats": [Frames.FeetAndFrames, Frames.SMPTETimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames],
           "Ecto Types": [
@@ -36,8 +36,8 @@ defmodule Vtc.MixProject do
             Vtc.Ecto.Postgres.PgRational.Migrations,
             Vtc.Ecto.Postgres.PgFramerate,
             Vtc.Ecto.Postgres.PgFramerate.Migrations,
-            Vtc.Ecto.Postgres.PgTimecode,
-            Vtc.Ecto.Postgres.PgTimecode.Migrations
+            Vtc.Ecto.Postgres.PgFramestamp,
+            Vtc.Ecto.Postgres.PgFramestamp.Migrations
           ],
           "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],

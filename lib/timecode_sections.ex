@@ -1,6 +1,6 @@
-defmodule Vtc.Timecode.Sections do
+defmodule Vtc.SMPTETimecode.Sections do
   @moduledoc """
-  Holds the individual sections of a timecode for formatting / manipulation.
+  Holds the individual sections of a SMPTE timecode for formatting / manipulation.
 
   ## Struct Fields
 
@@ -15,7 +15,7 @@ defmodule Vtc.Timecode.Sections do
   """
 
   alias Vtc.Framerate
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
   alias Vtc.Utils.Consts
   alias Vtc.Utils.DropFrame
   alias Vtc.Utils.Rational
@@ -35,18 +35,18 @@ defmodule Vtc.Timecode.Sections do
         }
 
   @doc false
-  @spec from_timecode(Timecode.t(), opts :: [round: Timecode.round()]) :: t()
-  def from_timecode(timecode, opts) do
+  @spec from_framestamp(Framestamp.t(), opts :: [round: Framestamp.round()]) :: t()
+  def from_framestamp(framestamp, opts) do
     round = Keyword.get(opts, :round, :closest)
 
-    rate = timecode.rate
-    timebase = Framerate.timebase(rate)
+    rate = framestamp.rate
+    timebase = Framerate.smpte_timebase(rate)
     frames_per_minute = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_minute()))
     frames_per_hour = Ratio.mult(timebase, Ratio.new(Consts.seconds_per_hour()))
 
     total_frames =
-      timecode
-      |> Timecode.frames(opts)
+      framestamp
+      |> Framestamp.frames(opts)
       |> Kernel.abs()
       |> then(&(&1 + DropFrame.frame_num_adjustment(&1, rate)))
 
@@ -55,7 +55,7 @@ defmodule Vtc.Timecode.Sections do
     {seconds, frames} = Rational.divrem(remainder, timebase)
 
     %__MODULE__{
-      negative?: Ratio.lt?(timecode.seconds, 0),
+      negative?: Ratio.lt?(framestamp.seconds, 0),
       hours: hours,
       minutes: minutes,
       seconds: seconds,

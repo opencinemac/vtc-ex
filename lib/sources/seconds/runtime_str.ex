@@ -1,7 +1,7 @@
 defmodule Vtc.Source.Seconds.RuntimeStr do
   @moduledoc """
   Implementation of [Seconds](`Vtc.Source.Seconds`) for runtime strings. See
-  `Vtc.Timecode.runtime/2` for more information on this format.
+  `Vtc.Framestamp.runtime/2` for more information on this format.
 
   By default, this wrapper does not need to be used by callers, as the string
   implementation of the [Seconds](`Vtc.Source.Seconds`) protocol calls this type's impl
@@ -9,7 +9,7 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
   other type parsing as well.
   """
 
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
   alias Vtc.Utils.Consts
 
   @enforce_keys [:in]
@@ -21,15 +21,15 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
   @type t() :: %__MODULE__{in: String.t()}
 
   @doc false
-  @spec from_timecode(Timecode.t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: t()
-  def from_timecode(timecode, opts) do
+  @spec from_framestamp(Framestamp.t(), precision: non_neg_integer(), trim_zeros?: boolean()) :: t()
+  def from_framestamp(framestamp, opts) do
     precision = Keyword.get(opts, :precision, 9)
     trim_zeros = Keyword.get(opts, :trim_zeros?, true)
 
     {seconds, negative?} =
-      if Ratio.lt?(timecode.seconds, 0),
-        do: {Ratio.minus(timecode.seconds), true},
-        else: {timecode.seconds, false}
+      if Ratio.lt?(framestamp.seconds, 0),
+        do: {Ratio.minus(framestamp.seconds), true},
+        else: {framestamp.seconds, false}
 
     seconds = Decimal.div(Ratio.numerator(seconds), Ratio.denominator(seconds))
 
@@ -48,7 +48,7 @@ defmodule Vtc.Source.Seconds.RuntimeStr do
 
     fractal_seconds = runtime_render_fractal_seconds(fractal_seconds, trim_zeros)
 
-    # We'll add a negative sign if the timecode is negative.
+    # We'll add a negative sign if the framestamp is negative.
     sign = if negative?, do: "-", else: ""
 
     %__MODULE__{in: "#{sign}#{hours}:#{minutes}:#{seconds_floor}#{fractal_seconds}"}

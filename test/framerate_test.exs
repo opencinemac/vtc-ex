@@ -248,7 +248,7 @@ defmodule Vtc.FramerateTest do
     @spec check_parsed(map(), Framerate.t()) :: nil
     defp check_parsed(test_case, parsed) do
       assert test_case.playback == parsed.playback
-      assert test_case.timebase == Framerate.timebase(parsed)
+      assert test_case.timebase == Framerate.smpte_timebase(parsed)
       assert test_case.ntsc == parsed.ntsc
     end
 
@@ -336,7 +336,7 @@ defmodule Vtc.FramerateTest do
 
       assert ntsc == const.ntsc
       assert playback == const.playback
-      assert timebase == Framerate.timebase(const)
+      assert timebase == Framerate.smpte_timebase(const)
     end
   end
 

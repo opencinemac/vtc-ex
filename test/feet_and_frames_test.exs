@@ -3,8 +3,8 @@ defmodule Vtc.Source.Frames.FeetAndFramesTest do
 
   use ExUnit.Case, async: true
 
+  alias Vtc.Framestamp
   alias Vtc.Source.Frames.FeetAndFrames
-  alias Vtc.Timecode
 
   describe "#from_string!/2" do
     test "succeeds on good input" do
@@ -18,7 +18,7 @@ defmodule Vtc.Source.Frames.FeetAndFramesTest do
     end
 
     test "raises on bad input" do
-      error = assert_raise Timecode.ParseError, fn -> FeetAndFrames.from_string!("bad_value") end
+      error = assert_raise Framestamp.ParseError, fn -> FeetAndFrames.from_string!("bad_value") end
 
       assert error.reason == :unrecognized_format
       assert Exception.message(error) == "string format not recognized"

@@ -55,9 +55,9 @@ defmodule Vtc.Framerate do
 
   Returned value is in frames-per-second.
   """
-  @spec timebase(t()) :: Ratio.t()
-  def timebase(%{ntsc: nil} = framerate), do: framerate.playback
-  def timebase(framerate), do: framerate.playback |> Rational.round() |> Ratio.new()
+  @spec smpte_timebase(t()) :: Ratio.t()
+  def smpte_timebase(%{ntsc: nil} = framerate), do: framerate.playback
+  def smpte_timebase(framerate), do: framerate.playback |> Rational.round() |> Ratio.new()
 
   @doc section: :inspect
   @doc """
