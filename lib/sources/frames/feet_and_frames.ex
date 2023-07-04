@@ -18,14 +18,14 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
 
   ```elixir
   iex> alias Vtc.Source.Frames.FeetAndFrames
-  iex> 
+  iex>
   iex> String.Chars.to_string(%FeetAndFrames{feet: 10, frames: 4})
   "10+04"
   ```
   """
 
   alias Vtc.FilmFormat
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
   alias Vtc.Utils.Parse
 
   @enforce_keys [:feet, :frames]
@@ -41,7 +41,7 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
   @doc """
   Parses a `FeetAndFrames` value from a string.
   """
-  @spec from_string(String.t(), film_format: FilmFormat.t()) :: {:ok, t()} | {:error, Timecode.ParseError.t()}
+  @spec from_string(String.t(), film_format: FilmFormat.t()) :: {:ok, t()} | {:error, Framestamp.ParseError.t()}
   def from_string(ff_string, opts \\ []) do
     film_format = Keyword.get(opts, :film_format, :ff35mm_4perf)
 
@@ -71,18 +71,18 @@ defmodule Vtc.Source.Frames.FeetAndFrames do
   end
 
   @doc false
-  @spec from_timecode(
-          Timecode.t(),
-          opts :: [film_format: FilmFormat.t(), round: Timecode.round()]
+  @spec from_framestamp(
+          Framestamp.t(),
+          opts :: [film_format: FilmFormat.t(), round: Framestamp.round()]
         ) :: t()
-  def from_timecode(timecode, opts) do
+  def from_framestamp(framestamp, opts) do
     film_format = Keyword.get(opts, :film_format, :ff35mm_4perf)
     frames_opts = Keyword.take(opts, [:round])
 
     perfs_per_foot = FilmFormat.perfs_per_foot(film_format)
     perfs_per_frame = FilmFormat.perfs_per_frame(film_format)
 
-    total_frames = Timecode.frames(timecode, frames_opts)
+    total_frames = Framestamp.frames(framestamp, frames_opts)
 
     perfs = perfs_per_frame * total_frames
 

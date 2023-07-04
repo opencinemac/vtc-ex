@@ -1,4 +1,4 @@
-defmodule Vtc.Timecode.ParseError do
+defmodule Vtc.Framestamp.ParseError do
   @moduledoc """
   Exception returned when there is an error parsing a Timecode value.
 
@@ -13,13 +13,13 @@ defmodule Vtc.Timecode.ParseError do
   - `:unrecognized_format`: Returned when a string value is not a recognized
       timecode, runtime, etc. format.
 
-  - `:bad_drop_frames`: The field value cannot exist in properly formatted
-      drop-frame timecode.
+  - `:bad_drop_frames`: Returned when parsing SMPTE, drop-frame timecode. Indicates that
+     the 'frames' field represents a frame that should have been dropped.
   """
   defexception [:reason]
 
   @typedoc """
-  Type of `Timecode.ParseError`.
+  Type of `Framestamp.ParseError`.
   """
   @type t() :: %__MODULE__{
           reason: :unrecognized_format | :bad_drop_frames | :drop_frame_maximum_exceeded | :partial_frame

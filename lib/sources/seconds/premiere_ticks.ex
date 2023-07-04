@@ -1,13 +1,13 @@
 defmodule Vtc.Source.Seconds.PremiereTicks do
   @moduledoc """
   Implements [Seconds](`Vtc.Source.Seconds`) protocol for Premiere ticks. See
-  `Vtc.Timecode.premiere_ticks/2` for more information on this unit.
+  `Vtc.Framestamp.premiere_ticks/2` for more information on this unit.
 
   This struct is used as an input wrapper only, not as the general-purpose Premiere
   ticks unit.
   """
 
-  alias Vtc.Timecode
+  alias Vtc.Framestamp
   alias Vtc.Utils.Rational
 
   @enforce_keys [:in]
@@ -25,11 +25,11 @@ defmodule Vtc.Source.Seconds.PremiereTicks do
   def per_second, do: 254_016_000_000
 
   @doc false
-  @spec from_timecode(Timecode.t(), opts :: [round: Timecode.round()]) :: t()
-  def from_timecode(timecode, opts) do
+  @spec from_framestamp(Framestamp.t(), opts :: [round: Framestamp.round()]) :: t()
+  def from_framestamp(framestamp, opts) do
     round = Keyword.get(opts, :round, :closest)
 
-    timecode.seconds
+    framestamp.seconds
     |> Ratio.mult(Ratio.new(per_second()))
     |> Rational.round(round)
     |> then(&%__MODULE__{in: &1})

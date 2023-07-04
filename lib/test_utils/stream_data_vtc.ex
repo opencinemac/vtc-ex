@@ -8,8 +8,8 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     """
 
     alias Vtc.Framerate
+    alias Vtc.Framestamp
     alias Vtc.Rates
-    alias Vtc.Timecode
     alias Vtc.Utils.DropFrame
 
     require ExUnit.Assertions
@@ -126,8 +126,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     end
 
     @doc """
-    Yields Vtc.Timecode values, always yields true-frame or NTSC; never a mixture of the
-    two.
+    Yields Vtc.Framestamp values.
 
     ## Options
 
@@ -143,15 +142,16 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
 
     ```elixir
     property "returns input of negate/1" do
-      check all(positive <- StreamDataVtc.timecode(non_negative?: true)) do
-        negative = Timecode.minus(positive)
-        assert Timecode.abs(positive) == Timecode.abs(negative)
+      check all(positive <- StreamDataVtc.framestamp(non_negative?: true)) do
+        negative = Framestamp.minus(positive)
+        assert Framestamp.abs(positive) == Framestamp.abs(negative)
       end
     end
     ```
     """
-    @spec timecode(non_negative?: boolean(), rate: Framerate.t(), rate_opts: rate_opts()) :: StreamData.t(Timecode.t())
-    def timecode(opts \\ []) do
+    @spec framestamp(non_negative?: boolean(), rate: Framerate.t(), rate_opts: rate_opts()) ::
+            StreamData.t(Framestamp.t())
+    def framestamp(opts \\ []) do
       non_negative? = Keyword.get(opts, :non_negative?, false)
       rate = Keyword.get(opts, :rate)
       rate_opts = Keyword.get(opts, :rate_opts, [])
@@ -172,7 +172,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
       |> StreamData.map(fn {frames, framerate} ->
         frames
         |> clip_drop_frames(framerate)
-        |> Timecode.with_frames!(framerate)
+        |> Framestamp.with_frames!(framerate)
       end)
     end
 
@@ -198,7 +198,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     def run_test_rescue_drop_overflow(test_runner) do
       test_runner.()
     rescue
-      error in Timecode.ParseError ->
+      error in Framestamp.ParseError ->
         ExUnit.Assertions.assert(error.reason == :drop_frame_maximum_exceeded)
     end
   end

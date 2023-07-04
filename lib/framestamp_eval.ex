@@ -1,10 +1,10 @@
-defmodule Vtc.Timecode.Eval do
+defmodule Vtc.Framestamp.Eval do
   @moduledoc false
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Source.Frames
-  alias Vtc.Timecode
 
-  @self_alias [:Vtc, :Timecode, :Eval]
+  @self_alias [:Vtc, :Framestamp, :Eval]
 
   # Escapes variable that the default rate for the eval will be kept in,
   @default_rate_var_ast Macro.var(:default_rate, :vtc_eval)
@@ -33,7 +33,7 @@ defmodule Vtc.Timecode.Eval do
     end
   end
 
-  @tc_ops %{
+  @two_stamp_ops %{
     {:+, 2} => :add,
     {:-, 2} => :sub,
     {:==, 2} => :eq?,
@@ -50,7 +50,7 @@ defmodule Vtc.Timecode.Eval do
     {:abs, 1} => :abs
   }
 
-  @single_tc_ops [
+  @one_stamp_ops [
     {:*, 2},
     {:/, 2},
     {:%, 2},
@@ -60,48 +60,48 @@ defmodule Vtc.Timecode.Eval do
     {:abs, 1}
   ]
 
-  # Replaces operators with calls to a `Timecode` function.
+  # Replaces operators with calls to a `Framestamp` function.
   @spec replace_ops_ast(Macro.t()) :: Macro.t()
-  defp replace_ops_ast({op, _, args} = ast) when is_map_key(@tc_ops, {op, length(args)}) do
-    tc_func_name = Map.fetch!(@tc_ops, {op, length(args)})
-    tc_arg_count = if {op, length(args)} in @single_tc_ops, do: 1, else: 2
+  defp replace_ops_ast({op, _, args} = ast) when is_map_key(@two_stamp_ops, {op, length(args)}) do
+    stamp_func_name = Map.fetch!(@two_stamp_ops, {op, length(args)})
+    stamp_arg_count = if {op, length(args)} in @one_stamp_ops, do: 1, else: 2
 
-    replace_tc_op(tc_func_name, tc_arg_count, ast)
+    replace_framestamp_op(stamp_func_name, stamp_arg_count, ast)
   end
 
   defp replace_ops_ast(ast), do: ast
 
-  # Replaces ops where both args are timecodes.
-  @spec replace_tc_op(atom(), pos_integer(), Macro.t()) :: Macro.t()
-  defp replace_tc_op(tc_func_name, tc_arg_count, ast) do
+  # Replaces ops where both args are framestamps.
+  @spec replace_framestamp_op(atom(), pos_integer(), Macro.t()) :: Macro.t()
+  defp replace_framestamp_op(stamp_func_name, stamp_arg_count, ast) do
     {_, meta, args} = ast
 
     args
     |> Enum.with_index()
     |> Enum.map(fn
-      {arg_ast, i} when i < tc_arg_count -> wrap_tc_val_in_cast(arg_ast, meta)
+      {arg_ast, i} when i < stamp_arg_count -> wrap_stamp_val_in_cast(arg_ast, meta)
       {arg_ast, _} -> arg_ast
     end)
-    |> then(&timecode_func(tc_func_name, meta, &1))
+    |> then(&framestamp_func(stamp_func_name, meta, &1))
   end
 
-  # Wraps timecode args in `cast_timecode_arg/2`.
-  @spec wrap_tc_val_in_cast(Macro.t(), Macro.metadata()) :: Macro.t()
-  def wrap_tc_val_in_cast({:num, _, [arg]}, _), do: arg
+  # Wraps framestamp args in `cast_framestamp_arg/2`.
+  @spec wrap_stamp_val_in_cast(Macro.t(), Macro.metadata()) :: Macro.t()
+  def wrap_stamp_val_in_cast({:num, _, [arg]}, _), do: arg
 
-  def wrap_tc_val_in_cast(arg_ast, meta),
-    do: aliased_func_call([:Vtc, :Timecode, :Eval], :cast_timecode_arg, meta, [arg_ast, @default_rate_var_ast])
+  def wrap_stamp_val_in_cast(arg_ast, meta),
+    do: aliased_func_call([:Vtc, :Framestamp, :Eval], :cast_framestamp_arg, meta, [arg_ast, @default_rate_var_ast])
 
   # Casts `frames` to `default` rate if one was provided, and `frames` is not already
-  # a timecode value.
+  # a framestamp value.
   @doc false
-  @spec cast_timecode_arg(Timecode.t() | Frames.t(), Framerate.t() | nil) :: Timecode.t() | Frames.t()
-  def cast_timecode_arg(%Timecode{} = timecode, _), do: timecode
-  def cast_timecode_arg(frames, nil), do: frames
+  @spec cast_framestamp_arg(Framestamp.t() | Frames.t(), Framerate.t() | nil) :: Framestamp.t() | Frames.t()
+  def cast_framestamp_arg(%Framestamp{} = framestamp, _), do: framestamp
+  def cast_framestamp_arg(frames, nil), do: frames
 
-  def cast_timecode_arg(frames, default_rate) do
+  def cast_framestamp_arg(frames, default_rate) do
     if Frames.impl_for(frames) do
-      Timecode.with_frames!(frames, default_rate)
+      Framestamp.with_frames!(frames, default_rate)
     else
       frames
     end
@@ -117,9 +117,9 @@ defmodule Vtc.Timecode.Eval do
     Framerate.new!(rate, opts)
   end
 
-  # Escapes a timecode function name for use in an ast.
-  @spec timecode_func(atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()
-  defp timecode_func(name, meta, args), do: aliased_func_call([:Vtc, :Timecode], name, meta, args)
+  # Escapes a framestamp function name for use in an ast.
+  @spec framestamp_func(atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()
+  defp framestamp_func(name, meta, args), do: aliased_func_call([:Vtc, :Framestamp], name, meta, args)
 
   # Constructs the AST for an alias + function call.
   @spec aliased_func_call([atom()], atom(), Macro.metadata(), [Macro.t()]) :: Macro.t()

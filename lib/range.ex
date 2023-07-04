@@ -1,6 +1,6 @@
 defmodule Vtc.Range do
   @moduledoc """
-  Holds a timecode range.
+  Holds a framestamp range.
 
   ## Struct Fields
 
@@ -10,18 +10,19 @@ defmodule Vtc.Range do
 
   ## Inclusive vs. Exclusive Ranges
 
-  Inclusive ranges treat the `out` timecode as the last visible frame of a piece of
-  footage. This style of tc range is most often associated with AVID.
+  Inclusive ranges treat the `out` framestamp as the last visible frame of a piece of
+  footage. This style of timecode range is most often associated with AVID.
 
-  Exclusive timecode ranges treat the `out` timecode as the *boundary* where the range
-  ends. This style of tc range is most often associated with Final Cut and Premiere.
+  Exclusive framestamp ranges treat the `out` framestamp as the *boundary* where the
+  range ends. This style of timecode range is most often associated with Final Cut and
+  Premiere.
 
   In mathematical notation, inclusive ranges are `[in, out]`, while exclusive ranges are
   `[in, out)`.
   """
 
+  alias Vtc.Framestamp
   alias Vtc.Source.Frames
-  alias Vtc.Timecode
 
   @typedoc """
   Whether the end point should be treated as the Range's boundary (:exclusive), or its
@@ -33,8 +34,8 @@ defmodule Vtc.Range do
   Range struct type.
   """
   @type t() :: %__MODULE__{
-          in: Timecode.t(),
-          out: Timecode.t(),
+          in: Framestamp.t(),
+          out: Framestamp.t(),
           out_type: out_type()
         }
 
@@ -45,19 +46,19 @@ defmodule Vtc.Range do
   @doc """
   Creates a new [Range](`Vtc.Range`).
 
-  `out_tc` may be a [Timecode](`Vtc.Timecode`) value for any value that implements the
+  `out_tc` may be a [Framestamp](`Vtc.Framestamp`) value for any value that implements the
   [Frames](`Vtc.Source.Frames`) protocol.
 
   Returns an error if the resulting range would not have a duration greater or eual to
-  0, or if `tc_in` and `tc_out` do not have the same `rate`.
+  0, or if `stamp_in` and `stamp_out` do not have the same `rate`.
 
   ## Examples
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.new(tc_in, tc_out)
+  iex> result = Range.new(stamp_in, stamp_out)
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>}"
   ```
@@ -65,9 +66,9 @@ defmodule Vtc.Range do
   Using a timecode string as `b`:
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.new(tc_in, "02:00:00:00")
+  iex> result = Range.new(stamp_in, "02:00:00:00")
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>}"
   ```
@@ -75,32 +76,32 @@ defmodule Vtc.Range do
   Making a range with an inclusive out:
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.new(tc_in, "02:00:00:00", out_type: :inclusive)
+  iex> result = Range.new(stamp_in, "02:00:00:00", out_type: :inclusive)
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 02:00:00:00 :inclusive <23.98 NTSC>>}"
   ```
   """
   @spec new(
-          in_tc :: Timecode.t(),
-          out_tc :: Timecode.t() | Frames.t(),
+          stamp_in :: Framestamp.t(),
+          stamp_out :: Framestamp.t() | Frames.t(),
           opts :: [out_type: out_type()]
-        ) :: {:ok, t()} | {:error, Exception.t() | Timecode.ParseError.t()}
-  def new(tc_in, tc_out, opts \\ [])
+        ) :: {:ok, t()} | {:error, Exception.t() | Framestamp.ParseError.t()}
+  def new(stamp_in, stamp_out, opts \\ [])
 
-  def new(tc_in, %Timecode{} = tc_out, opts) do
+  def new(stamp_in, %Framestamp{} = stamp_out, opts) do
     out_type = Keyword.get(opts, :out_type, :exclusive)
 
-    with :ok <- validate_rates_equal(tc_in, tc_out, :tc_in, :tc_out),
-         :ok <- validate_in_and_out(tc_in, tc_out, out_type) do
-      {:ok, %__MODULE__{in: tc_in, out: tc_out, out_type: out_type}}
+    with :ok <- validate_rates_equal(stamp_in, stamp_out, :stamp_in, :stamp_out),
+         :ok <- validate_in_and_out(stamp_in, stamp_out, out_type) do
+      {:ok, %__MODULE__{in: stamp_in, out: stamp_out, out_type: out_type}}
     end
   end
 
-  def new(tc_in, tc_out, opts) do
-    with {:ok, tc_out} <- Timecode.with_frames(tc_out, tc_in.rate) do
-      new(tc_in, tc_out, opts)
+  def new(stamp_in, stamp_out, opts) do
+    with {:ok, stamp_out} <- Framestamp.with_frames(stamp_out, stamp_in.rate) do
+      new(stamp_in, stamp_out, opts)
     end
   end
 
@@ -108,9 +109,9 @@ defmodule Vtc.Range do
   @doc """
   As `new/3`, but raises on error.
   """
-  @spec new!(Timecode.t(), Timecode.t(), opts :: [out_type: out_type()]) :: t()
-  def new!(tc_in, tc_out, opts \\ []) do
-    case new(tc_in, tc_out, opts) do
+  @spec new!(Framestamp.t(), Framestamp.t(), opts :: [out_type: out_type()]) :: t()
+  def new!(stamp_in, stamp_out, opts \\ []) do
+    case new(stamp_in, stamp_out, opts) do
       {:ok, range} -> range
       {:error, error} -> raise error
     end
@@ -118,33 +119,33 @@ defmodule Vtc.Range do
 
   # Validates that `out_tc` is greater than or equal to `in_tc`, when measured
   # exclusively.
-  @spec validate_in_and_out(Timecode.t(), Timecode.t(), out_type()) ::
+  @spec validate_in_and_out(Framestamp.t(), Framestamp.t(), out_type()) ::
           :ok | {:error, Exception.t()}
-  defp validate_in_and_out(in_tc, out_tc, out_type) do
-    out_tc = adjust_out_exclusive(out_tc, out_type)
+  defp validate_in_and_out(stamp_in, stamp_out, out_type) do
+    stamp_out = adjust_out_exclusive(stamp_out, out_type)
 
-    if Timecode.compare(out_tc, in_tc) in [:gt, :eq] do
+    if Framestamp.compare(stamp_out, stamp_in) in [:gt, :eq] do
       :ok
     else
-      {:error, ArgumentError.exception("`tc_out` must be greater than or equal to `tc_in`")}
+      {:error, ArgumentError.exception("`stamp_out` must be greater than or equal to `stamp_in`")}
     end
   end
 
   @doc section: :parse
   @doc """
-  Returns a range with an `:in` value of `tc_in` and a duration of `duration`.
+  Returns a range with an `:in` value of `stamp_in` and a duration of `duration`.
 
-  `duration` may be a [Timecode](`Vtc.Timecode`) value for any value that implements the
+  `duration` may be a [Framestamp](`Vtc.Framestamp`) value for any value that implements the
   [Frames](`Vtc.Source.Frames`) protocol. Returns an error if `duration` is less than
-  `0` seconds or if `tc_in` and `tc_out` do not have  the same `rate`.
+  `0` seconds or if `stamp_in` and `stamp_out` do not have  the same `rate`.
 
   ## Examples
 
   ```elixir
-  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.with_duration(start_tc, duration)
+  iex> result = Range.with_duration(stamp_in, duration)
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC>>}"
   ```
@@ -152,9 +153,9 @@ defmodule Vtc.Range do
   Using a timecode string as `b`:
 
   ```elixir
-  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.with_duration(start_tc, "00:30:00:00")
+  iex> result = Range.with_duration(stamp_in, "00:30:00:00")
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 01:30:00:00 :exclusive <23.98 NTSC>>}"
   ```
@@ -162,37 +163,37 @@ defmodule Vtc.Range do
   Making a range with an inclusive out:
 
   ```elixir
-  iex> start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex>
-  iex> result = Range.with_duration(start_tc, "00:30:00:00", out_type: :inclusive)
+  iex> result = Range.with_duration(stamp_in, "00:30:00:00", out_type: :inclusive)
   iex> inspect(result)
   "{:ok, <01:00:00:00 - 01:29:59:23 :inclusive <23.98 NTSC>>}"
   ```
   """
   @spec with_duration(
-          tc_in :: Timecode.t(),
-          duration :: Timecode.t() | Frames.t(),
+          stamp_in :: Framestamp.t(),
+          duration :: Framestamp.t() | Frames.t(),
           opts :: [out_type: out_type()]
-        ) :: {:ok, t()} | {:error, Exception.t() | Timecode.ParseError.t()}
-  def with_duration(tc_in, duration, opts \\ [])
+        ) :: {:ok, t()} | {:error, Exception.t() | Framestamp.ParseError.t()}
+  def with_duration(stamp_in, duration, opts \\ [])
 
-  def with_duration(tc_in, %Timecode{} = duration, out_type: :inclusive) do
-    with {:ok, range} <- with_duration(tc_in, duration, []) do
+  def with_duration(stamp_in, %Framestamp{} = duration, out_type: :inclusive) do
+    with {:ok, range} <- with_duration(stamp_in, duration, []) do
       {:ok, with_inclusive_out(range)}
     end
   end
 
-  def with_duration(tc_in, %Timecode{} = duration, _) do
-    with :ok <- validate_rates_equal(tc_in, duration, :tc_in, :duration),
+  def with_duration(stamp_in, %Framestamp{} = duration, _) do
+    with :ok <- validate_rates_equal(stamp_in, duration, :stamp_in, :duration),
          :ok <- with_duration_validate_duration(duration) do
-      tc_out = Timecode.add(tc_in, duration)
-      new(tc_in, tc_out, out_type: :exclusive)
+      stamp_out = Framestamp.add(stamp_in, duration)
+      new(stamp_in, stamp_out, out_type: :exclusive)
     end
   end
 
-  def with_duration(tc_in, duration, opts) do
-    with {:ok, duration} <- Timecode.with_frames(duration, tc_in.rate) do
-      with_duration(tc_in, duration, opts)
+  def with_duration(stamp_in, duration, opts) do
+    with {:ok, duration} <- Framestamp.with_frames(duration, stamp_in.rate) do
+      with_duration(stamp_in, duration, opts)
     end
   end
 
@@ -200,24 +201,24 @@ defmodule Vtc.Range do
   @doc """
   As with_duration/3, but raises on error.
   """
-  @spec with_duration!(Timecode.t(), Timecode.t(), opts :: [out_type: out_type()]) :: t()
-  def with_duration!(tc_in, duration, opts \\ []) do
-    case with_duration(tc_in, duration, opts) do
+  @spec with_duration!(Framestamp.t(), Framestamp.t(), opts :: [out_type: out_type()]) :: t()
+  def with_duration!(stamp_in, duration, opts \\ []) do
+    case with_duration(stamp_in, duration, opts) do
       {:ok, range} -> range
       {:error, error} -> raise error
     end
   end
 
-  @spec with_duration_validate_duration(Timecode.t()) :: :ok | {:error, Exception.t()}
+  @spec with_duration_validate_duration(Framestamp.t()) :: :ok | {:error, Exception.t()}
   defp with_duration_validate_duration(duration) do
-    if Timecode.compare(duration, 0) != :lt do
+    if Framestamp.compare(duration, 0) != :lt do
       :ok
     else
       {:error, ArgumentError.exception("`duration` must be greater than `0`")}
     end
   end
 
-  @spec validate_rates_equal(Timecode.t(), Timecode.t(), atom(), atom()) ::
+  @spec validate_rates_equal(Framestamp.t(), Framestamp.t(), atom(), atom()) ::
           :ok | {:error, Exception.t()}
   defp validate_rates_equal(%{rate: rate}, %{rate: rate}, _, _), do: :ok
 
@@ -226,13 +227,13 @@ defmodule Vtc.Range do
 
   @doc section: :manipulate
   @doc """
-  Adjusts range to have an inclusive out timecode.
+  Adjusts range to have an inclusive out framestamp.
 
   ## Examples
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> range = Range.new!(tc_in, "02:00:00:00")
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(stamp_in, "02:00:00:00")
   iex>
   iex> result = Range.with_inclusive_out(range)
   iex> inspect(result)
@@ -244,13 +245,13 @@ defmodule Vtc.Range do
 
   @doc section: :manipulate
   @doc """
-  Adjusts range to have an exclusive out timecode.
+  Adjusts range to have an exclusive out framestamp.
 
   ## Examples
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> range = Range.new!(tc_in, "02:00:00:00", out_type: :inclusive)
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(stamp_in, "02:00:00:00", out_type: :inclusive)
   iex>
   iex> result = Range.with_exclusive_out(range)
   iex> inspect(result)
@@ -265,7 +266,7 @@ defmodule Vtc.Range do
   defp with_out_type(%{out_type: out_type} = range, out_type), do: range
 
   defp with_out_type(range, :inclusive) do
-    new_out = Timecode.sub(range.out, 1, round: :off)
+    new_out = Framestamp.sub(range.out, 1, round: :off)
     %__MODULE__{range | out: new_out, out_type: :inclusive}
   end
 
@@ -275,41 +276,41 @@ defmodule Vtc.Range do
   end
 
   # Asdjusts an out TC to be an exclusive out.
-  @spec adjust_out_exclusive(Timecode.t(), out_type()) :: Timecode.t()
-  defp adjust_out_exclusive(tc, :exclusive), do: tc
-  defp adjust_out_exclusive(tc, :inclusive), do: Timecode.add(tc, 1, round: :off)
+  @spec adjust_out_exclusive(Framestamp.t(), out_type()) :: Framestamp.t()
+  defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
+  defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1, round: :off)
 
   @doc section: :inspect
   @doc """
-  Returns the duration in [Timecode](`Vtc.Timecode`) of `range`.
+  Returns the duration in [Framestamp](`Vtc.Framestamp`) of `range`.
 
   ## Examples
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> range = Range.new!(tc_in, "01:30:00:00")
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(stamp_in, "01:30:00:00")
   iex>
   iex> result = Range.duration(range)
   iex> inspect(result)
   "<00:30:00:00 <23.98 NTSC>>"
   ```
   """
-  @spec duration(t()) :: Timecode.t()
+  @spec duration(t()) :: Framestamp.t()
   def duration(range) do
-    %{in: in_tc, out: out_tc} = with_exclusive_out(range)
-    Timecode.sub(out_tc, in_tc)
+    %{in: stamp_in, out: stamp_out} = with_exclusive_out(range)
+    Framestamp.sub(stamp_out, stamp_in)
   end
 
   @doc section: :compare
   @doc """
-  Returns `true` if `range` contains `timecode`. `timecode` may be any value that
+  Returns `true` if `range` contains `framestamp`. `framestamp` may be any value that
   implements [Frames](`Vtc.Source.Frames`).
 
   ## Examples
 
   ```elixir
-  iex> tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> range = Range.new!(tc_in, "01:30:00:00")
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Range.new!(stamp_in, "01:30:00:00")
   iex>
   iex> Range.contains?(range, "01:10:00:00")
   true
@@ -317,18 +318,18 @@ defmodule Vtc.Range do
   false
   ```
   """
-  @spec contains?(t(), Timecode.t() | Frames.t()) :: boolean()
-  def contains?(range, %Timecode{} = timecode) do
+  @spec contains?(t(), Framestamp.t() | Frames.t()) :: boolean()
+  def contains?(range, %Framestamp{} = framestamp) do
     calc_with_exclusive([range], fn range ->
       cond do
-        Timecode.lt?(timecode, range.in) -> false
-        Timecode.gte?(timecode, range.out) -> false
+        Framestamp.lt?(framestamp, range.in) -> false
+        Framestamp.gte?(framestamp, range.out) -> false
         true -> true
       end
     end)
   end
 
-  def contains?(range, frames), do: contains?(range, Timecode.with_frames!(frames, range.in.rate))
+  def contains?(range, frames), do: contains?(range, Framestamp.with_frames!(frames, range.in.rate))
 
   @doc section: :compare
   @doc """
@@ -337,20 +338,20 @@ defmodule Vtc.Range do
   ## Examples
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex> Range.overlaps?(a, b)
   true
   ```
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex> Range.overlaps?(a, b)
   false
@@ -360,8 +361,8 @@ defmodule Vtc.Range do
   def overlaps?(a, b) do
     calc_with_exclusive([a, b], fn a, b ->
       cond do
-        Timecode.compare(a.in, b.out) in [:gt, :eq] -> false
-        Timecode.compare(a.out, b.in) in [:lt, :eq] -> false
+        Framestamp.compare(a.in, b.out) in [:gt, :eq] -> false
+        Framestamp.compare(a.out, b.in) in [:lt, :eq] -> false
         true -> true
       end
     end)
@@ -379,10 +380,10 @@ defmodule Vtc.Range do
   ## Examples
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex>
   iex> result = Range.intersection(a, b)
@@ -391,10 +392,10 @@ defmodule Vtc.Range do
   ```
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex> Range.intersection(a, b)
   {:error, :none}
@@ -413,10 +414,10 @@ defmodule Vtc.Range do
   ## Examples
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex>
   iex> result = Range.intersection!(a, b)
@@ -444,10 +445,10 @@ defmodule Vtc.Range do
   ## Examples
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("02:10:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("02:10:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "03:30:00:00", out_type: :inclusive)
   iex>
   iex> result = Range.separation(a, b)
@@ -456,10 +457,10 @@ defmodule Vtc.Range do
   ```
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex> Range.separation(a, b)
   {:error, :none}
@@ -478,10 +479,10 @@ defmodule Vtc.Range do
   ## Examples
 
   ```elixir
-  iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   iex> a = Range.new!(a_in, "02:00:00:00", out_type: :inclusive)
   iex>
-  iex> b_in = Timecode.with_frames!("01:50:00:00", Rates.f23_98())
+  iex> b_in = Framestamp.with_frames!("01:50:00:00", Rates.f23_98())
   iex> b = Range.new!(b_in, "02:30:00:00", out_type: :inclusive)
   iex>
   iex> result = Range.separation!(a, b)
@@ -500,8 +501,8 @@ defmodule Vtc.Range do
   # Creates a zero-duraiton range using the framerate and `:out_type` of `reference`.
   @spec create_zeroed_range(t()) :: t()
   defp create_zeroed_range(reference) do
-    zero_timecode = Timecode.with_frames!(0, reference.in.rate)
-    zero_range = with_duration!(zero_timecode, zero_timecode)
+    zero_framestamp = Framestamp.with_frames!(0, reference.in.rate)
+    zero_range = with_duration!(zero_framestamp, zero_framestamp)
 
     case reference do
       %{out_type: :inclusive} -> with_inclusive_out(zero_range)
@@ -518,15 +519,15 @@ defmodule Vtc.Range do
         if do_calc?.(a, b) do
           result_rate = a.in.rate
 
-          overlap_in = Enum.max([a.in, b.in], Timecode)
-          overlap_in = Timecode.with_seconds!(overlap_in.seconds, result_rate)
+          overlap_in = Enum.max([a.in, b.in], Framestamp)
+          overlap_in = Framestamp.with_seconds!(overlap_in.seconds, result_rate)
 
-          overlap_out = Enum.min([a.out, b.out], Timecode)
-          overlap_out = Timecode.with_seconds!(overlap_out.seconds, result_rate)
+          overlap_out = Enum.min([a.out, b.out], Framestamp)
+          overlap_out = Framestamp.with_seconds!(overlap_out.seconds, result_rate)
 
           # These values will be flipped when calulcating separation range, so we need to
           # sort them.
-          [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Timecode)
+          [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Framestamp)
           %__MODULE__{a | in: overlap_in, out: overlap_out}
         else
           {:error, :none}
@@ -563,12 +564,12 @@ defmodule Vtc.Range do
 end
 
 defimpl Inspect, for: Vtc.Range do
+  alias Vtc.Framestamp
   alias Vtc.Range
-  alias Vtc.Timecode
 
   @spec inspect(Range.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(range, _opts) do
-    "<#{Timecode.timecode(range.in)} - #{Timecode.timecode(range.out)} :#{range.out_type} #{inspect(range.in.rate)}>"
+    "<#{Framestamp.smpte_timecode(range.in)} - #{Framestamp.smpte_timecode(range.out)} :#{range.out_type} #{inspect(range.in.rate)}>"
   end
 end
 

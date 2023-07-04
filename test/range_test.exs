@@ -3,13 +3,13 @@ defmodule Vtc.RangeTest do
   use Vtc.Test.Support.TestCase
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Range
   alias Vtc.Rates
-  alias Vtc.Timecode
 
   @typedoc """
   Shorthand way to specify a {timecode_in, timecode_out} in a test case for a
-  setup function to build the timecodes and ranges.
+  setup function to build the framestamps and ranges.
 
   Timecodes should be specified in strings and the setup will choose a framerate to
   apply.
@@ -18,372 +18,372 @@ defmodule Vtc.RangeTest do
 
   describe "new/3" do
     test "successfully creates a new range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, tc_out)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert {:ok, range} = Range.new(stamp_in, stamp_out)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :exclusive
     end
 
     test "successfully creates a new range with inclusive out" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, tc_out, out_type: :inclusive)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert {:ok, range} = Range.new(stamp_in, stamp_out, out_type: :inclusive)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :inclusive
     end
 
     test "successfully creates a zero-length range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, tc_out)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert {:ok, range} = Range.new(stamp_in, stamp_out)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :exclusive
     end
 
     test "successfully creates a zero-length inclusive range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, tc_out, out_type: :inclusive)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert {:ok, range} = Range.new(stamp_in, stamp_out, out_type: :inclusive)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :inclusive
     end
 
-    test "successfully creates a range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates a range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, "02:00:00:00")
-      assert range.in == tc_in
+      assert {:ok, range} = Range.new(stamp_in, "02:00:00:00")
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, "02:00:00:00", out_type: :exclusive)
-      assert range.in == tc_in
+      assert {:ok, range} = Range.new(stamp_in, "02:00:00:00", out_type: :exclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates an :inclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.new(tc_in, "02:00:00:00", out_type: :inclusive)
-      assert range.in == tc_in
+      assert {:ok, range} = Range.new(stamp_in, "02:00:00:00", out_type: :inclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :inclusive
     end
 
     test "fails when out is less than in" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
 
-      assert {:error, error} = Range.new(tc_in, tc_out)
-      assert Exception.message(error) == "`tc_out` must be greater than or equal to `tc_in`"
+      assert {:error, error} = Range.new(stamp_in, stamp_out)
+      assert Exception.message(error) == "`stamp_out` must be greater than or equal to `stamp_in`"
     end
 
     test "fails when rates are not the same" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f24())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f24())
 
-      assert {:error, error} = Range.new(tc_in, tc_out)
-      assert Exception.message(error) == "`tc_in` and `tc_out` must have same `rate`"
+      assert {:error, error} = Range.new(stamp_in, stamp_out)
+      assert Exception.message(error) == "`stamp_in` and `stamp_out` must have same `rate`"
     end
 
-    test "fails with timecode parse error for bad `Frames` string" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      assert {:error, %Timecode.ParseError{}} = Range.new(tc_in, "not a timecode")
+    test "fails with framestamp parse error for bad `Frames` string" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      assert {:error, %Framestamp.ParseError{}} = Range.new(stamp_in, "not a timecode")
     end
   end
 
   describe "new!/3" do
     test "successfully creates a new range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, tc_out)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert range = Range.new!(stamp_in, stamp_out)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :exclusive
     end
 
     test "successfully creates a new range with inclusive out" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, tc_out, out_type: :inclusive)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert range = Range.new!(stamp_in, stamp_out, out_type: :inclusive)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :inclusive
     end
 
     test "successfully creates a zero-length range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, tc_out)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert range = Range.new!(stamp_in, stamp_out)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :exclusive
     end
 
     test "successfully creates a zero-length inclusive range" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, tc_out, out_type: :inclusive)
-      assert range.in == tc_in
-      assert range.out == tc_out
+      assert range = Range.new!(stamp_in, stamp_out, out_type: :inclusive)
+      assert range.in == stamp_in
+      assert range.out == stamp_out
       assert range.out_type == :inclusive
     end
 
-    test "successfully creates a range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates a range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, "02:00:00:00")
-      assert range.in == tc_in
+      assert range = Range.new!(stamp_in, "02:00:00:00")
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, "02:00:00:00", out_type: :exclusive)
-      assert range.in == tc_in
+      assert range = Range.new!(stamp_in, "02:00:00:00", out_type: :exclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates an :inclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert range = Range.new!(tc_in, "02:00:00:00", out_type: :inclusive)
-      assert range.in == tc_in
+      assert range = Range.new!(stamp_in, "02:00:00:00", out_type: :inclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :inclusive
     end
 
     test "raises when out is less than in" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
 
-      error = assert_raise(ArgumentError, fn -> Range.new!(tc_in, tc_out) end)
-      assert Exception.message(error) == "`tc_out` must be greater than or equal to `tc_in`"
+      error = assert_raise(ArgumentError, fn -> Range.new!(stamp_in, stamp_out) end)
+      assert Exception.message(error) == "`stamp_out` must be greater than or equal to `stamp_in`"
     end
 
     test "raises when rates are not the same" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      tc_out = Timecode.with_frames!("02:00:00:00", Rates.f24())
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f24())
 
-      error = assert_raise(ArgumentError, fn -> Range.new!(tc_in, tc_out) end)
-      assert Exception.message(error) == "`tc_in` and `tc_out` must have same `rate`"
+      error = assert_raise(ArgumentError, fn -> Range.new!(stamp_in, stamp_out) end)
+      assert Exception.message(error) == "`stamp_in` and `stamp_out` must have same `rate`"
     end
 
-    test "raises with timecode parse error for bad `Frames` string" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      assert_raise Timecode.ParseError, fn -> Range.new!(tc_in, "not a timecode") end
+    test "raises with framestamp parse error for bad `Frames` string" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      assert_raise Framestamp.ParseError, fn -> Range.new!(stamp_in, "not a timecode") end
     end
   end
 
   describe "with_duration/3" do
     test "successfully constructs implicit :exclusive range" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(start_tc, duration)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      assert {:ok, range} = Range.with_duration(start_stamp, duration)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
       assert range.out_type == :exclusive
     end
 
     test "successfully constructs with out_type: :exclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(start_tc, duration, out_type: :exclusive)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      assert {:ok, range} = Range.with_duration(start_stamp, duration, out_type: :exclusive)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
       assert range.out_type == :exclusive
     end
 
     test "successfully constructs with out_type: :inclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(start_tc, duration, out_type: :inclusive)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:29:59:23", Rates.f23_98())
+      assert {:ok, range} = Range.with_duration(start_stamp, duration, out_type: :inclusive)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:29:59:23", Rates.f23_98())
       assert range.out_type == :inclusive
     end
 
-    test "successfully creates a range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates a range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00")
-      assert range.in == tc_in
+      assert {:ok, range} = Range.with_duration(stamp_in, "01:00:00:00")
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+    test "successfully creates an explicitly :exclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00", out_type: :exclusive)
-      assert range.in == tc_in
+      assert {:ok, range} = Range.with_duration(stamp_in, "01:00:00:00", out_type: :exclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :exclusive
     end
 
-    test "successfully creates an :inclusive range with a `Frames` value as out_tc" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      expected_out = Timecode.with_frames!("01:59:59:23", Rates.f23_98())
+    test "successfully creates an :inclusive range with a `Frames` value as out_stamp" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      expected_out = Framestamp.with_frames!("01:59:59:23", Rates.f23_98())
 
-      assert {:ok, range} = Range.with_duration(tc_in, "01:00:00:00", out_type: :inclusive)
-      assert range.in == tc_in
+      assert {:ok, range} = Range.with_duration(stamp_in, "01:00:00:00", out_type: :inclusive)
+      assert range.in == stamp_in
       assert range.out == expected_out
       assert range.out_type == :inclusive
     end
 
     test "fails on different rates" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f24())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f24())
 
-      assert {:error, error} = Range.with_duration(start_tc, duration)
-      assert Exception.message(error) == "`tc_in` and `duration` must have same `rate`"
+      assert {:error, error} = Range.with_duration(start_stamp, duration)
+      assert Exception.message(error) == "`stamp_in` and `duration` must have same `rate`"
     end
 
     test "fails on negative duration" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("-00:30:00:00", Rates.f23_98())
 
-      assert {:error, error} = Range.with_duration(start_tc, duration)
+      assert {:error, error} = Range.with_duration(start_stamp, duration)
       assert Exception.message(error) == "`duration` must be greater than `0`"
     end
 
     test "fails on negative duration when out_type: :inclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("-00:30:00:00", Rates.f23_98())
 
-      assert {:error, error} = Range.with_duration(start_tc, duration, out_type: :inclusive)
+      assert {:error, error} = Range.with_duration(start_stamp, duration, out_type: :inclusive)
       assert Exception.message(error) == "`duration` must be greater than `0`"
     end
 
-    test "fails with timecode parse error for bad `Frames` string" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      assert {:error, %Timecode.ParseError{}} = Range.with_duration(tc_in, "not a timecode")
+    test "fails with framestamp parse error for bad `Frames` string" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      assert {:error, %Framestamp.ParseError{}} = Range.with_duration(stamp_in, "not a timecode")
     end
   end
 
   describe "#with_duration!/3" do
     test "successfully constructs implicit :exclusive range" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert range = Range.with_duration!(start_tc, duration)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      assert range = Range.with_duration!(start_stamp, duration)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
       assert range.out_type == :exclusive
     end
 
     test "successfully constructs with out_type: :exclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert range = Range.with_duration!(start_tc, duration, out_type: :exclusive)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      assert range = Range.with_duration!(start_stamp, duration, out_type: :exclusive)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
       assert range.out_type == :exclusive
     end
 
     test "successfully constructs with out_type: :inclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
-      assert range = Range.with_duration!(start_tc, duration, out_type: :inclusive)
-      assert range.in == start_tc
-      assert range.out == Timecode.with_frames!("01:29:59:23", Rates.f23_98())
+      assert range = Range.with_duration!(start_stamp, duration, out_type: :inclusive)
+      assert range.in == start_stamp
+      assert range.out == Framestamp.with_frames!("01:29:59:23", Rates.f23_98())
       assert range.out_type == :inclusive
     end
 
     test "raises on different rates" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("00:30:00:00", Rates.f24())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("00:30:00:00", Rates.f24())
 
-      error = assert_raise(ArgumentError, fn -> Range.with_duration!(start_tc, duration) end)
-      assert Exception.message(error) == "`tc_in` and `duration` must have same `rate`"
+      error = assert_raise(ArgumentError, fn -> Range.with_duration!(start_stamp, duration) end)
+      assert Exception.message(error) == "`stamp_in` and `duration` must have same `rate`"
     end
 
     test "raises on negative duration" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("-00:30:00:00", Rates.f23_98())
 
-      error = assert_raise(ArgumentError, fn -> Range.with_duration!(start_tc, duration) end)
+      error = assert_raise(ArgumentError, fn -> Range.with_duration!(start_stamp, duration) end)
       assert Exception.message(error) == "`duration` must be greater than `0`"
     end
 
     test "raises on negative duration when out_type: :inclusive" do
-      start_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      duration = Timecode.with_frames!("-00:30:00:00", Rates.f23_98())
+      start_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      duration = Framestamp.with_frames!("-00:30:00:00", Rates.f23_98())
 
       error =
         assert_raise(ArgumentError, fn ->
-          Range.with_duration!(start_tc, duration, out_type: :inclusive)
+          Range.with_duration!(start_stamp, duration, out_type: :inclusive)
         end)
 
       assert Exception.message(error) == "`duration` must be greater than `0`"
     end
 
-    test "raises with timecode parse error for bad `Frames` string" do
-      tc_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      assert_raise Timecode.ParseError, fn -> Range.with_duration!(tc_in, "not a timecode") end
+    test "raises with framestamp parse error for bad `Frames` string" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      assert_raise Framestamp.ParseError, fn -> Range.with_duration!(stamp_in, "not a timecode") end
     end
   end
 
   describe "#with_inclusive_out/1" do
     test "successful alters :exclusive input" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-      expected_out = Timecode.with_frames!("01:59:59:023", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
+      expected_out = Framestamp.with_frames!("01:59:59:023", Rates.f23_98())
 
       assert %{out: ^expected_out} = Range.with_inclusive_out(range)
     end
 
     test "no change with :inclusive input" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclusive}
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
 
-      assert %{out: ^out_tc} = Range.with_inclusive_out(range)
+      assert %{out: ^out_stamp} = Range.with_inclusive_out(range)
     end
 
     test "backs up 0-length :exclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-      expected_out = Timecode.with_frames!("00:59:59:023", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
+      expected_out = Framestamp.with_frames!("00:59:59:023", Rates.f23_98())
 
       assert %{out: ^expected_out} = Range.with_inclusive_out(range)
     end
@@ -391,30 +391,30 @@ defmodule Vtc.RangeTest do
 
   describe "#with_exclusive_out/1" do
     test "successful alters :inclusive input" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclusive}
-      expected_out = Timecode.with_frames!("02:00:00:01", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
+      expected_out = Framestamp.with_frames!("02:00:00:01", Rates.f23_98())
 
       assert %{out: ^expected_out} = Range.with_exclusive_out(range)
     end
 
     test "no change with :exclusive input" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
 
-      assert %{out: ^out_tc} = Range.with_exclusive_out(range)
+      assert %{out: ^out_stamp} = Range.with_exclusive_out(range)
     end
 
     test "rolls forward up 0-length :inclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclsuive}
-      expected_out = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclsuive}
+      expected_out = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
 
       assert %{out: ^expected_out} = Range.with_exclusive_out(range)
     end
@@ -422,61 +422,61 @@ defmodule Vtc.RangeTest do
 
   describe "#duration/1" do
     test "correctly reports :exclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-      expected = Timecode.with_frames!("00:30:00:00", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
+      expected = Framestamp.with_frames!("00:30:00:00", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
 
     test "correctly reports 0-frame :exclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-      expected = Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
+      expected = Framestamp.with_frames!("00:00:00:00", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
 
     test "correctly reports 1-frame :exclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :exclusive}
-      expected = Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
+      expected = Framestamp.with_frames!("00:00:00:01", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
 
     test "correctly reports :inclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:30:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:30:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclusive}
-      expected = Timecode.with_frames!("00:30:00:01", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
+      expected = Framestamp.with_frames!("00:30:00:01", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
 
     test "correctly reports 0-frame :inclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("00:59:59:23", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclusive}
-      expected = Timecode.with_frames!("00:00:00:00", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
+      expected = Framestamp.with_frames!("00:00:00:00", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
 
     test "correctly reports 1-frame :inclusive duration" do
-      in_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      out_tc = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      out_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_tc, out: out_tc, out_type: :inclusive}
-      expected = Timecode.with_frames!("00:00:00:01", Rates.f23_98())
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
+      expected = Framestamp.with_frames!("00:00:00:01", Rates.f23_98())
 
       assert Range.duration(range) == expected
     end
@@ -487,124 +487,124 @@ defmodule Vtc.RangeTest do
     setup [:setup_ranges]
     setup context, do: TestCase.setup_negates(context)
 
-    @describetag timecodes: [:timecode]
+    @describetag timecodes: [:framestamp]
     @describetag ranges: [:range]
 
     contains_table = [
       %{
-        name: "range.in < tc < range.out | :exclusive",
+        name: "range.in < stamp < range.out | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "01:30:00:00",
+        framestamp: "01:30:00:00",
         expected: true
       },
       %{
-        name: "tc == range.in | :exclusive",
+        name: "stamp == range.in | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "01:00:00:00",
+        framestamp: "01:00:00:00",
         expected: true,
         expected_negative: false
       },
       %{
-        name: "tc == range.out - 1 | :exclusive",
+        name: "stamp == range.out - 1 | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "01:59:59:23",
+        framestamp: "01:59:59:23",
         expected: true
       },
       %{
-        name: "tc == range.in - 1 | :exclusive",
+        name: "stamp == range.in - 1 | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "00:59:59:23",
+        framestamp: "00:59:59:23",
         expected: false
       },
       %{
-        name: "tc == range.out | :exclusive",
+        name: "stamp == range.out | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "02:00:00:00",
+        framestamp: "02:00:00:00",
         expected: false,
         expected_negative: true
       },
       %{
-        name: "tc < range.in | :exclusive",
+        name: "stamp < range.in | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "00:30:00:00",
+        framestamp: "00:30:00:00",
         expected: false
       },
       %{
-        name: "tc < range.in | sign flipped | :exclusive",
+        name: "stamp < range.in | sign flipped | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "-01:30:00:00",
+        framestamp: "-01:30:00:00",
         expected: false
       },
       %{
-        name: "tc > range.out | :exclusive",
+        name: "stamp > range.out | :exclusive",
         range: {"01:00:00:00", "02:00:00:00"},
-        timecode: "02:30:00:00",
+        framestamp: "02:30:00:00",
         expected: false
       },
       %{
-        name: "range.in < tc < range.out | :inclusive",
+        name: "range.in < stamp < range.out | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "01:30:00:00",
+        framestamp: "01:30:00:00",
         expected: true
       },
       %{
-        name: "tc == range.in | :inclusive",
+        name: "stamp == range.in | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "01:00:00:00",
+        framestamp: "01:00:00:00",
         expected: true
       },
       %{
-        name: "tc == range.out - 1 | :inclusive",
+        name: "stamp == range.out - 1 | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "01:59:59:23",
+        framestamp: "01:59:59:23",
         expected: true
       },
       %{
-        name: "tc == range.in - 1 | :inclusive",
+        name: "stamp == range.in - 1 | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "00:59:59:23",
+        framestamp: "00:59:59:23",
         expected: false
       },
       %{
-        name: "tc == range.out | :inclusive",
+        name: "stamp == range.out | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "02:00:00:00",
+        framestamp: "02:00:00:00",
         expected: true
       },
       %{
-        name: "tc == range.out + 1 | :inclusive",
+        name: "stamp == range.out + 1 | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "02:00:00:01",
+        framestamp: "02:00:00:01",
         expected: false
       },
       %{
-        name: "tc < range.in | :inclusive",
+        name: "stamp < range.in | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "00:30:00:00",
+        framestamp: "00:30:00:00",
         expected: false
       },
       %{
-        name: "tc < range.in | sign flipped | :inclusive",
+        name: "stamp < range.in | sign flipped | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "-01:30:00:00",
+        framestamp: "-01:30:00:00",
         expected: false
       },
       %{
-        name: "tc > range.out | :inclusive",
+        name: "stamp > range.out | :inclusive",
         range: {"01:00:00:00", "02:00:00:00", :inclusive},
-        timecode: "02:30:00:00",
+        framestamp: "02:30:00:00",
         expected: false
       }
     ]
 
     table_test test_case.name, contains_table, test_case do
-      %{timecode: timecode, range: range, expected: expected} = test_case
-      assert Range.contains?(range, timecode) == expected
+      %{framestamp: framestamp, range: range, expected: expected} = test_case
+      assert Range.contains?(range, framestamp) == expected
     end
 
     @tag negate: [:range]
     table_test "<%= name %> | negative", contains_table, test_case do
-      %{timecode: timecode, range: range, test_case: test_case} = test_case
+      %{framestamp: framestamp, range: range, test_case: test_case} = test_case
 
       expected =
         case test_case do
@@ -612,8 +612,8 @@ defmodule Vtc.RangeTest do
           %{expected: expected} -> expected
         end
 
-      timecode = Timecode.mult(timecode, -1)
-      assert Range.contains?(range, timecode) == expected
+      framestamp = Framestamp.mult(framestamp, -1)
+      assert Range.contains?(range, framestamp) == expected
     end
   end
 
@@ -1151,17 +1151,17 @@ defmodule Vtc.RangeTest do
           Range.t() | {:error, any()}
   defp setup_range(values, rate \\ Rates.f23_98())
 
-  defp setup_range({in_tc, out_tc, out_type}, rate) do
-    in_tc = Timecode.with_frames!(in_tc, rate)
-    out_tc = Timecode.with_frames!(out_tc, rate)
+  defp setup_range({in_stamp, out_stamp, out_type}, rate) do
+    in_stamp = Framestamp.with_frames!(in_stamp, rate)
+    out_stamp = Framestamp.with_frames!(out_stamp, rate)
 
-    %Range{in: in_tc, out: out_tc, out_type: out_type}
+    %Range{in: in_stamp, out: out_stamp, out_type: out_type}
   end
 
-  defp setup_range({in_tc, out_tc}, rate) when is_binary(in_tc) and is_binary(out_tc) do
-    in_tc = Timecode.with_frames!(in_tc, rate)
-    out_tc = Timecode.with_frames!(out_tc, rate)
-    %Range{in: in_tc, out: out_tc, out_type: :exclusive}
+  defp setup_range({in_stamp, out_stamp}, rate) when is_binary(in_stamp) and is_binary(out_stamp) do
+    in_stamp = Framestamp.with_frames!(in_stamp, rate)
+    out_stamp = Framestamp.with_frames!(out_stamp, rate)
+    %Range{in: in_stamp, out: out_stamp, out_type: :exclusive}
   end
 
   defp setup_range(value, _), do: value

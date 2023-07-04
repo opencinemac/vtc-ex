@@ -1,12 +1,12 @@
-defmodule Vtc.TimecodeTest.Parse do
+defmodule Vtc.FramestampTest.Parse do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
   alias Vtc.Framerate
+  alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.Source.Frames.FeetAndFrames
   alias Vtc.Source.Seconds.PremiereTicks
-  alias Vtc.Timecode
   alias Vtc.Utils.DropFrame
 
   parse_table = [
@@ -553,7 +553,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_seconds(rate)
+      |> Framestamp.with_seconds(rate)
       |> check_parsed(test_case)
     end
 
@@ -562,7 +562,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_seconds(rate)
+      |> Framestamp.with_seconds(rate)
       |> check_parsed(test_case)
     end
 
@@ -583,30 +583,30 @@ defmodule Vtc.TimecodeTest.Parse do
 
       rate = Framerate.new!(Ratio.new(1, 3), ntsc: nil)
 
-      assert {:ok, result} = Timecode.with_seconds(input, rate)
+      assert {:ok, result} = Framestamp.with_seconds(input, rate)
       assert result.seconds == expected
     end
 
     table_test "opts: <%= opts %> <%= description %>", with_seconds_round_table, test_case do
       %{input: input, opts: opts, expected: expected} = test_case
-      {:ok, %Timecode{seconds: ^expected}} = Timecode.with_seconds(input, Rates.f24(), opts)
+      {:ok, %Framestamp{seconds: ^expected}} = Framestamp.with_seconds(input, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do
-      {:error, %Timecode.ParseError{} = error} = Timecode.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
+      {:error, %Framestamp.ParseError{} = error} = Framestamp.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
 
       expected_message =
         "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
 
       assert :partial_frame == error.reason
-      assert Timecode.ParseError.message(error) == expected_message
+      assert Framestamp.ParseError.message(error) == expected_message
     end
 
     test "ParseTimecodeError when bad format" do
-      {:error, %Timecode.ParseError{} = error} = Timecode.with_seconds("notatimecode", Rates.f24())
+      {:error, %Framestamp.ParseError{} = error} = Framestamp.with_seconds("notatimecode", Rates.f24())
 
       assert :unrecognized_format == error.reason
-      assert "string format not recognized" = Timecode.ParseError.message(error)
+      assert "string format not recognized" = Framestamp.ParseError.message(error)
     end
   end
 
@@ -617,7 +617,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_seconds!(rate)
+      |> Framestamp.with_seconds!(rate)
       |> check_parsed!(test_case)
     end
 
@@ -627,31 +627,31 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_seconds!(rate)
+      |> Framestamp.with_seconds!(rate)
       |> check_parsed!(test_case)
     end
 
     table_test "opts: <%= opts %> <%= description %>", with_seconds_round_table, test_case do
       %{input: input, opts: opts, expected: expected} = test_case
-      %Timecode{seconds: ^expected} = Timecode.with_seconds!(input, Rates.f24(), opts)
+      %Framestamp{seconds: ^expected} = Framestamp.with_seconds!(input, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do
       error =
-        assert_raise Timecode.ParseError, fn ->
-          Timecode.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
+        assert_raise Framestamp.ParseError, fn ->
+          Framestamp.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
         end
 
       expected_message =
         "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
 
       assert :partial_frame == error.reason
-      assert Timecode.ParseError.message(error) == expected_message
+      assert Framestamp.ParseError.message(error) == expected_message
     end
 
     test "ParseTimecodeError throws" do
-      assert_raise Timecode.ParseError, fn ->
-        Timecode.with_seconds!("notatimecode", Rates.f24())
+      assert_raise Framestamp.ParseError, fn ->
+        Framestamp.with_seconds!("notatimecode", Rates.f24())
       end
     end
   end
@@ -661,7 +661,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_frames(rate)
+      |> Framestamp.with_frames(rate)
       |> check_parsed(test_case)
     end
 
@@ -670,7 +670,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_frames(rate)
+      |> Framestamp.with_frames(rate)
       |> check_parsed(test_case)
     end
 
@@ -684,43 +684,51 @@ defmodule Vtc.TimecodeTest.Parse do
     table_test "round trip <%= smpte_timecode %> @ <%= rate %>", round_trip_tc_table, test_case do
       %{smpte_timecode: smpte_timecode, rate: rate} = test_case
 
-      assert {:ok, timecode} = Timecode.with_frames(smpte_timecode, rate)
-      assert Timecode.timecode(timecode) == smpte_timecode
+      assert {:ok, framestamp} = Framestamp.with_frames(smpte_timecode, rate)
+      assert Framestamp.smpte_timecode(framestamp) == smpte_timecode
     end
 
     table_test "round trip <%= smpte_timecode %> @ <%= rate %> | frames", round_trip_tc_table, test_case do
       %{smpte_timecode: smpte_timecode, rate: rate} = test_case
 
-      assert {:ok, timecode} = Timecode.with_frames(smpte_timecode, rate)
+      assert {:ok, framestamp} = Framestamp.with_frames(smpte_timecode, rate)
 
-      frames = Timecode.frames(timecode)
-      assert {:ok, ^timecode} = Timecode.with_frames(frames, rate)
+      frames = Framestamp.frames(framestamp)
+      assert {:ok, ^framestamp} = Framestamp.with_frames(frames, rate)
     end
 
     test "29.97 DF max frames == 24:00:00;00" do
-      assert {:ok, timecode} = Rates.f29_97_df() |> DropFrame.max_frames() |> Timecode.with_frames(Rates.f29_97_df())
-      assert Timecode.timecode(timecode) == "24:00:00;00"
+      assert {:ok, framestamp} =
+               Rates.f29_97_df()
+               |> DropFrame.max_frames()
+               |> Framestamp.with_frames(Rates.f29_97_df())
+
+      assert Framestamp.smpte_timecode(framestamp) == "24:00:00;00"
     end
 
     test "59.94 DF max frames == 24:00:00;00" do
-      assert {:ok, timecode} = Rates.f59_94_df() |> DropFrame.max_frames() |> Timecode.with_frames(Rates.f59_94_df())
-      assert Timecode.timecode(timecode) == "24:00:00;00"
+      assert {:ok, framestamp} =
+               Rates.f59_94_df()
+               |> DropFrame.max_frames()
+               |> Framestamp.with_frames(Rates.f59_94_df())
+
+      assert Framestamp.smpte_timecode(framestamp) == "24:00:00;00"
     end
 
     test "ParseTimecodeError - Format" do
-      assert {:error, %Timecode.ParseError{} = error} = Timecode.with_frames("notatimecode", Rates.f24())
+      assert {:error, %Framestamp.ParseError{} = error} = Framestamp.with_frames("notatimecode", Rates.f24())
 
       assert :unrecognized_format == error.reason
-      assert "string format not recognized" = Timecode.ParseError.message(error)
+      assert "string format not recognized" = Framestamp.ParseError.message(error)
     end
 
     test "ParseTimecodeError - Bad Drop Frame" do
-      assert {:error, %Timecode.ParseError{} = error} = Timecode.with_frames("00:01:00;01", Rates.f29_97_df())
+      assert {:error, %Framestamp.ParseError{} = error} = Framestamp.with_frames("00:01:00;01", Rates.f29_97_df())
 
       assert :bad_drop_frames == error.reason
 
       assert "frames value not allowed for drop-frame timecode. frame should have been dropped" =
-               Timecode.ParseError.message(error)
+               Framestamp.ParseError.message(error)
     end
   end
 
@@ -729,7 +737,7 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_frames!(rate)
+      |> Framestamp.with_frames!(rate)
       |> check_parsed!(test_case)
     end
 
@@ -738,13 +746,13 @@ defmodule Vtc.TimecodeTest.Parse do
       %{rate: rate, input_case: input_case} = test_case
 
       input_case
-      |> Timecode.with_frames!(rate)
+      |> Framestamp.with_frames!(rate)
       |> check_parsed!(test_case)
     end
 
     test "ParseTimecodeError throws" do
-      assert_raise Timecode.ParseError, fn ->
-        Timecode.with_frames!("notatimecode", Rates.f24())
+      assert_raise Framestamp.ParseError, fn ->
+        Framestamp.with_frames!("notatimecode", Rates.f24())
       end
     end
   end
@@ -829,34 +837,34 @@ defmodule Vtc.TimecodeTest.Parse do
       %{input: input, opts: opts, expected: expected} = test_case
 
       premiere_ticks = %PremiereTicks{in: input}
-      %Timecode{seconds: ^expected} = Timecode.with_seconds!(premiere_ticks, Rates.f24(), opts)
+      %Framestamp{seconds: ^expected} = Framestamp.with_seconds!(premiere_ticks, Rates.f24(), opts)
     end
 
     test "ParseTimecodeError when partial frames | round | :off" do
-      assert {:error, %Timecode.ParseError{} = error} =
+      assert {:error, %Framestamp.ParseError{} = error} =
                (PremiereTicks.per_second() - 1)
                |> then(&%PremiereTicks{in: &1})
-               |> Timecode.with_seconds(Rates.f24(), round: :off)
+               |> Framestamp.with_seconds(Rates.f24(), round: :off)
 
       expected_message =
         "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
 
       assert :partial_frame == error.reason
-      assert Timecode.ParseError.message(error) == expected_message
+      assert Framestamp.ParseError.message(error) == expected_message
     end
   end
 
   # Checks the results of non-raising parse methods.
-  @spec check_parsed(Timecode.parse_result(), map()) :: term()
+  @spec check_parsed(Framestamp.parse_result(), map()) :: term()
   defp check_parsed(result, test_case) do
-    assert {:ok, %Timecode{} = parsed} = result
+    assert {:ok, %Framestamp{} = parsed} = result
     check_parsed!(parsed, test_case)
   end
 
   # Checks the results of raising parse methods.
-  @spec check_parsed!(Timecode.t(), map()) :: term()
+  @spec check_parsed!(Framestamp.t(), map()) :: term()
   defp check_parsed!(parsed, test_case) do
-    assert %Timecode{} = parsed
+    assert %Framestamp{} = parsed
     assert parsed.seconds == test_case.seconds
     assert parsed.rate == test_case.rate
   end
@@ -864,49 +872,49 @@ defmodule Vtc.TimecodeTest.Parse do
   describe "#frames/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, frames: frames, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.frames(input) == frames
+      assert Framestamp.frames(input) == frames
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | negative", parse_table, test_case do
       %{seconds: seconds, frames: frames, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.frames(input) == frames
+      assert Framestamp.frames(input) == frames
     end
 
     test "round | :closest | implied" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.frames(timecode) == 24
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Framestamp.frames(framestamp) == 24
     end
 
     test "round | :closest | explicit" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.frames(timecode, round: :closest) == 24
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Framestamp.frames(framestamp, round: :closest) == 24
     end
 
     test "round | :closest | down" do
-      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
-      assert Timecode.frames(timecode) == 23
+      framestamp = %Framestamp{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      assert Framestamp.frames(framestamp) == 23
     end
 
     test "round | :floor" do
-      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
-      assert Timecode.frames(timecode, round: :floor) == 23
+      framestamp = %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      assert Framestamp.frames(framestamp, round: :floor) == 23
     end
 
     test "round | :ceil" do
-      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
-      assert Timecode.frames(timecode, round: :ceil) == 24
+      framestamp = %Framestamp{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      assert Framestamp.frames(framestamp, round: :ceil) == 24
     end
 
     test "round: :off, allow_partial_frames?: true raises" do
-      timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception =
-        assert_raise ArgumentError, fn -> Timecode.frames(timecode, round: :off, allow_partial_frames?: true) end
+        assert_raise ArgumentError, fn -> Framestamp.frames(framestamp, round: :off, allow_partial_frames?: true) end
 
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
@@ -915,49 +923,51 @@ defmodule Vtc.TimecodeTest.Parse do
   describe "#timecode/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, timecode: timecode, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.timecode(input) == timecode
+      assert Framestamp.smpte_timecode(input) == timecode
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | negative", parse_table, test_case do
       %{seconds: seconds, timecode: timecode, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.timecode(input) == timecode
+      assert Framestamp.smpte_timecode(input) == timecode
     end
 
     test "round | :closest | implied" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.timecode(timecode) == "00:00:01:00"
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Framestamp.smpte_timecode(framestamp) == "00:00:01:00"
     end
 
     test "round | :closest | explicit" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      assert Timecode.timecode(timecode, round: :closest) == "00:00:01:00"
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      assert Framestamp.smpte_timecode(framestamp, round: :closest) == "00:00:01:00"
     end
 
     test "round | :closest | down" do
-      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
-      assert Timecode.timecode(timecode) == "00:00:00:23"
+      framestamp = %Framestamp{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      assert Framestamp.smpte_timecode(framestamp) == "00:00:00:23"
     end
 
     test "round | :floor" do
-      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
-      assert Timecode.timecode(timecode, round: :floor) == "00:00:00:23"
+      framestamp = %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      assert Framestamp.smpte_timecode(framestamp, round: :floor) == "00:00:00:23"
     end
 
     test "round | :ceil" do
-      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
-      assert Timecode.timecode(timecode, round: :ceil) == "00:00:01:00"
+      framestamp = %Framestamp{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      assert Framestamp.smpte_timecode(framestamp, round: :ceil) == "00:00:01:00"
     end
 
     test "round: :off, allow_partial_frames?: true raises" do
-      timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception =
-        assert_raise ArgumentError, fn -> Timecode.timecode(timecode, round: :off, allow_partial_frames?: true) end
+        assert_raise ArgumentError, fn ->
+          Framestamp.smpte_timecode(framestamp, round: :off, allow_partial_frames?: true)
+        end
 
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
@@ -966,67 +976,67 @@ defmodule Vtc.TimecodeTest.Parse do
   describe "#runtime/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, runtime: runtime, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.runtime(input) == runtime
+      assert Framestamp.runtime(input) == runtime
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | negative", parse_table, test_case do
       %{seconds: seconds, runtime: runtime, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.runtime(input) == runtime
+      assert Framestamp.runtime(input) == runtime
     end
 
     test ":precision respected" do
-      input = %Timecode{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
+      input = %Framestamp{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
 
-      assert Timecode.runtime(input, precision: 9) == "23:14:52.900958333"
-      assert Timecode.runtime(input, precision: 8) == "23:14:52.90095833"
-      assert Timecode.runtime(input, precision: 7) == "23:14:52.9009583"
-      assert Timecode.runtime(input, precision: 6) == "23:14:52.900958"
-      assert Timecode.runtime(input, precision: 5) == "23:14:52.90096"
-      assert Timecode.runtime(input, precision: 4) == "23:14:52.901"
-      assert Timecode.runtime(input, precision: 3) == "23:14:52.901"
-      assert Timecode.runtime(input, precision: 2) == "23:14:52.9"
-      assert Timecode.runtime(input, precision: 1) == "23:14:52.9"
+      assert Framestamp.runtime(input, precision: 9) == "23:14:52.900958333"
+      assert Framestamp.runtime(input, precision: 8) == "23:14:52.90095833"
+      assert Framestamp.runtime(input, precision: 7) == "23:14:52.9009583"
+      assert Framestamp.runtime(input, precision: 6) == "23:14:52.900958"
+      assert Framestamp.runtime(input, precision: 5) == "23:14:52.90096"
+      assert Framestamp.runtime(input, precision: 4) == "23:14:52.901"
+      assert Framestamp.runtime(input, precision: 3) == "23:14:52.901"
+      assert Framestamp.runtime(input, precision: 2) == "23:14:52.9"
+      assert Framestamp.runtime(input, precision: 1) == "23:14:52.9"
     end
 
     test "trim_zeros?: false" do
-      input = %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()}
-      assert Timecode.runtime(input, trim_zeros?: false) == "00:00:00.000000000"
+      input = %Framestamp{seconds: Ratio.new(0), rate: Rates.f23_98()}
+      assert Framestamp.runtime(input, trim_zeros?: false) == "00:00:00.000000000"
     end
 
     test "trim_zeros?: false, :precision respected" do
-      input = %Timecode{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
+      input = %Framestamp{seconds: Ratio.new(2_008_629_623, 24_000), rate: Rates.f23_98()}
 
-      assert Timecode.runtime(input, precision: 9, trim_zeros?: false) == "23:14:52.900958333"
-      assert Timecode.runtime(input, precision: 8, trim_zeros?: false) == "23:14:52.90095833"
-      assert Timecode.runtime(input, precision: 7, trim_zeros?: false) == "23:14:52.9009583"
-      assert Timecode.runtime(input, precision: 6, trim_zeros?: false) == "23:14:52.900958"
-      assert Timecode.runtime(input, precision: 5, trim_zeros?: false) == "23:14:52.90096"
-      assert Timecode.runtime(input, precision: 4, trim_zeros?: false) == "23:14:52.9010"
-      assert Timecode.runtime(input, precision: 3, trim_zeros?: false) == "23:14:52.901"
-      assert Timecode.runtime(input, precision: 2, trim_zeros?: false) == "23:14:52.90"
-      assert Timecode.runtime(input, precision: 1, trim_zeros?: false) == "23:14:52.9"
+      assert Framestamp.runtime(input, precision: 9, trim_zeros?: false) == "23:14:52.900958333"
+      assert Framestamp.runtime(input, precision: 8, trim_zeros?: false) == "23:14:52.90095833"
+      assert Framestamp.runtime(input, precision: 7, trim_zeros?: false) == "23:14:52.9009583"
+      assert Framestamp.runtime(input, precision: 6, trim_zeros?: false) == "23:14:52.900958"
+      assert Framestamp.runtime(input, precision: 5, trim_zeros?: false) == "23:14:52.90096"
+      assert Framestamp.runtime(input, precision: 4, trim_zeros?: false) == "23:14:52.9010"
+      assert Framestamp.runtime(input, precision: 3, trim_zeros?: false) == "23:14:52.901"
+      assert Framestamp.runtime(input, precision: 2, trim_zeros?: false) == "23:14:52.90"
+      assert Framestamp.runtime(input, precision: 1, trim_zeros?: false) == "23:14:52.9"
     end
   end
 
   describe "#premiere_ticks/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.premiere_ticks(input) == premiere_ticks
+      assert Framestamp.premiere_ticks(input) == premiere_ticks
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | negative", parse_table, test_case do
       %{seconds: seconds, premiere_ticks: premiere_ticks, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      assert Timecode.premiere_ticks(input) == premiere_ticks
+      assert Framestamp.premiere_ticks(input) == premiere_ticks
     end
 
     @one_quarter_tick Ratio.new(1, PremiereTicks.per_second() * 4)
@@ -1034,57 +1044,56 @@ defmodule Vtc.TimecodeTest.Parse do
     @three_quarter_tick Ratio.add(@one_half_tick, @one_quarter_tick)
 
     test "round | :closest | implied" do
-      timecode = %Timecode{
+      framestamp = %Framestamp{
         seconds: 1 |> Ratio.new() |> Ratio.add(@one_half_tick),
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode) == PremiereTicks.per_second() + 1
+      assert Framestamp.premiere_ticks(framestamp) == PremiereTicks.per_second() + 1
     end
 
     test "round | :closest | explicit" do
-      timecode = %Timecode{
+      framestamp = %Framestamp{
         seconds: 1 |> Ratio.new() |> Ratio.add(@one_half_tick),
         rate: Rates.f24()
       }
 
       expexted = PremiereTicks.per_second() + 1
-      assert Timecode.premiere_ticks(timecode, round: :closest) == expexted
+      assert Framestamp.premiere_ticks(framestamp, round: :closest) == expexted
     end
 
     test "round | :closest | down" do
-      timecode = %Timecode{
+      framestamp = %Framestamp{
         seconds: 1 |> Ratio.new() |> Ratio.add(@one_quarter_tick),
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode, round: :closest) == PremiereTicks.per_second()
+      assert Framestamp.premiere_ticks(framestamp, round: :closest) == PremiereTicks.per_second()
     end
 
     test "round | :floor" do
-      timecode = %Timecode{
+      framestamp = %Framestamp{
         seconds: 1 |> Ratio.new() |> Ratio.add(@three_quarter_tick),
         rate: Rates.f24()
       }
 
-      assert Timecode.premiere_ticks(timecode, round: :floor) == PremiereTicks.per_second()
+      assert Framestamp.premiere_ticks(framestamp, round: :floor) == PremiereTicks.per_second()
     end
 
     test "round | :ceil" do
-      timecode = %Timecode{
+      framestamp = %Framestamp{
         seconds: 1 |> Ratio.new() |> Ratio.add(@one_quarter_tick),
         rate: Rates.f24()
       }
 
       expected = PremiereTicks.per_second() + 1
-      assert Timecode.premiere_ticks(timecode, round: :ceil) == expected
+      assert Framestamp.premiere_ticks(framestamp, round: :ceil) == expected
     end
 
     test "round: :off raises" do
-      timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception = assert_raise ArgumentError, fn -> Timecode.premiere_ticks(timecode, round: :off) end
-
+      exception = assert_raise ArgumentError, fn -> Framestamp.premiere_ticks(framestamp, round: :off) end
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
@@ -1092,112 +1101,111 @@ defmodule Vtc.TimecodeTest.Parse do
   describe "#feet_and_frames/2" do
     table_test "<%= name %> | 35mm, 4perf", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames() |> String.Chars.to_string()
       assert result == expected
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | 35mm, 4perf | negative", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames() |> String.Chars.to_string()
       assert result == expected
     end
 
     table_test "<%= name %> | 35mm, 4perf | explicit", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
       assert result == expected
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | 35mm, 4perf | explicit | negative", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_4perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff35mm_4perf) |> String.Chars.to_string()
       assert result == expected
     end
 
     table_test "<%= name %> | 35mm, 2perf", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
       assert result == expected
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | 35mm, 2perf | negative", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_35mm_2perf: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff35mm_2perf) |> String.Chars.to_string()
       assert result == expected
     end
 
     table_test "<%= name %> | 16mm", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
       assert result == expected
     end
 
     @tag negate: @negate_fields
     table_test "<%= name %> | 16mm | negative", parse_table, test_case do
       %{seconds: seconds, feet_and_frames_16mm: expected, rate: rate} = test_case
-      input = %Timecode{seconds: seconds, rate: rate}
+      input = %Framestamp{seconds: seconds, rate: rate}
 
-      result = input |> Timecode.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
+      result = input |> Framestamp.feet_and_frames(film_format: :ff16mm) |> String.Chars.to_string()
       assert result == expected
     end
 
     test "round | :closest | implied" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
 
-      result = timecode |> Timecode.feet_and_frames() |> String.Chars.to_string()
+      result = framestamp |> Framestamp.feet_and_frames() |> String.Chars.to_string()
       assert result == "1+08"
     end
 
     test "round | :closest | explicit" do
-      timecode = %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
 
-      result = timecode |> Timecode.feet_and_frames(round: :closest) |> String.Chars.to_string()
+      result = framestamp |> Framestamp.feet_and_frames(round: :closest) |> String.Chars.to_string()
       assert result == "1+08"
     end
 
     test "round | :closest | down" do
-      timecode = %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(234, 240), rate: Rates.f24()}
 
-      result = timecode |> Timecode.feet_and_frames(round: :closest) |> String.Chars.to_string()
+      result = framestamp |> Framestamp.feet_and_frames(round: :closest) |> String.Chars.to_string()
       assert result == "1+07"
     end
 
     test "round | :floor" do
-      timecode = %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()}
 
-      result = timecode |> Timecode.feet_and_frames(round: :floor) |> String.Chars.to_string()
+      result = framestamp |> Framestamp.feet_and_frames(round: :floor) |> String.Chars.to_string()
       assert result == "1+07"
     end
 
     test "round | :ceil" do
-      timecode = %Timecode{seconds: Ratio.new(231, 240), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(231, 240), rate: Rates.f24()}
 
-      result = timecode |> Timecode.feet_and_frames(round: :ceil) |> String.Chars.to_string()
+      result = framestamp |> Framestamp.feet_and_frames(round: :ceil) |> String.Chars.to_string()
       assert result == "1+08"
     end
 
     test "round: :off raises" do
-      timecode = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
-      exception = assert_raise ArgumentError, fn -> Timecode.feet_and_frames(timecode, round: :off) end
-
+      exception = assert_raise ArgumentError, fn -> Framestamp.feet_and_frames(framestamp, round: :off) end
       assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
@@ -1245,8 +1253,8 @@ defmodule Vtc.TimecodeTest.Parse do
     table_test "<%= val_in %> == <%= expected %>", malformed_tc_table, test_case do
       %{val_in: val_in, expected: expected} = test_case
 
-      parsed = Timecode.with_frames!(val_in, Rates.f23_98())
-      assert Timecode.timecode(parsed) == expected
+      parsed = Framestamp.with_frames!(val_in, Rates.f23_98())
+      assert Framestamp.smpte_timecode(parsed) == expected
     end
   end
 
@@ -1285,8 +1293,8 @@ defmodule Vtc.TimecodeTest.Parse do
     table_test "<%= val_in %> == <%= expected %>", partial_tc_table, test_case do
       %{val_in: val_in, expected: expected} = test_case
 
-      parsed = Timecode.with_frames!(val_in, Rates.f23_98())
-      assert expected == Timecode.timecode(parsed)
+      parsed = Framestamp.with_frames!(val_in, Rates.f23_98())
+      assert expected == Framestamp.smpte_timecode(parsed)
     end
   end
 
@@ -1321,32 +1329,32 @@ defmodule Vtc.TimecodeTest.Parse do
     table_test "<%= val_in %> == <%= expected %>", partial_runtime_table, test_case do
       %{val_in: val_in, expected: expected} = test_case
 
-      parsed = Timecode.with_seconds!(val_in, Rates.f24())
-      assert expected == Timecode.runtime(parsed)
+      parsed = Framestamp.with_seconds!(val_in, Rates.f24())
+      assert expected == Framestamp.runtime(parsed)
     end
   end
 
   describe "String.Chars.to_string/1" do
     test "renders expected for non-drop" do
-      tc = Timecode.with_frames!(24, Rates.f23_98())
-      assert String.Chars.to_string(tc) == "<00:00:01:00 <23.98 NTSC>>"
+      stamp = Framestamp.with_frames!(24, Rates.f23_98())
+      assert String.Chars.to_string(stamp) == "<00:00:01:00 <23.98 NTSC>>"
     end
 
     test "renders with `;` frames sep for drop-frame" do
-      tc = Timecode.with_frames!(30, Rates.f29_97_df())
-      assert String.Chars.to_string(tc) == "<00:00:01;00 <29.97 NTSC DF>>"
+      stamp = Framestamp.with_frames!(30, Rates.f29_97_df())
+      assert String.Chars.to_string(stamp) == "<00:00:01;00 <29.97 NTSC DF>>"
     end
   end
 
   describe "Inspect.inspect/2" do
     test "renders expected for non-drop" do
-      tc = Timecode.with_frames!(24, Rates.f23_98())
-      assert Inspect.inspect(tc, Inspect.Opts.new([])) == "<00:00:01:00 <23.98 NTSC>>"
+      stamp = Framestamp.with_frames!(24, Rates.f23_98())
+      assert Inspect.inspect(stamp, Inspect.Opts.new([])) == "<00:00:01:00 <23.98 NTSC>>"
     end
 
     test "renders with `;` frames sep for drop-frame" do
-      tc = Timecode.with_frames!(30, Rates.f29_97_df())
-      assert Inspect.inspect(tc, Inspect.Opts.new([])) == "<00:00:01;00 <29.97 NTSC DF>>"
+      stamp = Framestamp.with_frames!(30, Rates.f29_97_df())
+      assert Inspect.inspect(stamp, Inspect.Opts.new([])) == "<00:00:01;00 <29.97 NTSC DF>>"
     end
   end
 end

@@ -18,70 +18,73 @@
 A small preview of what `Vtc` has to offer. Note that printing statements like 
 `inspect/1` have been elided from the examples below.
 
-`Vtc` can [parse](https://hexdocs.pm/vtc/Vtc.Timecode.html#parse) a number of different 
-formats, from timecodes, to frame counts, to film length measured in feet and frames:
+`Vtc` represents specific frames in a video stream as [Framestamps](`Vtc.Framestamp`), 
+which can [parsed](Vtc.Framestamp.html#parse) from a number of different formats, 
+including SMPTE timecode, frame count, and physical film length measured in 
+feet and frames:
 
 ```elixir
-iex> Timecode.with_seconds!(1.5, Rates.f23_98())
+iex> Framestamp.with_seconds!(1.5, Rates.f23_98())
 "<00:05:23:04 <23.98 NTSC>>"
-iex> tc = Timecode.with_frames!("17:23:13:02", Rates.f23_98())
+iex> stamp = Framestamp.with_frames!("17:23:13:02", Rates.f23_98())
 "<17:23:00:02 <23.98 NTSC>>"
 ```
 
-Once in a [Timecode](https://hexdocs.pm/vtc/Vtc.Timecode.html) struct, you 
-[convert](https://hexdocs.pm/vtc/Vtc.Timecode.html#convert) to any of the supported 
-formats:
+Once in a [Framestamp](`Vtc.Framestamp`) struct, you 
+[convert](Vtc.Framestamp.html#convert) to any of the supported formats:
 
 ```elixir
-iex> Timecode.frames(tc)
+iex> Framestamp.smpte_timecode(stamp)
+"00:05:23:04"
+iex> Framestamp.frames(stamp)
 1501922
-iex> Timecode.feet_and_frames(tc)
+iex> Framestamp.feet_and_frames(stamp)
 "<93889+10 :ff35mm_4perf>"
 ```
 
-[Comparisons](https://hexdocs.pm/vtc/Vtc.Timecode.html#compare) and 
-[kernel sorting](https://hexdocs.pm/vtc/Vtc.Timecode.html#module-sorting-support) are 
-supported, with many helper functions for specific comparisons:
+[Comparisons](Vtc.Framestamp.html#compare) and 
+[kernel sorting](Vtc.Framestamp.html#module-sorting-support) are supported, with many 
+helper functions for specific comparisons:
 
 ```elixir
-iex> Timecode.compare(tc, "02:00:00:00")
+iex> Framestamp.compare(stamp, "02:00:00:00")
 :gt
-iex> Timecode.gt?(tc, "02:00:00:00")
+iex> Framestamp.gt?(stamp, "02:00:00:00")
 true
-iex> tc_01 = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-iex> tc_02 = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-iex> data_01 = %{id: 2, tc: tc_01}
-iex> data_02 = %{id: 1, tc: tc_02}
-iex> [data_02, data_01] |> Enum.sort_by(& &1.tc, Timecode) |> inspect()
+iex> stamp_01 = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+iex> stamp_02 = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+iex> data_01 = %{id: 2, tc: stamp_01}
+iex> data_02 = %{id: 1, tc: stamp_02}
+iex> [data_02, data_01] |> Enum.sort_by(& &1.tc, Framestamp) |> inspect()
 "[%{id: 2, tc: <01:00:00:00 <23.98 NTSC>>}, %{id: 1, tc: <02:00:00:00 <23.98 NTSC>>}]"
 ```
 
-All sensible [arithmetic](https://hexdocs.pm/vtc/Vtc.Timecode.html#arithmetic) 
-operations are provided, such as addition, subtraction, and multiplication:
+All sensible [arithmetic](Vtc.Framestamp.html#arithmetic) operations are provided, such 
+as addition, subtraction, and multiplication:
 
 ```elixir
-iex> tc = Timecode.add(tc, "01:00:00:00")
+iex> stamp = Framestamp.add(tc, "01:00:00:00")
 "<18:23:13:02 <23.98 NTSC>>"
 ```
 
-You can even use native operators within special 
-[eval/2](https://hexdocs.pm/vtc/Vtc.Timecode.html#eval/2) blocks:
+You can even use native operators within special [eval/2](Vtc.Framestamp.html#eval/2) 
+blocks:
 
 ```elixir
-iex> Timecode.eval at: 23.98 do
-iex>   tc + "00:30:00:00" * 2 - "00:15:00:00"
+iex> Framestamp.eval at: 23.98 do
+iex>   stamp + "00:30:00:00" * 2 - "00:15:00:00"
 iex> end
 "<19:08:13:02 <23.98 NTSC>>"
 ```
 
-[Ranges](https://hexdocs.pm/vtc/Vtc.Range.html) let you operate on in/out points, such
-as finding the overlapping area between two ranges:
+[Ranges](`Vtc.Range`) let you operate on in/out points, for instance, finding the 
+overlapping area between two ranges:
 
 ```elixir
-iex> a_in = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a = Range.new!(a_in, "02:00:00:00")
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
-iex> b_in = Timecode.with_frames!("01:45:00:00", Rates.f23_98())
+iex> b_in = Framestamp.with_frames!("01:45:00:00", Rates.f23_98())
 iex> b = Range.new!(b_in, "02:30:00:00")
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
 iex> Range.intersection!(a, b)
@@ -90,9 +93,9 @@ iex> Range.intersection!(a, b)
 
 ## Further Reading
 
-Check out the [Quickstart Guide](https://hexdocs.pm/vtc/quickstart.html) for a more in 
-depth walkthrough of what `Vtc` can do, or dive straight into the
-[API reference](https://hexdocs.pm/vtc/api-reference.html).
+Check out the [Quickstart Guide](quickstart.html) for a more in 
+depth walkthrough of what `Vtc` can do, or dive straight into the 
+[API Reference](api-reference.html).
 
 ## Goals
 
@@ -106,8 +109,8 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
   possible rather than being limited to the granularity of frame numbers.
 
 - Be approachable for newcomers to the timecode problem space. Each function and concept
-  in the [API reference](https://hexdocs.pm/vtc/api-reference.html) includes a primer on
-  what it is and where it is used in Film and Television workflow.
+  in the [API Reference](api-reference.html) includes a primer on what it is and where 
+  it is used in Film and Television workflow.
 
 - Offer a flexible set of tools that support both rigorous, production-quality code and
   quick scratch scripts.
@@ -119,6 +122,7 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
     - [X] Drop-Frame
     - [ ] Interlaced timecode
 - Timecode Representations:
+    - [X] Framestamp  | 18018/5 seconds @ 24000/1001
     - [X] Timecode    | '01:00:00:00'
     - [X] Frames      | 86400
     - [X] Seconds     | 3600.0
@@ -145,7 +149,7 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
     - [X] Partial timecodes      | '1:12'
     - [X] Partial runtimes       | '1.5'
     - [X] Negative string values | '-1:12', '-3+00'
-    - [X] Poorly formatted tc    | '1:13:4'
+    - [X] Poorly formatted SMPTE timecode    | '1:13:4'
 - [X] Built-in consts for common framerates.
 - [X] Configurable rounding options.
 - [X] Support for standard library sorting behavior.
@@ -155,11 +159,11 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
     - [X] Inclusive and exclusive ranges
 - [X] Postgres Composite Types with Ecto and Postgrex:
     - Rational[X]
-      - [ ] Native comparison operators
-      - [ ] Native arithmatic operators
-      - [ ] Native indexing support
-    - Framerate[ ]
-    - Timecode[ ]
+      - [X] Native comparison operators
+      - [X] Native arithmatic operators
+      - [X] Native indexing support
+    - Framerate[X]
+    - Timecode[X]
       - [ ] Native comparison operators
       - [ ] Native arithmatic operators
       - [ ] Native indexing Support
@@ -186,7 +190,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.10"}
+    {:vtc, "~> 0.12"}
   ]
 end
 ```

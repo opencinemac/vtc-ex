@@ -1,9 +1,9 @@
-defmodule Vtc.TimecodeTest.Ops do
+defmodule Vtc.FramestampTest.Ops do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
+  alias Vtc.Framestamp
   alias Vtc.Rates
-  alias Vtc.Timecode
 
   rebase_table = [
     %{
@@ -39,10 +39,10 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= original %> -> <%= new_rate %>", rebase_table, test_case do
       %{original: original, new_rate: new_rate, expected: expected} = test_case
-      assert {:ok, rebased} = Timecode.rebase(original, new_rate)
+      assert {:ok, rebased} = Framestamp.rebase(original, new_rate)
       assert rebased == expected
 
-      assert {:ok, round_tripped} = Timecode.rebase(rebased, original.rate)
+      assert {:ok, round_tripped} = Framestamp.rebase(rebased, original.rate)
       assert round_tripped == original
     end
   end
@@ -53,10 +53,10 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= original %> -> <%= new_rate %>", rebase_table, test_case do
       %{original: original, new_rate: new_rate, expected: expected} = test_case
-      assert %Timecode{} = rebased = Timecode.rebase!(original, new_rate)
+      assert %Framestamp{} = rebased = Framestamp.rebase!(original, new_rate)
       assert rebased == expected
 
-      assert %Timecode{} = round_tripped = Timecode.rebase!(rebased, original.rate)
+      assert %Framestamp{} = round_tripped = Framestamp.rebase!(rebased, original.rate)
       assert round_tripped == original
     end
   end
@@ -125,151 +125,151 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= a %> is <%= expected %> <%= b %>", compare_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
 
     name = "<%= a %> is <%= expected %> <%= b %> | b = tc string"
 
     table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.timecode(b)
+      b = Framestamp.smpte_timecode(b)
 
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
 
     name = "<%= a %> is <%= expected %> <%= b %> | a = tc string"
 
     table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.timecode(a)
+      a = Framestamp.smpte_timecode(a)
 
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
 
     name = "<%= a %> is <%= expected %> <%= b %> | b = frames int"
 
     table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.frames(b)
+      b = Framestamp.frames(b)
 
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
 
     name = "<%= a %> is <%= expected %> <%= b %> | a = frames int"
 
     table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.frames(a)
+      a = Framestamp.frames(a)
 
-      assert Timecode.compare(a, b) == expected
+      assert Framestamp.compare(a, b) == expected
     end
   end
 
   describe "#eq?/2" do
     test "true" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert Timecode.eq?(a, b)
+      assert Framestamp.eq?(a, b)
     end
 
     test "false" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:01", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
 
-      refute Timecode.eq?(a, b)
+      refute Framestamp.eq?(a, b)
     end
   end
 
   describe "#lt?/2" do
     test "true" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert Timecode.lt?(a, b)
+      assert Framestamp.lt?(a, b)
     end
 
     test "false" do
-      a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      refute Timecode.lt?(a, b)
+      refute Framestamp.lt?(a, b)
     end
 
     test "false | eq" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      refute Timecode.lt?(a, b)
+      refute Framestamp.lt?(a, b)
     end
   end
 
   describe "#lte?/2" do
     test "true" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      assert Timecode.lte?(a, b)
+      assert Framestamp.lte?(a, b)
     end
 
     test "true | eq" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert Timecode.lte?(a, b)
+      assert Framestamp.lte?(a, b)
     end
 
     test "false" do
-      a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      refute Timecode.lte?(a, b)
+      refute Framestamp.lte?(a, b)
     end
   end
 
   describe "#gt?/2" do
     test "true" do
-      a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert Timecode.gt?(a, b)
+      assert Framestamp.gt?(a, b)
     end
 
     test "false" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      refute Timecode.gt?(a, b)
+      refute Framestamp.gt?(a, b)
     end
 
     test "false | eq" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      refute Timecode.gt?(a, b)
+      refute Framestamp.gt?(a, b)
     end
   end
 
   describe "#gte?/2" do
     test "true" do
-      a = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert Timecode.gte?(a, b)
+      assert Framestamp.gte?(a, b)
     end
 
     test "true | eq" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      assert Timecode.gte?(a, b)
+      assert Framestamp.gte?(a, b)
     end
 
     test "false" do
-      a = Timecode.with_frames!("01:00:00:00", Rates.f23_98())
-      b = Timecode.with_frames!("02:00:00:00", Rates.f23_98())
+      a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 
-      refute Timecode.gte?(a, b)
+      refute Framestamp.gte?(a, b)
     end
   end
 
@@ -317,152 +317,152 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= a %> + <%= b %> == <%= expected %>", add_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Timecode.add(a, b) == expected
+      assert Framestamp.add(a, b) == expected
     end
 
     table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.frames(b)
+      b = Framestamp.frames(b)
 
-      assert Timecode.add(a, b) == expected
+      assert Framestamp.add(a, b) == expected
     end
 
     table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.frames(a)
+      a = Framestamp.frames(a)
 
-      assert Timecode.add(a, b) == expected
+      assert Framestamp.add(a, b) == expected
     end
 
     table_test "<%= a %> + <%= b %> == <%= expected %> | string b", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.timecode(b)
+      b = Framestamp.smpte_timecode(b)
 
-      assert Timecode.add(a, b) == expected
+      assert Framestamp.add(a, b) == expected
     end
 
     table_test "<%= a %> + <%= b %> == <%= expected %> | string a", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.timecode(a)
+      a = Framestamp.smpte_timecode(a)
 
-      assert Timecode.add(a, b) == expected
+      assert Framestamp.add(a, b) == expected
     end
 
     round_table = [
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [],
         description: "round :closest implicit",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
         opts: [],
         description: "round :closest implicit negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(4, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(4, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "towards zero",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-4, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-4, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "towards zero negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :floor],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
         opts: [round: :floor],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :ceil],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-1, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-1, 240), rate: Rates.f24()},
         opts: [round: :ceil],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :off, allow_partial_frames?: true],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
         opts: [round: :off, allow_partial_frames?: true],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-235, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-235, 240), rate: Rates.f24()}
       }
     ]
 
     table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      assert Timecode.add(a, b, opts) == expected
+      assert Framestamp.add(a, b, opts) == expected
     end
 
     test "error | round | :off" do
-      a = %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+      b = %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()}
 
-      error = assert_raise Timecode.ParseError, fn -> Timecode.add(a, b, round: :off) end
+      error = assert_raise Framestamp.ParseError, fn -> Framestamp.add(a, b, round: :off) end
       assert error.reason == :partial_frame
     end
   end
@@ -511,152 +511,152 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= a %> - <%= b %> == <%= expected %>", sub_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Timecode.sub(a, b) == expected
+      assert Framestamp.sub(a, b) == expected
     end
 
     table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.frames(b)
+      b = Framestamp.frames(b)
 
-      assert Timecode.sub(a, b) == expected
+      assert Framestamp.sub(a, b) == expected
     end
 
     table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.frames(a)
+      a = Framestamp.frames(a)
 
-      assert Timecode.sub(a, b) == expected
+      assert Framestamp.sub(a, b) == expected
     end
 
     table_test "<%= a %> - <%= b %> == <%= expected %> | string b", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      b = Timecode.timecode(b)
+      b = Framestamp.smpte_timecode(b)
 
-      assert Timecode.sub(a, b) == expected
+      assert Framestamp.sub(a, b) == expected
     end
 
     table_test "<%= a %> - <%= b %> == <%= expected %> | string a", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
-      a = Timecode.timecode(a)
+      a = Framestamp.smpte_timecode(a)
 
-      assert Timecode.sub(a, b) == expected
+      assert Framestamp.sub(a, b) == expected
     end
 
     round_table = [
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [],
         description: ":closest implicit",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [],
         description: ":closest implicit negative",
-        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "explicit",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "explicit negative",
-        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(6, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(6, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "towards zero",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(4, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(4, 240), rate: Rates.f24()},
         opts: [round: :closest],
         description: "towards zero negative",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :floor],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :floor],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-25, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :ceil],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :ceil],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(1, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(1, 240), rate: Rates.f24()},
         opts: [round: :trunc],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(9, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(9, 240), rate: Rates.f24()},
         opts: [round: :trunc],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :off, allow_partial_frames?: true],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(235, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
         opts: [round: :off, allow_partial_frames?: true],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-245, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-245, 240), rate: Rates.f24()}
       }
     ]
 
     table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      assert Timecode.sub(a, b, opts) == expected
+      assert Framestamp.sub(a, b, opts) == expected
     end
 
     test "error | round | :off" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
-      b = %Timecode{seconds: Ratio.new(5, 240), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
+      b = %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()}
 
-      error = assert_raise Timecode.ParseError, fn -> Timecode.sub(a, b, round: :off) end
+      error = assert_raise Framestamp.ParseError, fn -> Framestamp.sub(a, b, round: :off) end
       assert error.reason == :partial_frame
     end
   end
@@ -695,106 +695,106 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= a %> * <%= b %> == <%= expected %>", mult_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Timecode.mult(a, b) == expected
+      assert Framestamp.mult(a, b) == expected
     end
 
     round_table = [
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(235, 240),
         opts: [],
         description: ":closest implicit",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-235, 240),
         opts: [],
         description: ":closest implicit negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(235, 240),
         opts: [round: :closest],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-235, 240),
         opts: [round: :closest],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(234, 240),
         opts: [round: :closest],
         description: "towards zero",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-234, 240),
         opts: [round: :closest],
         description: "towards zero negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(239, 240),
         opts: [round: :floor],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-231, 240),
         opts: [round: :floor],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(231, 240),
         opts: [round: :ceil],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-239, 240),
         opts: [round: :ceil],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(239, 240),
         opts: [round: :off, allow_partial_frames?: true],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: Ratio.new(-239, 240),
         opts: [round: :off, allow_partial_frames?: true],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-239, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-239, 240), rate: Rates.f24()}
       }
     ]
 
     table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      assert Timecode.mult(a, b, opts) == expected
+      assert Framestamp.mult(a, b, opts) == expected
     end
 
     test "error | round | :off" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       b = Ratio.new(239, 240)
 
-      error = assert_raise Timecode.ParseError, fn -> Timecode.mult(a, b, round: :off) end
+      error = assert_raise Framestamp.ParseError, fn -> Framestamp.mult(a, b, round: :off) end
       assert error.reason == :partial_frame
     end
   end
@@ -828,92 +828,92 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= a %> / <%= b %> == <%= expected %>", div_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Timecode.div(a, b) == expected
+      assert Framestamp.div(a, b) == expected
     end
 
     round_table = [
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 48,
         opts: [round: :closest],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
         b: 48,
         opts: [round: :closest],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 48 * 2,
         opts: [round: :closest],
         description: "towards zero",
-        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: -48 * 2,
         opts: [round: :closest],
         description: "towards zero negative",
-        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 36,
         opts: [round: :floor],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: -36,
         opts: [round: :floor],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(-1, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 48 * 2,
         opts: [round: :ceil],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: -48 * 2,
         opts: [round: :ceil],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(0, 24), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 48,
         opts: [round: :off, allow_partial_frames?: true],
         description: "",
-        expected: %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1, 48), rate: Rates.f24()}
       },
       %{
-        a: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
+        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
         b: 48,
         opts: [round: :off, allow_partial_frames?: true],
         description: "negative",
-        expected: %Timecode{seconds: Ratio.new(1, 48), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1, 48), rate: Rates.f24()}
       }
     ]
 
     table_test "opts: | <%= opts %> <%= description %>", round_table, test_case do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      assert Timecode.div(a, b, opts) == expected
+      assert Framestamp.div(a, b, opts) == expected
     end
 
     test "error | round | :off" do
-      a = %Timecode{seconds: Ratio.new(1), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       b = 48
 
-      error = assert_raise Timecode.ParseError, fn -> Timecode.div(a, b, round: :off) end
+      error = assert_raise Framestamp.ParseError, fn -> Framestamp.div(a, b, round: :off) end
       assert error.reason == :partial_frame
     end
   end
@@ -995,188 +995,188 @@ defmodule Vtc.TimecodeTest.Ops do
 
   divrem_round_table = [
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 1,
       opts: [],
       description: "round frames closest implicit",
-      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
       b: 1,
       opts: [],
       description: "round frames closest implicit negative",
-      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :closest],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :closest],
       description: "negative",
-      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(234, 240), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(234, 240), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :closest],
       description: "towards zero",
-      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-234, 240), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-234, 240), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :closest],
       description: "towards zero negative",
-      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :floor],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :floor],
       description: "frames negative",
-      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -1,
       opts: [round_frames: :floor],
       description: "dvisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :ceil],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-47, 48), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :ceil],
       description: "frames negative",
-      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -1,
       opts: [round_frames: :ceil],
       description: "divisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-1), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :trunc],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(-239, 240), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(-239, 240), rate: Rates.f24()},
       b: 1,
       opts: [round_frames: :trunc],
       description: "dividend negative",
-      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(239, 240), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()},
       b: -1,
       opts: [round_frames: :trunc],
       description: "divisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 5 / 3,
       opts: [],
       description: "rem closest implicit",
-      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -5 / 3,
       opts: [],
       description: "rem closest implicit negative",
-      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 5 / 3,
       opts: [round_remainder: :closest],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -5 / 3,
       opts: [round_remainder: :closest],
       description: "divisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 5 / 3,
       opts: [round_remainder: :ceil],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -5 / 3,
       opts: [round_remainder: :ceil],
       description: "divisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(1, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: 5 / 3,
       opts: [round_remainder: :floor],
       description: "",
-      expected_q: %Timecode{seconds: Ratio.new(14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0, 24), rate: Rates.f24()}
     },
     %{
-      a: %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()},
+      a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -5 / 3,
       opts: [round_remainder: :floor],
       description: "divisor negative",
-      expected_q: %Timecode{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
-      expected_r: %Timecode{seconds: Ratio.new(0, 24), rate: Rates.f24()}
+      expected_q: %Framestamp{seconds: Ratio.new(-14, 24), rate: Rates.f24()},
+      expected_r: %Framestamp{seconds: Ratio.new(0, 24), rate: Rates.f24()}
     }
   ]
 
@@ -1187,31 +1187,31 @@ defmodule Vtc.TimecodeTest.Ops do
     table_test "<%= dividend %> /% <%= divisor %> == <%= expected_q %>, <%= expected_r %>", divrem_table, test_case do
       %{dividend: dividend, divisor: divisor, expected_q: expected_quotient, expected_r: expected_remainder} = test_case
 
-      result = Timecode.divrem(dividend, divisor)
+      result = Framestamp.divrem(dividend, divisor)
       assert result == {expected_quotient, expected_remainder}
     end
 
     table_test "opts: | <%= opts %> <%= description %>", divrem_round_table, test_case do
       %{a: a, b: b, opts: opts, expected_q: expected_quotient, expected_r: expected_remainder} = test_case
 
-      assert {quotient, remainder} = Timecode.divrem(a, b, opts)
+      assert {quotient, remainder} = Framestamp.divrem(a, b, opts)
       assert quotient == expected_quotient
       assert remainder == expected_remainder
     end
 
     test "round | frames :off | raises" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()}
       b = 1
 
-      exception = assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_frames: :off) end
+      exception = assert_raise ArgumentError, fn -> Framestamp.divrem(a, b, round_frames: :off) end
       assert Exception.message(exception) == "`round_frames` cannot be `:off`"
     end
 
     test "round | remainder :off | raises" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()}
       b = 1
 
-      exception = assert_raise ArgumentError, fn -> Timecode.divrem(a, b, round_remainder: :off) end
+      exception = assert_raise ArgumentError, fn -> Framestamp.divrem(a, b, round_remainder: :off) end
 
       assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end
@@ -1223,27 +1223,27 @@ defmodule Vtc.TimecodeTest.Ops do
 
     table_test "<%= dividend %> % <%= divisor %> == <%= expected_r %>", divrem_table, test_case do
       %{dividend: dividend, divisor: divisor, expected_r: expected} = test_case
-      assert Timecode.rem(dividend, divisor) == expected
+      assert Framestamp.rem(dividend, divisor) == expected
     end
 
     table_test "opts: | <%= opts %> <%= description %>", divrem_round_table, test_case do
       %{a: a, b: b, opts: opts, expected_r: expected_remainder} = test_case
-      assert Timecode.rem(a, b, opts) == expected_remainder
+      assert Framestamp.rem(a, b, opts) == expected_remainder
     end
 
     test "round | frames :off | raises" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()}
       b = 1
 
-      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_frames: :off) end
+      exception = assert_raise ArgumentError, fn -> Framestamp.rem(a, b, round_frames: :off) end
       assert Exception.message(exception) == "`round_frames` cannot be `:off`"
     end
 
     test "round | remainder :off | raises" do
-      a = %Timecode{seconds: Ratio.new(47, 48), rate: Rates.f24()}
+      a = %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()}
       b = 1
 
-      exception = assert_raise ArgumentError, fn -> Timecode.rem(a, b, round_remainder: :off) end
+      exception = assert_raise ArgumentError, fn -> Framestamp.rem(a, b, round_remainder: :off) end
 
       assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
     end
@@ -1252,45 +1252,45 @@ defmodule Vtc.TimecodeTest.Ops do
   describe "#negate/1" do
     negate_table = [
       %{
-        input: %Timecode{seconds: Ratio.new(1), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(-1), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(1), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f23_98()}
       },
       %{
-        input: %Timecode{seconds: Ratio.new(-1), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f23_98()}
       },
       %{
-        input: %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(0), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(0), rate: Rates.f23_98()}
       }
     ]
 
     table_test "<%= input %> == <%= expected %>", negate_table, test_case do
       %{input: input, expected: expected} = test_case
 
-      assert Timecode.minus(input) == expected
+      assert Framestamp.minus(input) == expected
     end
   end
 
   describe "#abs/1" do
     abs_table = [
       %{
-        input: %Timecode{seconds: Ratio.new(1), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(1), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f23_98()}
       },
       %{
-        input: %Timecode{seconds: Ratio.new(-1), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(1), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f23_98()}
       },
       %{
-        input: %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()},
-        expected: %Timecode{seconds: Ratio.new(0), rate: Rates.f23_98()}
+        input: %Framestamp{seconds: Ratio.new(0), rate: Rates.f23_98()},
+        expected: %Framestamp{seconds: Ratio.new(0), rate: Rates.f23_98()}
       }
     ]
 
     table_test "<%= input %> == <%= expected %>", abs_table, test_case do
       %{input: input, expected: expected} = test_case
-      assert Timecode.abs(input) == expected
+      assert Framestamp.abs(input) == expected
     end
   end
 end
