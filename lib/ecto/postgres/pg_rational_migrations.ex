@@ -221,17 +221,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         private_function(:greatest_common_denominator, Migration.repo()),
         args: [a: :bigint, b: :bigint],
         returns: :bigint,
-        declares: [result: :bigint],
         body: """
-        SELECT (
-          CASE
-            WHEN b = 0 THEN ABS(a)
-            WHEN a = 0 THEN ABS(b)
-            ELSE #{private_function(:greatest_common_denominator, Migration.repo())}(b, a % b)
-          END
-        ) INTO result;
-
-        RETURN result;
+        CASE
+          WHEN b = 0 THEN
+            RETURN ABS(a);
+          WHEN a = 0 THEN
+            RETURN ABS(b);
+          ELSE
+            RETURN #{private_function(:greatest_common_denominator, Migration.repo())}(b, a % b);
+        END CASE;
         """
       )
 
@@ -312,7 +310,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc section: :migrations_functions
   @doc """
   Creates `rational.round(rat)` function that returns the rational input, rounded to
-  the nearest :bigint
+  the nearest :bigint.
   """
   @spec create_func_round() :: :ok
   def create_func_round do
@@ -320,23 +318,17 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       Postgres.Utils.create_plpgsql_function(
         function(:round, Migration.repo()),
         args: [input: :rational],
-        declares: [result: :bigint],
         returns: :bigint,
         body: """
-        SELECT (
-          CASE
-            WHEN (input).numerator < 0 THEN
-              #{function(:round, Migration.repo())}(
-                #{function(:minus, Migration.repo())}(input)
-              ) * -1
-            WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
-              (input).numerator / (input).denominator
-            ELSE
-              ((input).numerator / (input).denominator) + 1
-          END
-        ) INTO result;
-
-        RETURN result;
+        CASE
+          WHEN (input).numerator < 0 THEN
+            input := #{function(:minus, Migration.repo())}(input);
+            RETURN #{function(:round, Migration.repo())}(input) * -1;
+          WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
+            RETURN (input).numerator / (input).denominator;
+          ELSE
+            RETURN ((input).numerator / (input).denominator) + 1;
+        END CASE;
         """
       )
 
@@ -377,12 +369,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "((a).numerator * (b).denominator) + ((b).numerator * (a).denominator)"},
-          denominator: {:bigint, "(a).denominator * (b).denominator"},
-          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
+          denominator: {:bigint, "(a).denominator * (b).denominator"}
         ],
         returns: :rational,
         body: """
-        RETURN result;
+        RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
         """
       )
 
@@ -391,7 +382,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.sub(a, b)` backing function for the `-` operator
+  Creates `rational_private.sub(a, b)` backing function for the `-` operator
   between two rationals.
   """
   @spec create_func_sub() :: :ok
@@ -402,12 +393,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [a: :rational, b: :rational],
         declares: [
           b_numerator: {:bigint, "(b).numerator * -1"},
-          b_negated: {:rational, "(b_numerator, (b).denominator)"},
-          result: {:rational, "#{private_function(:add, Migration.repo())}(a, b_negated)"}
+          b_negated: {:rational, "(b_numerator, (b).denominator)"}
         ],
         returns: :rational,
         body: """
-        RETURN result;
+        RETURN #{private_function(:add, Migration.repo())}(a, b_negated);
         """
       )
 
@@ -416,7 +406,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.mult(a, b)` backing function for the `*` operator
+  Creates `rational_private.mult(a, b)` backing function for the `*` operator
   between two rationals.
   """
   @spec create_func_mult() :: :ok
@@ -427,12 +417,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "(a).numerator * (b).numerator"},
-          denominator: {:bigint, "(a).denominator * (b).denominator"},
-          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
+          denominator: {:bigint, "(a).denominator * (b).denominator"}
         ],
         returns: :rational,
         body: """
-        RETURN result;
+        RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
         """
       )
 
@@ -441,7 +430,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.div(a, b)` backing function for the `/` operator
+  Creates `rational_private.div(a, b)` backing function for the `/` operator
   between two rationals.
   """
   @spec create_func_div() :: :ok
@@ -452,12 +441,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [a: :rational, b: :rational],
         declares: [
           numerator: {:bigint, "(a).numerator * (b).denominator"},
-          denominator: {:bigint, "(a).denominator * (b).numerator"},
-          result: {:rational, "#{private_function(:simplify, Migration.repo())}((numerator, denominator))"}
+          denominator: {:bigint, "(a).denominator * (b).numerator"}
         ],
         returns: :rational,
         body: """
-        RETURN result;
+        RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
         """
       )
 
@@ -466,7 +454,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.modulo(a, b)` backing function for the `%` operator
+  Creates `rational_private.modulo(a, b)` backing function for the `%` operator
   between two rationals.
   """
   @spec create_func_modulo() :: :ok
@@ -497,7 +485,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.cmp(a, b)` that returns:
+  Creates `rational_private.cmp(a, b)` that returns:
 
     - `1` if a > b
     - `0` if a == b
@@ -513,20 +501,18 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [a: :rational, b: :rational],
         declares: [
           a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
-          b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
-          result: :integer
+          b_cmp: {:bigint, "((b).numerator * (a).denominator)"}
         ],
         returns: :integer,
         body: """
-        SELECT (
-          CASE
-            WHEN a_cmp > b_cmp THEN 1
-            WHEN a_cmp < b_cmp THEN -1
-            ELSE 0
-          END
-        ) INTO result;
-
-        RETURN result;
+        CASE
+          WHEN a_cmp > b_cmp THEN
+            RETURN 1;
+          WHEN a_cmp < b_cmp THEN
+            RETURN -1;
+          ELSE
+            RETURN 0;
+        END CASE;
         """
       )
 
@@ -535,7 +521,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.eq(a, b)` that backs the `=` operator.
   """
   @spec create_func_eq() :: :ok
   def create_func_eq do
@@ -554,7 +540,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.neq(a, b)` that backs the `<>` operator.
   """
   @spec create_func_neq() :: :ok
   def create_func_neq do
@@ -573,7 +559,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.lt(a, b)` that backs the `<` operator.
   """
   @spec create_func_lt() :: :ok
   def create_func_lt do
@@ -592,7 +578,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.lte(a, b)` that backs the `<=` operator.
   """
   @spec create_func_lte() :: :ok
   def create_func_lte do
@@ -606,7 +592,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         ],
         returns: :boolean,
         body: """
-        cmp_array = ARRAY_APPEND(cmp_array, cmp);
+        cmp_array := ARRAY_APPEND(cmp_array, cmp);
         RETURN cmp_array <@ '{-1, 0}';
         """
       )
@@ -616,7 +602,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.gt(a, b)` that backs the `>` operator.
   """
   @spec create_func_gt() :: :ok
   def create_func_gt do
@@ -635,7 +621,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational_private.gte(a, b)` that backs the `>=` operator.
   """
   @spec create_func_gte() :: :ok
   def create_func_gte do
@@ -649,7 +635,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         ],
         returns: :boolean,
         body: """
-        cmp_array = ARRAY_APPEND(cmp_array, cmp);
+        cmp_array := ARRAY_APPEND(cmp_array, cmp);
         RETURN cmp_array <@ '{1, 0}';
         """
       )

@@ -182,7 +182,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         declares: [rounded: :bigint],
         returns: :framestamp,
         body: """
-        SELECT #{rational_round}((rate).playback * seconds) INTO rounded;
+        rounded := #{rational_round}((rate).playback * seconds);
         RETURN (((rounded, 1)::rational / (rate).playback), rate);
         """
       )
