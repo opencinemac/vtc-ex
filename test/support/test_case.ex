@@ -2,7 +2,7 @@ defmodule Vtc.Test.Support.TestCase do
   @moduledoc false
   alias Vtc.Framerate
   alias Vtc.Framestamp
-  alias Vtc.Range
+  alias Vtc.Framestamp.Range
   alias Vtc.Rates
   alias Vtc.Source.Frames
   alias Vtc.Source.Frames.FeetAndFrames

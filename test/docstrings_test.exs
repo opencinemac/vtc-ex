@@ -5,7 +5,7 @@ defmodule Vtc.DocsTest do
 
   alias Vtc.Framerate
   alias Vtc.Framestamp
-  alias Vtc.Range
+  alias Vtc.Framestamp.Range
   alias Vtc.Rates
   alias Vtc.Source
 

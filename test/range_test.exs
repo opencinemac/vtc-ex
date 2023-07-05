@@ -1,10 +1,10 @@
-defmodule Vtc.RangeTest do
+defmodule Vtc.Framestamp.RangeTest do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
   alias Vtc.Framerate
   alias Vtc.Framestamp
-  alias Vtc.Range
+  alias Vtc.Framestamp.Range
   alias Vtc.Rates
 
   @typedoc """
