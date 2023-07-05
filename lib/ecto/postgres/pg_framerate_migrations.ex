@@ -95,6 +95,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     create_function_schemas()
 
     create_func_is_ntsc()
+    create_func_strict_eq()
+    create_func_strict_neq()
+
+    create_op_strict_eq()
+    create_op_strict_neq()
   end
 
   @doc section: :migrations_types
@@ -132,6 +137,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
       END $$;
     """)
   end
+
+  ## FUNCTIONS
 
   @doc section: :migrations_types
   @doc """
@@ -171,8 +178,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `rational_private.simplify(rat)` function that simplifies a rational. Used at
-  the end of every rational operation to avoid overflows.
+  Creates `framerate_private.is_ntsc(rat)` function that returns true if the framerate
+  is and NTSC drop or non-drop rate.
   """
   @spec create_func_is_ntsc() :: :ok
   def create_func_is_ntsc do
@@ -191,6 +198,96 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
     Migration.execute(create_func)
   end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framerate_private.strict_eq(a, b)` that backs the `===` operator.
+  """
+  @spec create_func_strict_eq() :: :ok
+  def create_func_strict_eq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:strict_eq, Migration.repo()),
+        args: [a: :framerate, b: :framerate],
+        returns: :boolean,
+        body: """
+        RETURN (
+          (a).playback = (b).playback
+          AND (a).tags <@ (b).tags
+          AND (a).tags @> (b).tags
+        );
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framerate_private.strict_eq(a, b)` that backs the `===` operator.
+  """
+  @spec create_func_strict_neq() :: :ok
+  def create_func_strict_neq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:strict_neq, Migration.repo()),
+        args: [a: :framerate, b: :framerate],
+        returns: :boolean,
+        body: """
+        RETURN (
+          (a).playback != (b).playback
+          OR NOT (a).tags <@ (b).tags
+          OR NOT (a).tags @> (b).tags
+        );
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  ## OPERATORS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framerate, :framerate `===` operator that returns true if *both*
+  the playback rate AND tags of a framerate are equal.
+  """
+  @spec create_op_strict_eq() :: :ok
+  def create_op_strict_eq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :===,
+        :framerate,
+        :framerate,
+        private_function(:strict_eq, Migration.repo()),
+        commutator: :===,
+        negator: :"!==="
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framerate, :framerate `===` operator that returns true if *both*
+  the playback rate AND tags of a framerate are equal.
+  """
+  @spec create_op_strict_neq() :: :ok
+  def create_op_strict_neq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :"!===",
+        :framerate,
+        :framerate,
+        private_function(:strict_neq, Migration.repo()),
+        commutator: :"!===",
+        negator: :===
+      )
+
+    Migration.execute(create_op)
+  end
+
+  ## CONSTRAINTS
 
   @doc section: :migrations_constraints
   @doc """
@@ -306,4 +403,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
   def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_framerate)}#{name}"
+
+  # Returns the config-qualified name of the function for this type.
+  @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
+  defp private_function(name, repo), do: "#{Postgres.Utils.type_private_function_prefix(repo, :pg_framerate)}#{name}"
 end

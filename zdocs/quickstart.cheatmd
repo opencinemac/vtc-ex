@@ -391,7 +391,7 @@ those up.
 iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 iex> a_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
 iex> 
-iex> a = Range.new!(a_in, a_out)
+iex> a = Framestamp.Range.new!(a_in, a_out)
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
@@ -407,7 +407,7 @@ Just like addition, we can write a bare timecode string as the out value if we w
 ```elixir
 iex> b_in = Framestamp.with_frames!("01:45:00:00", Rates.f23_98())
 iex> 
-iex> b = Range.new!(b_in, "02:30:00:00")
+iex> b = Framestamp.Range.new!(b_in, "02:30:00:00")
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
 ```
 
@@ -416,7 +416,7 @@ We can get the duration of a range.
 #### [duration/1](`Vtc.Framestamp.Range.duration/1`)
 
 ```elixir
-iex> Range.duration(b)
+iex> Framestamp.Range.duration(b)
 iex> "<00:45:00:00 <23.98 NTSC>>"
 ```
 
@@ -425,7 +425,7 @@ iex> "<00:45:00:00 <23.98 NTSC>>"
 #### [contains?/2](`Vtc.Framestamp.Range.contains?/2`)
 
 ```elixir
-iex> Range.contains?(b, "02:00:00:00")
+iex> Framestamp.Range.contains?(b, "02:00:00:00")
 iex> true
 ```
 
@@ -434,7 +434,7 @@ iex> true
 #### [overlaps?/2](`Vtc.Framestamp.Range.overlaps?/2`)
 
 ```elixir
-iex> Range.overlaps?(a, b)
+iex> Framestamp.Range.overlaps?(a, b)
 iex> true
 ```
 
@@ -443,7 +443,7 @@ We can even get the overlapping area as its own range!
 #### [intersection/2](`Vtc.Framestamp.Range.intersection/2`)
 
 ```elixir
-iex> Range.intersection!(a, b)
+iex> Framestamp.Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
