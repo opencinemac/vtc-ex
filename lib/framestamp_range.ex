@@ -1,4 +1,4 @@
-defmodule Vtc.Range do
+defmodule Vtc.Framestamp.Range do
   @moduledoc """
   Holds a framestamp range.
 
@@ -44,7 +44,7 @@ defmodule Vtc.Range do
 
   @doc section: :parse
   @doc """
-  Creates a new [Range](`Vtc.Range`).
+  Creates a new [Range](`Vtc.Framestamp.Range`).
 
   `out_tc` may be a [Framestamp](`Vtc.Framestamp`) value for any value that implements the
   [Frames](`Vtc.Source.Frames`) protocol.
@@ -563,9 +563,9 @@ defmodule Vtc.Range do
   end
 end
 
-defimpl Inspect, for: Vtc.Range do
+defimpl Inspect, for: Vtc.Framestamp.Range do
   alias Vtc.Framestamp
-  alias Vtc.Range
+  alias Vtc.Framestamp.Range
 
   @spec inspect(Range.t(), Elixir.Inspect.Opts.t()) :: String.t()
   def inspect(range, _opts) do
@@ -573,8 +573,8 @@ defimpl Inspect, for: Vtc.Range do
   end
 end
 
-defimpl String.Chars, for: Vtc.Range do
-  alias Vtc.Range
+defimpl String.Chars, for: Vtc.Framestamp.Range do
+  alias Vtc.Framestamp.Range
 
   @spec to_string(Range.t()) :: String.t()
   def to_string(range), do: inspect(range)

@@ -382,10 +382,10 @@ iex> Enum.sort_by([data_02, data_01], & &1.tc, Framestamp)
 
 ## Ranges
 
-[Range](`Vtc.Range`) helps with common operations using in/out points. Let's set two of 
+[Range](`Vtc.Framestamp.Range`) helps with common operations using in/out points. Let's set two of 
 those up.
 
-#### [new/3](`Vtc.Range.new/3`)
+#### [new/3](`Vtc.Framestamp.Range.new/3`)
 
 ```elixir
 iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
@@ -402,7 +402,7 @@ inclusive out points like you are used to are available as well!
 
 Just like addition, we can write a bare timecode string as the out value if we want.
 
-#### [new/3](`Vtc.Range.new/3`) with string
+#### [new/3](`Vtc.Framestamp.Range.new/3`) with string
 
 ```elixir
 iex> b_in = Framestamp.with_frames!("01:45:00:00", Rates.f23_98())
@@ -413,7 +413,7 @@ iex> b = Range.new!(b_in, "02:30:00:00")
 
 We can get the duration of a range.
 
-#### [duration/1](`Vtc.Range.duration/1`)
+#### [duration/1](`Vtc.Framestamp.Range.duration/1`)
 
 ```elixir
 iex> Range.duration(b)
@@ -422,7 +422,7 @@ iex> "<00:45:00:00 <23.98 NTSC>>"
 
 ... see if a specific framestamp is in a range:
 
-#### [contains?/2](`Vtc.Range.contains?/2`)
+#### [contains?/2](`Vtc.Framestamp.Range.contains?/2`)
 
 ```elixir
 iex> Range.contains?(b, "02:00:00:00")
@@ -431,7 +431,7 @@ iex> true
 
 ... or see if it overlaps with another range.
 
-#### [overlaps?/2](`Vtc.Range.overlaps?/2`)
+#### [overlaps?/2](`Vtc.Framestamp.Range.overlaps?/2`)
 
 ```elixir
 iex> Range.overlaps?(a, b)
@@ -440,7 +440,7 @@ iex> true
 
 We can even get the overlapping area as its own range!
 
-#### [intersection/2](`Vtc.Range.intersection/2`)
+#### [intersection/2](`Vtc.Framestamp.Range.intersection/2`)
 
 ```elixir
 iex> Range.intersection!(a, b)

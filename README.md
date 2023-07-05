@@ -77,17 +77,17 @@ iex> end
 "<19:08:13:02 <23.98 NTSC>>"
 ```
 
-[Ranges](`Vtc.Range`) let you operate on in/out points, for instance, finding the 
+[Ranges](`Vtc.Framestamp.Range`) let you operate on in/out points, for instance, finding the 
 overlapping area between two ranges:
 
 ```elixir
 iex> a_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
-iex> a = Range.new!(a_in, "02:00:00:00")
+iex> a = Framestamp.Range.new!(a_in, "02:00:00:00")
 "<01:00:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 iex> b_in = Framestamp.with_frames!("01:45:00:00", Rates.f23_98())
-iex> b = Range.new!(b_in, "02:30:00:00")
+iex> b = Framestamp.Range.new!(b_in, "02:30:00:00")
 "<01:45:00:00 - 02:30:00:00 :exclusive <23.98 NTSC>>"
-iex> Range.intersection!(a, b)
+iex> Framestamp.Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
