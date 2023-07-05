@@ -364,7 +364,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       },
       %{
         name: "negative denominator",
-        value: "((24000, -1001), '{non_drop}')",
+        value: "((24, -1), '{}')",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_positive"
@@ -418,6 +418,96 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
 
       if expected_code == :check_violation do
         assert postgres.constraint == test_case.expected_constraint
+      end
+    end
+  end
+
+  describe "Postgres framerate.is_ntsc/1" do
+    is_ntsc_table = [
+      %{input: Rates.f23_98(), expected: true},
+      %{input: Rates.f24(), expected: false},
+      %{input: Rates.f59_94_df(), expected: true},
+      %{input: Rates.f59_94_ndf(), expected: true}
+    ]
+
+    table_test "<%= input %> | <%= expected %>", is_ntsc_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query = Query.from(f in fragment("SELECT framerate.is_ntsc(?) as r", type(^input, Framerate)), select: f.r)
+      result = Repo.one(query)
+
+      assert is_boolean(result)
+      assert result == expected
+    end
+
+    property "matches Framerate.ntsc?/1" do
+      check all(framerate <- StreamDataVtc.framerate()) do
+        query = Query.from(f in fragment("SELECT framerate.is_ntsc(?) as r", type(^framerate, Framerate)), select: f.r)
+        result = Repo.one(query)
+
+        assert is_boolean(result)
+        assert result == Framerate.ntsc?(framerate)
+      end
+    end
+  end
+
+  strict_eq_table = [
+    %{a: Rates.f23_98(), b: Rates.f23_98(), expected: true},
+    %{a: Rates.f23_98(), b: Rates.f24(), expected: false},
+    %{a: Rates.f23_98(), b: Framerate.new!(Ratio.new(24_000, 1001), ntsc: nil), expected: false},
+    %{a: Rates.f24(), b: Rates.f24(), expected: true},
+    %{a: Rates.f59_94_ndf(), b: Rates.f59_94_ndf(), expected: true},
+    %{a: Rates.f59_94_df(), b: Rates.f59_94_df(), expected: true},
+    %{a: Rates.f59_94_ndf(), b: Rates.f59_94_df(), expected: false},
+    %{a: Rates.f59_94_df(), b: Framerate.new!(Ratio.new(60_000, 1001), ntsc: nil), expected: false}
+  ]
+
+  describe "Postgres === (strict equality)" do
+    table_test "<%= a %> === <%= b %> | <%= expected %>", strict_eq_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query = Query.from(f in fragment("SELECT ? === ? as r", type(^a, Framerate), type(^b, Framerate)), select: f.r)
+      result = Repo.one(query)
+
+      assert is_boolean(result)
+      assert result == expected
+    end
+
+    property "matches a == b" do
+      check all(
+              a <- StreamDataVtc.framerate(),
+              b <- StreamDataVtc.framerate()
+            ) do
+        query = Query.from(f in fragment("SELECT ? === ? as r", type(^a, Framerate), type(^b, Framerate)), select: f.r)
+        result = Repo.one(query)
+
+        assert is_boolean(result)
+        assert result == (a == b)
+      end
+    end
+  end
+
+  describe "Postgres === (strict not equality)" do
+    table_test "<%= a %> !=== <%= b %> | <%= expected %>", strict_eq_table, test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query = Query.from(f in fragment("SELECT ? !=== ? as r", type(^a, Framerate), type(^b, Framerate)), select: f.r)
+      result = Repo.one(query)
+
+      assert is_boolean(result)
+      refute result == expected
+    end
+
+    property "matches a != b" do
+      check all(
+              a <- StreamDataVtc.framerate(),
+              b <- StreamDataVtc.framerate()
+            ) do
+        query = Query.from(f in fragment("SELECT ? !=== ? as r", type(^a, Framerate), type(^b, Framerate)), select: f.r)
+        result = Repo.one(query)
+
+        assert is_boolean(result)
+        assert result == (a != b)
       end
     end
   end

@@ -407,6 +407,30 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "Postgres rational.round/1" do
+    round_table = [
+      %{input: Ratio.new(1), expected: 1},
+      %{input: Ratio.new(-1), expected: -1},
+      %{input: Ratio.new(1, 2), expected: 1},
+      %{input: Ratio.new(-1, 2), expected: -1},
+      %{input: Ratio.new(1, 4), expected: 0},
+      %{input: Ratio.new(-1, 4), expected: 0},
+      %{input: Ratio.new(3, 4), expected: 1},
+      %{input: Ratio.new(-3, 4), expected: -1}
+    ]
+
+    table_test "<%= input %> = <%= expected %>", round_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT rational.round(?) as r", type(^input, PgRational)),
+          select: f.r
+        )
+
+      result = Repo.one!(query)
+      assert is_integer(result)
+      assert result == expected
+    end
+
     property "matches Ratio" do
       check all(input <- StreamDataVtc.rational()) do
         query =
