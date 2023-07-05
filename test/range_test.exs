@@ -483,11 +483,11 @@ defmodule Vtc.RangeTest do
   end
 
   describe "#contains/2?" do
-    setup context, do: TestCase.setup_timecodes(context)
+    setup context, do: TestCase.setup_framestamps(context)
     setup [:setup_ranges]
     setup context, do: TestCase.setup_negates(context)
 
-    @describetag timecodes: [:framestamp]
+    @describetag framestamps: [:framestamp]
     @describetag ranges: [:range]
 
     contains_table = [

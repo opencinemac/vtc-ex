@@ -21,5 +21,5 @@ defmodule Vtc.Test.Support.FramestampSchema01 do
   end
 
   @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t(%__MODULE__{})
-  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:a, :b])
+  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:id, :a, :b])
 end

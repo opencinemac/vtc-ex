@@ -4,6 +4,7 @@ defmodule Vtc.FramestampTest.Ops do
 
   alias Vtc.Framestamp
   alias Vtc.Rates
+  alias Vtc.Test.Support.CommonTables
 
   rebase_table = [
     %{
@@ -34,8 +35,8 @@ defmodule Vtc.FramestampTest.Ops do
   ]
 
   describe "#rebase/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:original, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:original, :expected]
 
     table_test "<%= original %> -> <%= new_rate %>", rebase_table, test_case do
       %{original: original, new_rate: new_rate, expected: expected} = test_case
@@ -48,8 +49,8 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#rebase!/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:original, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:original, :expected]
 
     table_test "<%= original %> -> <%= new_rate %>", rebase_table, test_case do
       %{original: original, new_rate: new_rate, expected: expected} = test_case
@@ -62,75 +63,17 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#compare/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:a, :b]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
 
-    compare_table = [
-      %{
-        a: "01:00:00:00",
-        b: "01:00:00:00",
-        expected: :eq
-      },
-      %{
-        a: "00:00:00:00",
-        b: "01:00:00:00",
-        expected: :lt
-      },
-      %{
-        a: "-01:00:00:00",
-        b: "01:00:00:00",
-        expected: :lt
-      },
-      %{
-        a: "02:00:00:00",
-        b: "01:00:00:00",
-        expected: :gt
-      },
-      %{
-        a: "02:00:00:00",
-        b: "00:00:00:00",
-        expected: :gt
-      },
-      %{
-        a: "02:00:00:00",
-        b: "-01:00:00:00",
-        expected: :gt
-      },
-      %{
-        a: "00:00:59:23",
-        b: "01:00:00:00",
-        expected: :lt
-      },
-      %{
-        a: "01:00:00:01",
-        b: "01:00:00:00",
-        expected: :gt
-      },
-      %{
-        a: {"01:00:00:00", Rates.f23_98()},
-        b: {"01:00:00:00", Rates.f24()},
-        expected: :gt
-      },
-      %{
-        a: {"01:00:00:00", Rates.f23_98()},
-        b: {"01:00:00:00", Rates.f59_94_ndf()},
-        expected: :eq
-      },
-      %{
-        a: {"01:00:00:00", Rates.f59_94_df()},
-        b: {"01:00:00:00", Rates.f59_94_ndf()},
-        expected: :lt
-      }
-    ]
-
-    table_test "<%= a %> is <%= expected %> <%= b %>", compare_table, test_case do
+    table_test "<%= a %> is <%= expected %> <%= b %>", CommonTables.compare_table(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.compare(a, b) == expected
     end
 
     name = "<%= a %> is <%= expected %> <%= b %> | b = tc string"
 
-    table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
 
@@ -139,7 +82,7 @@ defmodule Vtc.FramestampTest.Ops do
 
     name = "<%= a %> is <%= expected %> <%= b %> | a = tc string"
 
-    table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
 
@@ -148,7 +91,7 @@ defmodule Vtc.FramestampTest.Ops do
 
     name = "<%= a %> is <%= expected %> <%= b %> | b = frames int"
 
-    table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
 
@@ -157,7 +100,7 @@ defmodule Vtc.FramestampTest.Ops do
 
     name = "<%= a %> is <%= expected %> <%= b %> | a = frames int"
 
-    table_test name, compare_table, test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
 
@@ -166,6 +109,9 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#eq?/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
+
     test "true" do
       a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
       b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
@@ -179,9 +125,19 @@ defmodule Vtc.FramestampTest.Ops do
 
       refute Framestamp.eq?(a, b)
     end
+
+    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+      %{a: a, b: b, expected: cmp_expected} = test_case
+      expected = cmp_expected == :eq
+
+      assert Framestamp.eq?(a, b) == expected
+    end
   end
 
   describe "#lt?/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
+
     test "true" do
       a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
       b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
@@ -202,9 +158,19 @@ defmodule Vtc.FramestampTest.Ops do
 
       refute Framestamp.lt?(a, b)
     end
+
+    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+      %{a: a, b: b, expected: cmp_expected} = test_case
+      expected = cmp_expected == :lt
+
+      assert Framestamp.lt?(a, b) == expected
+    end
   end
 
   describe "#lte?/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
+
     test "true" do
       a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
       b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
@@ -225,9 +191,19 @@ defmodule Vtc.FramestampTest.Ops do
 
       refute Framestamp.lte?(a, b)
     end
+
+    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+      %{a: a, b: b, expected: cmp_expected} = test_case
+      expected = cmp_expected in [:lt, :eq]
+
+      assert Framestamp.lte?(a, b) == expected
+    end
   end
 
   describe "#gt?/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
+
     test "true" do
       a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
       b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
@@ -248,9 +224,19 @@ defmodule Vtc.FramestampTest.Ops do
 
       refute Framestamp.gt?(a, b)
     end
+
+    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+      %{a: a, b: b, expected: cmp_expected} = test_case
+      expected = cmp_expected == :gt
+
+      assert Framestamp.gt?(a, b) == expected
+    end
   end
 
   describe "#gte?/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b]
+
     test "true" do
       a = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
       b = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
@@ -271,11 +257,18 @@ defmodule Vtc.FramestampTest.Ops do
 
       refute Framestamp.gte?(a, b)
     end
+
+    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+      %{a: a, b: b, expected: cmp_expected} = test_case
+      expected = cmp_expected in [:gt, :eq]
+
+      assert Framestamp.gte?(a, b) == expected
+    end
   end
 
   describe "#add/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:a, :b, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
 
     add_table = [
       %{
@@ -468,8 +461,8 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#sub/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:a, :b, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
 
     sub_table = [
       %{
@@ -662,8 +655,8 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#mult/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:a, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :expected]
 
     mult_table = [
       %{
@@ -800,8 +793,8 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#div/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:a, :expected]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :expected]
 
     div_table = [
       %{
@@ -1181,8 +1174,8 @@ defmodule Vtc.FramestampTest.Ops do
   ]
 
   describe "#divrem/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:dividend, :expected_q, :expected_r]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:dividend, :expected_q, :expected_r]
 
     table_test "<%= dividend %> /% <%= divisor %> == <%= expected_q %>, <%= expected_r %>", divrem_table, test_case do
       %{dividend: dividend, divisor: divisor, expected_q: expected_quotient, expected_r: expected_remainder} = test_case
@@ -1218,8 +1211,8 @@ defmodule Vtc.FramestampTest.Ops do
   end
 
   describe "#rem/2" do
-    setup context, do: TestCase.setup_timecodes(context)
-    @describetag timecodes: [:dividend, :expected_q, :expected_r]
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:dividend, :expected_q, :expected_r]
 
     table_test "<%= dividend %> % <%= divisor %> == <%= expected_r %>", divrem_table, test_case do
       %{dividend: dividend, divisor: divisor, expected_r: expected} = test_case
