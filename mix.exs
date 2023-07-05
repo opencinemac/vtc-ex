@@ -52,11 +52,13 @@ defmodule Vtc.MixProject do
           Perfs: &(&1[:section] == :perfs),
           Queries: &(&1[:section] == :ecto_queries),
           Full: &(&1[:section] == :migrations_full),
-          PgConstraints: &(&1[:section] == :migrations_constraints),
-          PgTypes: &(&1[:section] == :migrations_types),
-          PgCasts: &(&1[:section] == :migrations_casts),
-          PgOperators: &(&1[:section] == :migrations_operators),
-          PgFunctions: &(&1[:section] == :migrations_functions)
+          "Pg Constraints": &(&1[:section] == :migrations_constraints),
+          "Pg Types": &(&1[:section] == :migrations_types),
+          "Pg Casts": &(&1[:section] == :migrations_casts),
+          "Pg Operators": &(&1[:section] == :migrations_operators),
+          "Pg Operator Classes": &(&1[:section] == :migrations_operator_classes),
+          "Pg Functions": &(&1[:section] == :migrations_functions),
+          "Pg Private Functions": &(&1[:section] == :migrations_private_functions)
         ]
       ],
       build_embedded: Mix.env() == :prod,

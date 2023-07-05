@@ -23,7 +23,7 @@ defmodule Vtc.Test.Support.RationalsSchema02 do
   @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t()
   def changeset(schema, attrs) do
     schema
-    |> Changeset.cast(attrs, [:a, :b])
+    |> Changeset.cast(attrs, [:id, :a, :b])
     |> Changeset.validate_required([:a, :b])
   end
 end

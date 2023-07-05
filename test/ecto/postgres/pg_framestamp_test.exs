@@ -8,13 +8,19 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Rates
+  alias Vtc.Test.Support.CommonTables
   alias Vtc.Test.Support.FramestampSchema01
+  alias Vtc.Test.Support.TestCase
   alias Vtc.TestUtls.StreamDataVtc
 
   require Query
 
   describe "#cast/1" do
     cast_table = [
+      %{
+        input: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
+        expected: Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      },
       %{
         input: %{
           smpte_timecode: "01:00:00:00",
@@ -106,6 +112,8 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
     # Converts the input for a test cast from atom keys to string keys
     @spec convert_input_to_string_keys(%{atom() => any()}) :: %{String.t() => any()}
+    defp convert_input_to_string_keys(%Framestamp{} = framestamp), do: framestamp
+
     defp convert_input_to_string_keys(input) do
       input =
         Map.update(input, :rate, %{}, fn rate_map ->
@@ -458,6 +466,386 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         assert record = Repo.one!(query)
         assert {:ok, ^expected} = Framestamp.load(record)
       end
+    end
+  end
+
+  describe "Postgres = (equals)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? = ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Framestamp.eq?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> = <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 == :eq))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a == r.b) end)
+    end
+  end
+
+  describe "Postgres === (strict equals)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        expected = Framestamp.eq?(a, b) and a.rate == b.rate
+
+        query =
+          Query.from(f in fragment("SELECT (? === ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == expected
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 == :eq and test_case.a.rate == test_case.b.rate))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? === ?", r.a, r.b)) end)
+    end
+  end
+
+  describe "Postgres <> (not equals)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "<> matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? <> ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == not Framestamp.eq?(a, b)
+      end
+    end
+
+    property "!= matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? != ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == not Framestamp.eq?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "<> can be used in WHERE table.field | <%= a %> <> <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 != :eq))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? <> ?", r.a, r.b)) end)
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "!= can be used in WHERE table.field | <%= a %> != <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 != :eq))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a != r.b) end)
+    end
+  end
+
+  describe "Postgres !=== (strict not equals)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        expected = not Framestamp.eq?(a, b) or a.rate != b.rate
+
+        query =
+          Query.from(f in fragment("SELECT (? !=== ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == expected
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 != :eq or test_case.a.rate != test_case.b.rate))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? !=== ?", r.a, r.b)) end)
+    end
+  end
+
+  describe "Postgres < (less than)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? < ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Framestamp.lt?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> < <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 == :lt))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a < r.b) end)
+    end
+  end
+
+  describe "Postgres <= (less than or equal to)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? <= ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Framestamp.lte?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> <= <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 in [:lt, :eq]))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a <= r.b) end)
+    end
+  end
+
+  describe "Postgres > (greater than)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? > ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Framestamp.gt?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> > <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 == :gt))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a > r.b) end)
+    end
+  end
+
+  describe "Postgres >= (greater than)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? >= ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        assert is_boolean(result)
+        assert result == Framestamp.gte?(a, b)
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.compare_table(), test_case do
+      test_case
+      |> Map.update(:expected, nil, &(&1 in [:gt, :eq]))
+      |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a >= r.b) end)
+    end
+  end
+
+  describe "Postgres framestamp_private.cmp/2" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    property "matches Framestamp" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(
+            f in fragment("SELECT framestamp_private.cmp(?, ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+
+        expected =
+          case Framestamp.compare(a, b) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
+
+        assert is_integer(result)
+        assert result == expected
+      end
+    end
+
+    @tag framestamps: [:a, :b]
+    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.compare_table(), test_case do
+      expected =
+        case test_case.expected do
+          :lt -> -1
+          :eq -> 0
+          :gt -> 1
+        end
+
+      test_case
+      |> Map.put(:expected, true)
+      |> run_table_comparison_test(fn query ->
+        Query.where(query, [r], fragment("framestamp_private.cmp(?, ?) = ?", r.a, r.b, ^expected))
+      end)
+    end
+  end
+
+  describe "ORDER BY support" do
+    test "can ORDER BY framestamp field" do
+      record_01_start = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      record_02_start = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
+      record_03_start = Framestamp.with_frames!("00:59:59:23", Rates.f23_98())
+
+      record_01 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_01_start}) |> Repo.insert!()
+      record_02 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_02_start}) |> Repo.insert!()
+      record_03 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_03_start}) |> Repo.insert!()
+
+      records =
+        FramestampSchema01
+        |> Query.from(order_by: :a)
+        |> Repo.all()
+
+      assert is_list(records)
+      assert length(records) == 3
+
+      returned_ids = Enum.map(records, & &1.id)
+      expected_ids = [record_03.id, record_01.id, record_02.id]
+
+      assert returned_ids == expected_ids
+    end
+
+    property "matches Framestamp" do
+      check all(
+              record_01_start <- StreamDataVtc.framestamp(),
+              record_02_start <- StreamDataVtc.framestamp(),
+              record_03_start <- StreamDataVtc.framestamp()
+            ) do
+        record_01 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_01_start}) |> Repo.insert!()
+        record_02 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_02_start}) |> Repo.insert!()
+        record_03 = %FramestampSchema01{} |> FramestampSchema01.changeset(%{a: record_03_start}) |> Repo.insert!()
+
+        record_ids = [record_01.id, record_02.id, record_03.id]
+
+        records =
+          FramestampSchema01
+          |> Query.from(order_by: [:a, :id])
+          |> Query.where([r], r.id in ^record_ids)
+          |> Repo.all()
+
+        assert is_list(records)
+        assert length(records) == 3
+
+        returned_ids = Enum.map(records, & &1.id)
+
+        expected_ids =
+          [record_01, record_02, record_03]
+          |> Enum.sort_by(& &1.id)
+          |> Enum.sort_by(& &1.a, Framestamp)
+          |> Enum.map(& &1.id)
+
+        assert returned_ids == expected_ids
+      end
+    end
+  end
+
+  @spec run_table_comparison_test(
+          %{a: Framestamp.t(), b: Framestamp.t(), expected: boolean()},
+          (Queryable.t() -> Query.t())
+        ) :: term()
+  defp run_table_comparison_test(test_case, where_filter) do
+    %{a: a, b: b, expected: expected} = test_case
+
+    assert {:ok, %{id: record_id}} =
+             %FramestampSchema01{}
+             |> FramestampSchema01.changeset(%{a: a, b: b})
+             |> Repo.insert()
+
+    result =
+      FramestampSchema01
+      |> Query.select([r], r.id)
+      |> where_filter.()
+      |> Repo.one()
+
+    if expected do
+      assert result == record_id
+    else
+      assert is_nil(result)
     end
   end
 end
