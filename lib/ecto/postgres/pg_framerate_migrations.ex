@@ -211,11 +211,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         args: [a: :framerate, b: :framerate],
         returns: :boolean,
         body: """
-        RETURN (
-          (a).playback = (b).playback
+        RETURN (a).playback = (b).playback
           AND (a).tags <@ (b).tags
-          AND (a).tags @> (b).tags
-        );
+          AND (a).tags @> (b).tags;
         """
       )
 
@@ -234,11 +232,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         args: [a: :framerate, b: :framerate],
         returns: :boolean,
         body: """
-        RETURN (
-          (a).playback != (b).playback
+        RETURN (a).playback != (b).playback
           OR NOT (a).tags <@ (b).tags
-          OR NOT (a).tags @> (b).tags
-        );
+          OR NOT (a).tags @> (b).tags;
         """
       )
 

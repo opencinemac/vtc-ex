@@ -224,9 +224,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         returns: :boolean,
         body: """
         RETURN (a).seconds = (b.seconds)
-          AND (a).rate.playback = (b).rate.playback
-          AND (a).rate.tags <@ (b).rate.tags
-          AND (a).rate.tags @> (b).rate.tags;
+          AND (a).rate === (b).rate;
         """
       )
 
@@ -265,9 +263,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         returns: :boolean,
         body: """
         RETURN (a).seconds <> (b.seconds)
-          OR (a).rate.playback <> (b).rate.playback
-          OR NOT (a).rate.tags <@ (b).rate.tags
-          OR NOT (a).rate.tags @> (b).rate.tags;
+          OR (a).rate !=== (b).rate;
         """
       )
 
