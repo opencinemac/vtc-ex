@@ -364,7 +364,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       },
       %{
         name: "negative denominator",
-        value: "((24000, -1001), '{non_drop}')",
+        value: "((24, -1), '{}')",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_positive"

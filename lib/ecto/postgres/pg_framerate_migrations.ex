@@ -7,6 +7,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   alias Ecto.Migration
   alias Vtc.Ecto.Postgres
+  alias Vtc.Ecto.Postgres.PgRational
 
   require Ecto.Migration
 
@@ -361,6 +362,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
     Migration.create(ntsc_tags)
 
+    rational_round = PgRational.Migrations.function(:round, Migration.repo())
+
     ntsc_valid =
       Migration.constraint(
         table,
@@ -369,7 +372,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
         NOT #{function(:is_ntsc, Migration.repo())}(#{target_value})
         OR (
             (
-              round((#{target_value}).playback.numerator::float / (#{target_value}).playback.denominator::float) * 1000,
+              #{rational_round}((#{target_value}).playback) * 1000,
               1001
             )::rational
             = (#{target_value}).playback
