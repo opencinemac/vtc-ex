@@ -42,21 +42,26 @@ defmodule Vtc.Test.Support.TestCase do
   def setup_test_case(context), do: context
 
   @doc """
-  Sets up timecodes found in any context fields listed in the `:timecodes` context
+  Sets up timecodes found in any context fields listed in the `:framestamps` context
   field.
   """
-  @spec setup_timecodes(map()) :: Keyword.t()
-  def setup_timecodes(context) do
-    timecode_fields = Map.get(context, :timecodes, [])
+  @spec setup_framestamps(map()) :: Keyword.t()
+  def setup_framestamps(context) do
+    timecode_fields = Map.get(context, :framestamps, [])
     timecodes = Map.take(context, timecode_fields)
 
-    Enum.map(timecodes, fn {field_name, value} -> {field_name, setup_timecode(value)} end)
+    Enum.map(timecodes, fn {field_name, value} -> {field_name, setup_framestamp(value)} end)
   end
 
-  @spec setup_timecode(Framestamp.t() | Frames.t() | {Frames.t(), Framerate.t()}) :: Framestamp.t()
-  defp setup_timecode(%Framestamp{} = value), do: value
-  defp setup_timecode({frames, rate}), do: Framestamp.with_frames!(frames, rate)
-  defp setup_timecode(frames), do: setup_timecode({frames, Rates.f23_98()})
+  @typedoc """
+  The ExUnit test context values that can be loaded into framestamps from timecodes.
+  """
+  @type framestamp_input() :: Framestamp.t() | Frames.t() | {Frames.t(), Framerate.t()}
+
+  @spec setup_framestamp(framestamp_input()) :: Framestamp.t()
+  defp setup_framestamp(%Framestamp{} = value), do: value
+  defp setup_framestamp({frames, rate}), do: Framestamp.with_frames!(frames, rate)
+  defp setup_framestamp(frames), do: setup_framestamp({frames, Rates.f23_98()})
 
   @doc """
   Mathematically negates a list of keys in the context.

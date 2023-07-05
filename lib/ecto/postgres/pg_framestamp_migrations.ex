@@ -88,6 +88,28 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     create_function_schemas()
 
     create_func_with_seconds()
+
+    create_func_eq()
+    create_func_neq()
+    create_func_strict_eq()
+    create_func_strict_neq()
+    create_func_lt()
+    create_func_lte()
+    create_func_gt()
+    create_func_gte()
+    create_func_cmp()
+
+    create_op_eq()
+    create_op_neq()
+    create_op_neq2()
+    create_op_strict_eq()
+    create_op_strict_neq()
+    create_op_lt()
+    create_op_lte()
+    create_op_gt()
+    create_op_gte()
+
+    create_op_class_btree()
   end
 
   @doc section: :migrations_types
@@ -168,6 +190,393 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Migration.execute(create_func)
   end
 
+  ## COMPARISON BACKING FUNCTION
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.eq(a, b)` that backs the `=` operator.
+  """
+  @spec create_func_eq() :: :ok
+  def create_func_eq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:eq, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds = (b.seconds);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.strict_eq(a, b)` that backs the `===` operator.
+  """
+  @spec create_func_strict_eq() :: :ok
+  def create_func_strict_eq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:strict_eq, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds = (b.seconds)
+          AND (a).rate.playback = (b).rate.playback
+          AND (a).rate.tags <@ (b).rate.tags
+          AND (a).rate.tags @> (b).rate.tags;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.neq(a, b)` that backs the `<>` operator.
+  """
+  @spec create_func_neq() :: :ok
+  def create_func_neq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:neq, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds <> (b.seconds);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.strict_neq(a, b)` that backs the `!===` operator.
+  """
+  @spec create_func_strict_neq() :: :ok
+  def create_func_strict_neq do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:strict_neq, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds <> (b.seconds)
+          OR (a).rate.playback <> (b).rate.playback
+          OR NOT (a).rate.tags <@ (b).rate.tags
+          OR NOT (a).rate.tags @> (b).rate.tags;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.lt(a, b)` that backs the `<` operator.
+  """
+  @spec create_func_lt() :: :ok
+  def create_func_lt do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:lt, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds < (b).seconds;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.lte(a, b)` that backs the `<=` operator.
+  """
+  @spec create_func_lte() :: :ok
+  def create_func_lte do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:lte, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds <= (b).seconds;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.gt(a, b)` that backs the `>` operator.
+  """
+  @spec create_func_gt() :: :ok
+  def create_func_gt do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:gt, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds > (b).seconds;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.gte(a, b)` that backs the `>=` operator.
+  """
+  @spec create_func_gte() :: :ok
+  def create_func_gte do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:gte, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :boolean,
+        body: """
+        RETURN (a).seconds >= (b).seconds;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.cmp(a, b)` used in the PgTimecode b-tree operator class.
+  """
+  @spec create_func_cmp() :: :ok
+  def create_func_cmp do
+    rational_cmp = PgRational.Migrations.private_function(:cmp, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:cmp, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        returns: :integer,
+        body: """
+        RETURN #{rational_cmp}((a).seconds, (b).seconds);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  ### COMPARISON OPERATORS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `=` operator that returns true if the
+  real-world seconds values for both framestamps are equal.
+  """
+  @spec create_op_eq() :: :ok
+  def create_op_eq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :=,
+        :framestamp,
+        :framestamp,
+        private_function(:eq, Migration.repo()),
+        commutator: :=,
+        negator: :<>
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `===` operator that returns true if *both*
+  the real-world seconds values *and* the framerates for both framestamps are equal.
+  """
+  @spec create_op_strict_eq() :: :ok
+  def create_op_strict_eq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :===,
+        :framestamp,
+        :framestamp,
+        private_function(:strict_eq, Migration.repo()),
+        commutator: :===,
+        negator: :"!==="
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `<>` operator that returns true if the
+  real-world seconds values for both framestamps are not equal.
+  """
+  @spec create_op_neq() :: :ok
+  def create_op_neq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<>,
+        :framestamp,
+        :framestamp,
+        private_function(:neq, Migration.repo()),
+        commutator: :<>,
+        negator: :=
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `!=` operator that returns true if the
+  real-world seconds values for both framestamps are not equal.
+  """
+  @spec create_op_neq2() :: :ok
+  def create_op_neq2 do
+    create_op =
+      Postgres.Utils.create_operator(
+        :!=,
+        :framestamp,
+        :framestamp,
+        private_function(:neq, Migration.repo()),
+        commutator: :!=,
+        negator: :=
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `!===` operator that returns true if `a` and
+  `b` do not have the same real-world-seconds, framerate playback, or framerate tags.
+  """
+  @spec create_op_strict_neq() :: :ok
+  def create_op_strict_neq do
+    create_op =
+      Postgres.Utils.create_operator(
+        :"!===",
+        :framestamp,
+        :framestamp,
+        private_function(:strict_neq, Migration.repo()),
+        commutator: :"!===",
+        negator: :===
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `<` operator.
+  """
+  @spec create_op_lt() :: :ok
+  def create_op_lt do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<,
+        :framestamp,
+        :framestamp,
+        private_function(:lt, Migration.repo()),
+        commutator: :>,
+        negator: :>=
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `<=` operator.
+  """
+  @spec create_op_lte() :: :ok
+  def create_op_lte do
+    create_op =
+      Postgres.Utils.create_operator(
+        :<=,
+        :framestamp,
+        :framestamp,
+        private_function(:lte, Migration.repo()),
+        commutator: :>=,
+        negator: :>
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `>` operator.
+  """
+  @spec create_op_gt() :: :ok
+  def create_op_gt do
+    create_op =
+      Postgres.Utils.create_operator(
+        :>,
+        :framestamp,
+        :framestamp,
+        private_function(:gt, Migration.repo()),
+        commutator: :<,
+        negator: :<=
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `>=` operator.
+  """
+  @spec create_op_gte() :: :ok
+  def create_op_gte do
+    create_op =
+      Postgres.Utils.create_operator(
+        :>=,
+        :framestamp,
+        :framestamp,
+        private_function(:gte, Migration.repo()),
+        commutator: :<=,
+        negator: :<
+      )
+
+    Migration.execute(create_op)
+  end
+
+  ## OPERATOR CLASSES
+
+  @doc section: :migrations_operator_classes
+  @doc """
+  Creates a B-tree operator class to support indexing on comparison operations.
+  """
+  @spec create_op_class_btree() :: :ok
+  def create_op_class_btree do
+    create_class =
+      Postgres.Utils.create_operator_class(
+        :framestamp_ops_btree,
+        :framestamp,
+        :btree,
+        [
+          <: 1,
+          <=: 2,
+          =: 3,
+          >=: 4,
+          >: 5
+        ],
+        [
+          {private_function(:cmp, Migration.repo()), 1}
+        ]
+      )
+
+    Migration.execute(create_class)
+  end
+
   @doc section: :migrations_constraints
   @doc """
   Creates basic constraints for a [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) /
@@ -224,5 +633,14 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Returns the config-qualified name of the function for this type.
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
-  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_framestamp)}#{name}"
+  def function(name, repo) do
+    function_prefix = Postgres.Utils.type_function_prefix(repo, :pg_framestamp)
+    "#{function_prefix}#{name}"
+  end
+
+  @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
+  defp private_function(name, repo) do
+    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :pg_framestamp)
+    "#{function_prefix}#{name}"
+  end
 end

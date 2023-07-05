@@ -13,5 +13,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddTimecodeSchemas do
     end
 
     :ok = PgFramestamp.Migrations.create_field_constraints("framestamps_01", :b)
+
+    create(index("framestamps_01", [:b]))
   end
 end
