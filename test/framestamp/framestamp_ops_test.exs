@@ -270,50 +270,12 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    add_table = [
-      %{
-        a: "01:00:00:00",
-        b: "01:00:00:00",
-        expected: "02:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "00:00:00:00",
-        expected: "01:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "-01:00:00:00",
-        expected: "00:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "-02:00:00:00",
-        expected: "-01:00:00:00"
-      },
-      %{
-        a: "10:12:13:14",
-        b: "14:13:12:11",
-        expected: "24:25:26:01"
-      },
-      %{
-        a: {"01:00:00:00", Rates.f23_98()},
-        b: {"01:00:00:00", Rates.f47_95()},
-        expected: {"02:00:00:00", Rates.f23_98()}
-      },
-      %{
-        a: {"01:00:00:00", Rates.f23_98()},
-        b: {"00:00:00:02", Rates.f47_95()},
-        expected: {"01:00:00:01", Rates.f23_98()}
-      }
-    ]
-
-    table_test "<%= a %> + <%= b %> == <%= expected %>", add_table, test_case do
+    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.add_table(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", CommonTables.add_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -321,7 +283,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", CommonTables.add_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -329,7 +291,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", CommonTables.add_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -337,7 +299,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", CommonTables.add_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
@@ -464,50 +426,12 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    sub_table = [
-      %{
-        a: "01:00:00:00",
-        b: "01:00:00:00",
-        expected: "00:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "00:00:00:00",
-        expected: "01:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "-01:00:00:00",
-        expected: "02:00:00:00"
-      },
-      %{
-        a: "01:00:00:00",
-        b: "02:00:00:00",
-        expected: "-01:00:00:00"
-      },
-      %{
-        a: "34:10:09:08",
-        b: "10:06:07:14",
-        expected: "24:04:01:18"
-      },
-      %{
-        a: {"02:00:00:00", Rates.f23_98()},
-        b: {"01:00:00:00", Rates.f47_95()},
-        expected: {"01:00:00:00", Rates.f23_98()}
-      },
-      %{
-        a: {"01:00:00:02", Rates.f23_98()},
-        b: {"00:00:00:02", Rates.f47_95()},
-        expected: {"01:00:00:01", Rates.f23_98()}
-      }
-    ]
-
-    table_test "<%= a %> - <%= b %> == <%= expected %>", sub_table, test_case do
+    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.subtract_table(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", sub_table, test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", CommonTables.subtract_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -515,7 +439,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", sub_table, test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", CommonTables.subtract_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -523,7 +447,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", sub_table, test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", CommonTables.subtract_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -531,7 +455,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", sub_table, test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", CommonTables.subtract_table(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)

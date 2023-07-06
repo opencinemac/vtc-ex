@@ -469,6 +469,22 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
+  describe "#Postgres framestamp.frames/1" do
+    property "matches Framestamp.frames/2" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        query =
+          Query.from(
+            f in fragment("SELECT framestamp.frames(?) as r", type(^framestamp, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        assert is_integer(result)
+        assert result == Framestamp.frames(framestamp, round: :trunc)
+      end
+    end
+  end
+
   describe "Postgres = (equals)" do
     setup context, do: TestCase.setup_framestamps(context)
 
@@ -824,6 +840,238 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
+  describe "Postgres + (add)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.add_table(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? + ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.add/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? + ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.add(a, b)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], r.a + r.b)
+          end)
+
+        assert result == Framestamp.add(a, b)
+      end
+    end
+  end
+
+  describe "Postgres - (subtract)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.subtract_table(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.sub/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.sub(a, b)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], r.a - r.b)
+          end)
+
+        assert result == Framestamp.sub(a, b)
+      end
+    end
+  end
+
+  describe "Postgres * (multiply) by rational" do
+    property "matches Framestamp.mult/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.rational()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? * ?) as r", type(^a, Framestamp), type(^b, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.mult(a, b)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              multiplier <- StreamDataVtc.rational()
+            ) do
+        b = Framestamp.with_frames!(0, a.rate)
+
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], r.a * type(^multiplier, PgRational))
+          end)
+
+        assert result == Framestamp.mult(a, multiplier)
+      end
+    end
+  end
+
+  describe "Postgres / (divide) by rational" do
+    property "matches Framestamp.div/2 with round: closest" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? / ?) as r", type(^dividend, Framestamp), type(^divisor, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.div(dividend, divisor, round: :closest)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        b = Framestamp.with_frames!(0, dividend.rate)
+
+        result =
+          run_schema_arithmatic_test(dividend, b, fn query ->
+            Query.select(query, [r], r.a / type(^divisor, PgRational))
+          end)
+
+        assert result == Framestamp.div(dividend, divisor, round: :closest)
+      end
+    end
+  end
+
+  describe "Postgres DIV/1 (floor divide) by rational" do
+    property "matches Framestamp.div/2 with round: trunc" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT DIV(?, ?) as r", type(^dividend, Framestamp), type(^divisor, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.div(dividend, divisor, round: :trunc)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        b = Framestamp.with_frames!(0, dividend.rate)
+
+        result =
+          run_schema_arithmatic_test(dividend, b, fn query ->
+            Query.select(query, [r], fragment("DIV(?, ?)", r.a, type(^divisor, PgRational)))
+          end)
+
+        assert result == Framestamp.div(dividend, divisor, round: :trunc)
+      end
+    end
+  end
+
+  describe "Postgres % (modulo) by rational" do
+    property "matches Framestamp.rem/3" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? % ?) as r", type(^dividend, Framestamp), type(^divisor, PgRational)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.rem(dividend, divisor)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              dividend <- StreamDataVtc.framestamp(),
+              divisor <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, 0)))
+            ) do
+        b = Framestamp.with_frames!(0, dividend.rate)
+
+        result =
+          run_schema_arithmatic_test(dividend, b, fn query ->
+            Query.select(query, [r], fragment("(? % ?)", r.a, type(^divisor, PgRational)))
+          end)
+
+        assert result == Framestamp.rem(dividend, divisor)
+      end
+    end
+  end
+
   @spec run_table_comparison_test(
           %{a: Framestamp.t(), b: Framestamp.t(), expected: boolean()},
           (Queryable.t() -> Query.t())
@@ -847,5 +1095,26 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     else
       assert is_nil(result)
     end
+  end
+
+  # Runs a test that inserts a records and then queries for that record, returning
+  # the result of `select`.
+  @spec run_schema_arithmatic_test(Framestamp.t(), Framestamp.t(), (Queryable.t() -> Query.t())) :: Framestamp.t()
+  defp run_schema_arithmatic_test(a, b, select) do
+    assert {:ok, %{id: record_id}} =
+             %FramestampSchema01{}
+             |> FramestampSchema01.changeset(%{a: a, b: b})
+             |> Repo.insert()
+
+    assert {:ok, result} =
+             FramestampSchema01
+             |> select.()
+             |> Query.where([r], r.id == ^record_id)
+             |> Repo.one!()
+             |> Framestamp.load()
+
+    assert %Framestamp{} = result
+
+    result
   end
 end

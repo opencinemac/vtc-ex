@@ -118,10 +118,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     create_func_minus()
     create_func_abs()
     create_func_round()
+    create_func_floor()
     create_func_add()
     create_func_sub()
     create_func_mult()
     create_func_div()
+    create_func_floor_div()
     create_func_modulo()
 
     create_op_add()
@@ -289,14 +291,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `rational.abs(rat)` function that returns the absolute value of the rational
+  Creates `ABS(rational)` function that returns the absolute value of the rational
   value.
   """
   @spec create_func_abs() :: :ok
   def create_func_abs do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        function(:abs, Migration.repo()),
+        "ABS",
         args: [input: :rational],
         returns: :rational,
         body: """
@@ -309,26 +311,46 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `rational.round(rat)` function that returns the rational input, rounded to
-  the nearest :bigint.
+  Creates `ROUND(rational)` function that returns the rational input, rounded to the
+  nearest :bigint.
   """
   @spec create_func_round() :: :ok
   def create_func_round do
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        function(:round, Migration.repo()),
+        "ROUND",
         args: [input: :rational],
         returns: :bigint,
         body: """
         CASE
           WHEN (input).numerator < 0 THEN
             input := #{function(:minus, Migration.repo())}(input);
-            RETURN #{function(:round, Migration.repo())}(input) * -1;
+            RETURN ROUND(input) * -1;
           WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
             RETURN (input).numerator / (input).denominator;
           ELSE
             RETURN ((input).numerator / (input).denominator) + 1;
         END CASE;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `FLOOR(rational)` function that returns the rational input as a `bigint`,
+  rounded towards zero, to match Postgres `FLOOR(real)` behavior.
+  """
+  @spec create_func_floor() :: :ok
+  def create_func_floor do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        "FLOOR",
+        args: [input: :rational],
+        returns: :bigint,
+        body: """
+        RETURN ((input).numerator / (input).denominator);
         """
       )
 
@@ -446,6 +468,27 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         returns: :rational,
         body: """
         RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `rational_private.div(a, b)` backing function for the `/` operator
+  between two rationals.
+  """
+  @spec create_func_floor_div() :: :ok
+  def create_func_floor_div do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        "DIV",
+        args: [a: :rational, b: :rational],
+        declares: [result: {:rational, "a / b"}],
+        returns: :bigint,
+        body: """
+        RETURN FLOOR(result);
         """
       )
 
