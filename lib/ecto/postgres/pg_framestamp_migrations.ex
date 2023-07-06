@@ -88,6 +88,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     create_function_schemas()
 
     create_func_with_seconds()
+    create_func_with_frames()
     create_func_frames()
 
     create_func_eq()
@@ -182,7 +183,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framestamp_private.with_seconds(seconds, rate)` that rounds `seconds` to the
+  Creates `framestamp.with_seconds(seconds, rate)` that rounds `seconds` to the
   nearest whole frame based on `rate` and returns a constructed framestamp.
   """
   @spec create_func_with_seconds() :: :ok
@@ -196,6 +197,27 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         body: """
         rounded := ROUND((rate).playback * seconds);
         RETURN (((rounded, 1)::rational / (rate).playback), rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp.with_frames(frames, rate)` that creates a framestamp for the
+  given frame count.
+  """
+  @spec create_func_with_frames() :: :ok
+  def create_func_with_frames do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        function(:with_frames, Migration.repo()),
+        args: [frames: :bigint, rate: :framerate],
+        declares: [seconds: {:rational, "(frames, 1)::rational / (rate).playback"}],
+        returns: :framestamp,
+        body: """
+        RETURN (seconds, rate);
         """
       )
 
