@@ -469,6 +469,30 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
+  describe "#Postgres framestamp.with_frames/2" do
+    property "matches Framestamp.with_frames/2" do
+      check all(
+              frames <- StreamData.integer(),
+              framerate <- StreamDataVtc.framerate()
+            ) do
+        expected = Framestamp.with_frames!(frames, framerate)
+
+        query =
+          Query.from(
+            f in fragment(
+              "SELECT framestamp.with_frames(?, ?) as r",
+              ^frames,
+              type(^framerate, Framerate)
+            ),
+            select: f.r
+          )
+
+        assert record = Repo.one!(query)
+        assert {:ok, ^expected} = Framestamp.load(record)
+      end
+    end
+  end
+
   describe "#Postgres framestamp.frames/1" do
     property "matches Framestamp.frames/2" do
       check all(framestamp <- StreamDataVtc.framestamp()) do
