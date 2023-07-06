@@ -88,6 +88,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     create_function_schemas()
 
     create_func_with_seconds()
+    create_func_frames()
 
     create_func_eq()
     create_func_neq()
@@ -99,6 +100,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     create_func_gte()
     create_func_cmp()
 
+    create_func_add()
+    create_func_sub()
+    create_func_mult_rational()
+    create_func_div_rational()
+    create_func_floor_div_rational()
+    create_func_modulo_rational()
+
     create_op_eq()
     create_op_neq()
     create_op_neq2()
@@ -108,6 +116,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     create_op_lte()
     create_op_gt()
     create_op_gte()
+
+    create_op_add()
+    create_op_sub()
+    create_op_mult_rational()
+    create_op_div_rational()
+    create_op_modulo_rational()
 
     create_op_class_btree()
   end
@@ -168,13 +182,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framestamp_private.new(seconds, rate)` that rounds `seconds` to the
+  Creates `framestamp_private.with_seconds(seconds, rate)` that rounds `seconds` to the
   nearest whole frame based on `rate` and returns a constructed framestamp.
   """
   @spec create_func_with_seconds() :: :ok
   def create_func_with_seconds do
-    rational_round = PgRational.Migrations.function(:round, Migration.repo())
-
     create_func =
       Postgres.Utils.create_plpgsql_function(
         function(:with_seconds, Migration.repo()),
@@ -182,8 +194,32 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         declares: [rounded: :bigint],
         returns: :framestamp,
         body: """
-        rounded := #{rational_round}((rate).playback * seconds);
+        rounded := ROUND((rate).playback * seconds);
         RETURN (((rounded, 1)::rational / (rate).playback), rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp.frames(framestamp)` that returns the frame's index in the timecode
+  stream where `0` is SMPTE midnight.
+
+  Equivalent to [Framestamp.frames/2](`Vtc.Framestamp.frames/2`) with `:round` set to
+  `trunc`.
+  """
+  @spec create_func_frames() :: :ok
+  def create_func_frames do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        function(:frames, Migration.repo()),
+        args: [value: :framestamp],
+        declares: [frames_rational: {:rational, "(value).seconds * (value).rate.playback"}],
+        returns: :bigint,
+        body: """
+        RETURN FLOOR(frames_rational);
         """
       )
 
@@ -204,7 +240,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         args: [a: :framestamp, b: :framestamp],
         returns: :boolean,
         body: """
-        RETURN (a).seconds = (b.seconds);
+        RETURN (a).seconds = (b).seconds;
         """
       )
 
@@ -243,7 +279,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         args: [a: :framestamp, b: :framestamp],
         returns: :boolean,
         body: """
-        RETURN (a).seconds <> (b.seconds);
+        RETURN (a).seconds <> (b).seconds;
         """
       )
 
@@ -361,6 +397,179 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         returns: :integer,
         body: """
         RETURN #{rational_cmp}((a).seconds, (b).seconds);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  ## ARITHMETIC FUNCTIONS
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.add(a, b)` that backs the `+` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.add/3`), if the `rate` of `a` and `b`
+  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_func_add() :: :ok
+  def create_func_add do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:add, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+        returns: :framestamp,
+        body: """
+        RETURN #{with_seconds}(seconds, (a).rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.add(a, b)` that backs the `-` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
+  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_func_sub() :: :ok
+  def create_func_sub do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:sub, Migration.repo()),
+        args: [a: :framestamp, b: :framestamp],
+        declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+        returns: :framestamp,
+        body: """
+        RETURN #{with_seconds}(seconds, (a).rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.mult(:framestamp, :rational)` that backs the `*` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_func_mult_rational() :: :ok
+  def create_func_mult_rational do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:mult, Migration.repo()),
+        args: [a: :framestamp, b: :rational],
+        declares: [seconds: {:rational, "(a).seconds * (b)"}],
+        returns: :framestamp,
+        body: """
+        RETURN #{with_seconds}(seconds, (a).rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.div(:framestamp, :rational)` that backs the `/` operator.
+
+  Just like [Framestamp.div/3](`Vtc.Framestamp.div/3`), `a`'s the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+
+  Unlike [Framestamp.div/3](`Vtc.Framestamp.div/3`), the result is rounded to the
+  *closest* frame, rather than truncating ala integer division.
+  """
+  @spec create_func_div_rational() :: :ok
+  def create_func_div_rational do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:div, Migration.repo()),
+        args: [a: :framestamp, b: :rational],
+        declares: [seconds: {:rational, "(a).seconds / (b)"}],
+        returns: :framestamp,
+        body: """
+        RETURN #{with_seconds}(seconds, (a).rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `DIV(:framestamp, :rational)` that returns a floored :framestamp to match
+  Postgres' DIV(real, real) behavior.
+
+  Just like [Framestamp.div/3](`Vtc.Framestamp.div/3`), this operation is done on the
+  frame count representation of the Framestamp, which is then used as the basis of a new
+  framestamp.
+  """
+  @spec create_func_floor_div_rational() :: :ok
+  def create_func_floor_div_rational do
+    framestamp_frames = function(:frames, Migration.repo())
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        "DIV",
+        args: [a: :framestamp, b: :rational],
+        declares: [
+          frames: {:bigint, "#{framestamp_frames}(a)"},
+          seconds: :rational
+        ],
+        returns: :framestamp,
+        body: """
+        frames := DIV((frames, 1)::rational, b);
+        seconds := (frames, 1)::rational / (a).rate.playback;
+        RETURN #{with_seconds}(seconds, (a).rate);
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp_private.modulo(:framestamp, :rational)` that backs the `%`
+  operator.
+
+  Just like [Framestamp.rem/3](`Vtc.Framestamp.rem/3`), this operation is done on the
+  frame count representation of the Framestamp, which is then used as the basis of a new
+  framestamp.
+  """
+  @spec create_func_modulo_rational() :: :ok
+  def create_func_modulo_rational do
+    framestamp_frames = function(:frames, Migration.repo())
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:modulo, Migration.repo()),
+        args: [a: :framestamp, b: :rational],
+        declares: [
+          frames: {:bigint, "#{framestamp_frames}(a)"},
+          seconds: :rational
+        ],
+        returns: :framestamp,
+        body: """
+        frames := ROUND((frames, 1)::rational % b);
+        seconds := (frames, 1)::rational / (a).rate.playback;
+        RETURN #{with_seconds}(seconds, (a).rate);
         """
       )
 
@@ -540,6 +749,114 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         private_function(:gte, Migration.repo()),
         commutator: :<=,
         negator: :<
+      )
+
+    Migration.execute(create_op)
+  end
+
+  ## ARITHMETIC OPERATORS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `+` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.add/3`), if the `rate` of `a` and `b`
+  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_op_add() :: :ok
+  def create_op_add do
+    create_op =
+      Postgres.Utils.create_operator(
+        :+,
+        :framestamp,
+        :framestamp,
+        private_function(:add, Migration.repo())
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `-` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
+  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_op_sub() :: :ok
+  def create_op_sub do
+    create_op =
+      Postgres.Utils.create_operator(
+        :-,
+        :framestamp,
+        :framestamp,
+        private_function(:sub, Migration.repo())
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :rational `*` operator.
+
+  Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+  """
+  @spec create_op_mult_rational() :: :ok
+  def create_op_mult_rational do
+    create_op =
+      Postgres.Utils.create_operator(
+        :*,
+        :framestamp,
+        :rational,
+        private_function(:mult, Migration.repo())
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :rational `/` operator.
+
+  Just like [Framestamp.div/3](`Vtc.Framestamp.div/3`), `a`'s the internal `seconds`
+  field will be rounded to the nearest whole-frame to ensure data integrity.
+
+  Unlike [Framestamp.div/3](`Vtc.Framestamp.div/3`), the result is rounded to the
+  *closest* frame, rather than truncating ala integer division.
+  """
+  @spec create_op_div_rational() :: :ok
+  def create_op_div_rational do
+    create_op =
+      Postgres.Utils.create_operator(
+        :/,
+        :framestamp,
+        :rational,
+        private_function(:div, Migration.repo())
+      )
+
+    Migration.execute(create_op)
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :rational `%` operator.
+
+  Just like [Framestamp.rem/3](`Vtc.Framestamp.rem/3`), this operation is done on the
+  frame count representation of the Framestamp, which is then used as the basis of a new
+  framestamp.
+  """
+  @spec create_op_modulo_rational() :: :ok
+  def create_op_modulo_rational do
+    create_op =
+      Postgres.Utils.create_operator(
+        :%,
+        :framestamp,
+        :rational,
+        private_function(:modulo, Migration.repo())
       )
 
     Migration.execute(create_op)
