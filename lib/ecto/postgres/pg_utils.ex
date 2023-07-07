@@ -1,6 +1,8 @@
 defmodule Vtc.Ecto.Postgres.Utils do
   @moduledoc false
 
+  alias Ecto.Migration
+
   ## Exposes a macro for defining modules that will only be compiled if the caller
   ## has set `:vtc, Postrgrex, :include?` to `true` in their application config.
 
@@ -222,6 +224,38 @@ defmodule Vtc.Ecto.Postgres.Utils do
       THEN null;
     END $wrapper$;
     """
+  end
+
+  @doc """
+  Creates a public and private schema for a type based on the repo's confguration.
+  """
+  @spec create_type_schemas(atom()) :: :ok
+  def create_type_schemas(type_name) do
+    functions_schema = get_type_config(Migration.repo(), type_name, :functions_schema, :public)
+
+    if functions_schema != :public do
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
+    end
+
+    functions_private_schema = get_type_config(Migration.repo(), type_name, :functions_private_schema, :public)
+
+    if functions_private_schema != :public do
+      Migration.execute("""
+        DO $$ BEGIN
+          CREATE SCHEMA #{functions_private_schema};
+          EXCEPTION WHEN duplicate_schema
+            THEN null;
+        END $$;
+      """)
+    end
+
+    :ok
   end
 
   @doc """

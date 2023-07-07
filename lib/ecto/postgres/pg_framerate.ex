@@ -129,6 +129,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate do
   Can be used in migrations as the fields type.
   """
   @impl Ecto.Type
+  @spec type() :: atom()
   def type, do: :framerate
 
   @typedoc """

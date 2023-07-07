@@ -23,6 +23,11 @@ config :vtc, Vtc.Test.Support.Repo,
       functions_schema: :framestamp,
       functions_private_schema: :framestamp_private,
       functions_prefix: ""
+    ],
+    pg_framestamp_range: [
+      functions_schema: :framestamp_range,
+      functions_private_schema: :framestamp_range_private,
+      functions_prefix: ""
     ]
   ]
 

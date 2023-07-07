@@ -7,7 +7,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   """
   alias Ecto.Migration
   alias Vtc.Ecto.Postgres
-  alias Vtc.Ecto.Postgres.PgRational
 
   require Ecto.Migration
 
@@ -148,34 +147,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas do
-    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_framerate, :functions_schema, :public)
-
-    if functions_schema != :public do
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA #{functions_schema};
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
-    end
-
-    functions_private_schema =
-      Postgres.Utils.get_type_config(Migration.repo(), :pg_framerate, :functions_private_schema, :public)
-
-    if functions_private_schema != :public do
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA #{functions_private_schema};
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
-    end
-
-    :ok
-  end
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_framerate)
 
   @doc section: :migrations_functions
   @doc """

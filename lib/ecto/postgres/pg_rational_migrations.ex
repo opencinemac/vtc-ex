@@ -182,34 +182,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas do
-    functions_schema = Postgres.Utils.get_type_config(Migration.repo(), :pg_rational, :functions_schema, :public)
-
-    if functions_schema != :public do
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA #{functions_schema};
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
-    end
-
-    functions_private_schema =
-      Postgres.Utils.get_type_config(Migration.repo(), :pg_rational, :functions_private_schema, :public)
-
-    if functions_private_schema != :public do
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA #{functions_private_schema};
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
-    end
-
-    :ok
-  end
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_rational)
 
   @doc section: :migrations_private_functions
   @doc """
