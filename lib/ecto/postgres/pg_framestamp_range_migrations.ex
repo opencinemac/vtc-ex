@@ -145,24 +145,32 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   """
   @spec create_func_canonicalization() :: :ok
   def create_func_canonicalization do
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE framestamp_range;
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
+
     framestamp_with_frames = PgFramestamp.Migrations.function(:with_frames, Migration.repo())
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
         private_function(:canonicalization, Migration.repo()),
-        args: [input: :framestamp_range, range_type: :text],
+        args: [input: :framestamp_range],
         declares: [single_frame: {:framestamp, "#{framestamp_with_frames}(1, (LOWER(input)).rate)"}],
         returns: :framestamp_range,
         body: """
         CASE
-          WHEN range_type = '[)' THEN
+          WHEN LOWER_INC(input) AND NOT UPPER_INC(input) THEN
             RETURN input;
-          WHEN range_type = '[]' THEN
+          WHEN LOWER_INC(input) AND UPPER_INC(input) THEN
             RETURN framestamp_range(LOWER(input), UPPER(INPUT) + single_frame, '[)');
-          WHEN range_type = '()' THEN
-            RETURN framestamp_range(LOWER(input) + single_frame, UPPER(INPUT), '[)');
-          WHEN range_type = '(]' THEN
+          WHEN NOT LOWER_INC(input) AND UPPER_INC(input) THEN
             RETURN framestamp_range(LOWER(input) + single_frame, UPPER(INPUT) + single_frame, '[)');
+          WHEN NOT LOWER_INC(input) AND NOT UPPER_INC(input) THEN
+            RETURN framestamp_range(LOWER(input) + single_frame, UPPER(INPUT), '[)');
         END CASE;
         """
       )
