@@ -20,7 +20,9 @@ defmodule Vtc.Framestamp.Range do
   In mathematical notation, inclusive ranges are `[in, out]`, while exclusive ranges are
   `[in, out)`.
   """
+  use Vtc.Ecto.Postgres.Utils
 
+  alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Framestamp
   alias Vtc.Source.Frames
 
@@ -560,6 +562,26 @@ defmodule Vtc.Framestamp.Range do
       %__MODULE__{} = range -> with_out_type(range, out_type)
       value -> value
     end)
+  end
+
+  when_pg_enabled do
+    use Ecto.Type
+
+    @impl Ecto.Type
+    @spec type() :: atom()
+    defdelegate type, to: PgFramestamp.Range
+
+    @impl Ecto.Type
+    @spec cast(t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, t()} | :error
+    defdelegate cast(value), to: PgFramestamp.Range
+
+    @impl Ecto.Type
+    @spec load(PgFramestamp.Range.db_record()) :: {:ok, t()} | :error
+    defdelegate load(value), to: PgFramestamp.Range
+
+    @impl Ecto.Type
+    @spec dump(t()) :: {:ok, PgFramestamp.Range.db_record()} | :error
+    defdelegate dump(value), to: PgFramestamp.Range
   end
 end
 

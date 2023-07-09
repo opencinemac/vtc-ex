@@ -19,6 +19,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalIndexTest do
   alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.Test.Support.FramestampSchema01
+  alias Vtc.Test.Support.FramestampSchema02
   alias Vtc.Test.Support.RationalsSchema02
 
   require Ecto.Query
@@ -146,6 +147,52 @@ defmodule Vtc.Ecto.Postgres.PgRationalIndexTest do
         |> then(&Repo.explain(:all, &1))
 
       assert gte_plan =~ expected_plan_snippet
+    end
+  end
+
+  describe "PgFramestampRange | framestamp_fastrange" do
+    test "GIST indexing" do
+      inserted =
+        1..20_000
+        |> Enum.map(fn frames ->
+          FramestampSchema02.changeset(%FramestampSchema02{}, %{
+            id: Ecto.UUID.generate(),
+            a: Framestamp.with_frames!(frames - div(frames, 2), Rates.f24()),
+            b: Framestamp.with_frames!(frames, Rates.f24())
+          })
+        end)
+        |> Enum.map(&Changeset.apply_action!(&1, :insert))
+        |> Enum.map(&Map.take(&1, [:id, :a, :b]))
+        |> then(&Repo.insert_all(FramestampSchema02, &1))
+
+      assert inserted == {20_000, nil}
+
+      expected_plan_snippet = "Index Scan using framestamps_a_b_range on framestamps_02"
+
+      overlaps_plan =
+        FramestampSchema02
+        |> Query.from(as: :events_01)
+        |> Query.join(
+          :inner,
+          [events_01: events_01],
+          events_02 in FramestampSchema02,
+          as: :events_02,
+          on:
+            fragment(
+              """
+              framestamp_fastrange(?, ?)
+              && framestamp_fastrange(?, ?)
+              """,
+              events_01.a,
+              events_01.b,
+              events_02.a,
+              events_02.b
+            )
+        )
+        |> Query.select([events_01: events_01, events_02: events_02], {events_01.id, events_02.id})
+        |> then(&Repo.explain(:all, &1))
+
+      assert overlaps_plan =~ expected_plan_snippet
     end
   end
 end

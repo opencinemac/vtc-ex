@@ -63,6 +63,53 @@ defmodule Vtc.Test.Support.TestCase do
   defp setup_framestamp({frames, rate}), do: Framestamp.with_frames!(frames, rate)
   defp setup_framestamp(frames), do: setup_framestamp({frames, Rates.f23_98()})
 
+  @typedoc """
+  Shorthand way to specify a {timecode_in, timecode_out} in a test case for a
+  setup function to build the framestamps and ranges.
+
+  Timecodes should be specified in strings and the setup will choose a framerate to
+  apply.
+  """
+  @type range_shorthand() ::
+          {String.t(), String.t()}
+          | {String.t(), String.t(), Framerate.t()}
+          | {String.t(), String.t(), Range.out_type()}
+          | {String.t(), String.t(), Framerate.t(), Range.out_type()}
+
+  @doc """
+  Convert shorthand range specifications in test context into Framestamp.Range values.
+  """
+  @spec setup_ranges(%{optional(:ranges) => [Map.key()]}) :: Keyword.t()
+  def setup_ranges(%{ranges: attrs} = context) do
+    context
+    |> Map.take(attrs)
+    |> Enum.into([])
+    |> Enum.map(fn {name, values} -> {name, setup_range(values)} end)
+  end
+
+  def setup_ranges(context), do: context
+
+  @doc """
+  Setup an individual range from a shorthand value.
+  """
+  @spec setup_range(range_shorthand() | any()) :: Range.t() | any()
+  def setup_range({in_stamp, out_stamp, rate, out_type}) do
+    in_stamp = Framestamp.with_frames!(in_stamp, rate)
+    out_stamp = Framestamp.with_frames!(out_stamp, rate)
+
+    %Range{in: in_stamp, out: out_stamp, out_type: out_type}
+  end
+
+  def setup_range({in_stamp, out_stamp}) when is_binary(in_stamp) and is_binary(out_stamp),
+    do: setup_range({in_stamp, out_stamp, Rates.f23_98()})
+
+  def setup_range({in_stamp, out_stamp, %Framerate{} = rate}), do: setup_range({in_stamp, out_stamp, rate, :exclusive})
+
+  def setup_range({in_stamp, out_stamp, out_type}) when is_atom(out_type),
+    do: setup_range({in_stamp, out_stamp, Rates.f23_98(), out_type})
+
+  def setup_range(value), do: value
+
   @doc """
   Mathematically negates a list of keys in the context.
 
@@ -234,7 +281,10 @@ defmodule Vtc.Test.Support.TestCase do
     bindings =
       test_case
       |> Map.take(fields)
-      |> Enum.map(fn {key, value} -> {key, inspect(value)} end)
+      |> Enum.map(fn
+        {key, value} when is_binary(value) -> {key, value}
+        {key, value} -> {key, inspect(value)}
+      end)
       |> Keyword.new()
 
     EEx.eval_string(name, bindings)
