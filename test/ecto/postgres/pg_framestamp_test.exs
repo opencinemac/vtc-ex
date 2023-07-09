@@ -530,7 +530,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> = <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> = <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 == :eq))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a == r.b) end)
@@ -560,7 +560,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 == :eq and test_case.a.rate == test_case.b.rate))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? === ?", r.a, r.b)) end)
@@ -605,14 +605,18 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "<> can be used in WHERE table.field | <%= a %> <> <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<> can be used in WHERE table.field | <%= a %> <> <%= b %>",
+               CommonTables.framestamp_compare(),
+               test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 != :eq))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? <> ?", r.a, r.b)) end)
     end
 
     @tag framestamps: [:a, :b]
-    table_test "!= can be used in WHERE table.field | <%= a %> != <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "!= can be used in WHERE table.field | <%= a %> != <%= b %>",
+               CommonTables.framestamp_compare(),
+               test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 != :eq))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a != r.b) end)
@@ -642,7 +646,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> === <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 != :eq or test_case.a.rate != test_case.b.rate))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], fragment("? !=== ?", r.a, r.b)) end)
@@ -670,7 +674,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> < <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> < <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 == :lt))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a < r.b) end)
@@ -698,7 +702,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> <= <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> <= <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 in [:lt, :eq]))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a <= r.b) end)
@@ -726,7 +730,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> > <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> > <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 == :gt))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a > r.b) end)
@@ -754,7 +758,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.framestamp_compare(), test_case do
       test_case
       |> Map.update(:expected, nil, &(&1 in [:gt, :eq]))
       |> run_table_comparison_test(fn query -> Query.where(query, [r], r.a >= r.b) end)
@@ -790,7 +794,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
 
     @tag framestamps: [:a, :b]
-    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "can be used in WHERE table.field | <%= a %> >= <%= b %>", CommonTables.framestamp_compare(), test_case do
       expected =
         case test_case.expected do
           :lt -> -1
@@ -868,7 +872,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.add_table(), test_case do
+    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -916,7 +920,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.subtract_table(), test_case do
+    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case do
       %{a: a, b: b, expected: expected} = test_case
 
       query =

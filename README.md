@@ -164,13 +164,13 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
       - [X] Native indexing support
     - Framerate[X]
     - Timecode[X]
-      - [ ] Native comparison operators
-      - [ ] Native arithmatic operators
-      - [ ] Native indexing Support
-      - [ ] Native inspection functions
+      - [X] Native comparison operators
+      - [X] Native arithmatic operators
+      - [X] Native indexing Support
+      - [X] Native inspection functions
     - Range
-      - [ ] Native indexing support
-      - [ ] Native inspection functions
+      - [X] Native indexing support
+      - [X] Native inspection functions
 
 ## Attributions
 

@@ -66,41 +66,37 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b]
 
-    table_test "<%= a %> is <%= expected %> <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %> is <%= expected %> <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.compare(a, b) == expected
     end
 
-    name = "<%= a %> is <%= expected %> <%= b %> | b = tc string"
-
-    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test "<%= a %> is <%= expected %> <%= b %> | b = tc string", CommonTables.framestamp_compare(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
 
       assert Framestamp.compare(a, b) == expected
     end
 
-    name = "<%= a %> is <%= expected %> <%= b %> | a = tc string"
-
-    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test "<%= a %> is <%= expected %> <%= b %> | a = tc string", CommonTables.framestamp_compare(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
 
       assert Framestamp.compare(a, b) == expected
     end
 
-    name = "<%= a %> is <%= expected %> <%= b %> | b = frames int"
-
-    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test "<%= a %> is <%= expected %> <%= b %> | b = frames int", CommonTables.framestamp_compare(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
 
       assert Framestamp.compare(a, b) == expected
     end
 
-    name = "<%= a %> is <%= expected %> <%= b %> | a = frames int"
-
-    table_test name, CommonTables.compare_table(), test_case, if: is_binary(test_case.a) and is_binary(test_case.b) do
+    table_test "<%= a %> is <%= expected %> <%= b %> | a = frames int", CommonTables.framestamp_compare(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
 
@@ -126,7 +122,7 @@ defmodule Vtc.FramestampTest.Ops do
       refute Framestamp.eq?(a, b)
     end
 
-    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %>, <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: cmp_expected} = test_case
       expected = cmp_expected == :eq
 
@@ -159,7 +155,7 @@ defmodule Vtc.FramestampTest.Ops do
       refute Framestamp.lt?(a, b)
     end
 
-    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %>, <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: cmp_expected} = test_case
       expected = cmp_expected == :lt
 
@@ -192,7 +188,7 @@ defmodule Vtc.FramestampTest.Ops do
       refute Framestamp.lte?(a, b)
     end
 
-    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %>, <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: cmp_expected} = test_case
       expected = cmp_expected in [:lt, :eq]
 
@@ -225,7 +221,7 @@ defmodule Vtc.FramestampTest.Ops do
       refute Framestamp.gt?(a, b)
     end
 
-    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %>, <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: cmp_expected} = test_case
       expected = cmp_expected == :gt
 
@@ -258,7 +254,7 @@ defmodule Vtc.FramestampTest.Ops do
       refute Framestamp.gte?(a, b)
     end
 
-    table_test "<%= a %>, <%= b %>", CommonTables.compare_table(), test_case do
+    table_test "<%= a %>, <%= b %>", CommonTables.framestamp_compare(), test_case do
       %{a: a, b: b, expected: cmp_expected} = test_case
       expected = cmp_expected in [:gt, :eq]
 
@@ -270,12 +266,12 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.add_table(), test_case do
+    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", CommonTables.add_table(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", CommonTables.framestamp_add(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -283,7 +279,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", CommonTables.add_table(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", CommonTables.framestamp_add(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -291,7 +287,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", CommonTables.add_table(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", CommonTables.framestamp_add(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -299,7 +295,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", CommonTables.add_table(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", CommonTables.framestamp_add(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
@@ -426,12 +422,12 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.subtract_table(), test_case do
+    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case do
       %{a: a, b: b, expected: expected} = test_case
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", CommonTables.subtract_table(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", CommonTables.framestamp_subtract(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -439,7 +435,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", CommonTables.subtract_table(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", CommonTables.framestamp_subtract(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -447,7 +443,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", CommonTables.subtract_table(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", CommonTables.framestamp_subtract(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -455,7 +451,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", CommonTables.subtract_table(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", CommonTables.framestamp_subtract(), test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)

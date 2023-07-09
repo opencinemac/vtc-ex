@@ -60,7 +60,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     @typedoc """
     Describes the opts that can be passed to `framerate/1`.
     """
-    @type rate_opts() :: [type: :whole | :fractional | :drop | :non_drop]
+    @type framerate_opts() :: [type: :whole | :fractional | :drop | :non_drop]
 
     @doc """
     Yields Vtc.Framerates, always yields true-frame or NTSC; never a mixture of the two.
@@ -91,7 +91,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     end
     ```
     """
-    @spec framerate(rate_opts()) :: StreamData.t(Framerate.t())
+    @spec framerate(framerate_opts()) :: StreamData.t(Framerate.t())
     def framerate(opts \\ []) do
       ntscs =
         case Keyword.get(opts, :type, [:whole, :fractional, :non_drop, :drop]) do
@@ -125,6 +125,8 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
       end)
     end
 
+    @type framestamp_opts() :: [non_negative?: boolean(), rate: Framerate.t(), rate_opts: framerate_opts()]
+
     @doc """
     Yields Vtc.Framestamp values.
 
@@ -149,7 +151,7 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     end
     ```
     """
-    @spec framestamp(non_negative?: boolean(), rate: Framerate.t(), rate_opts: rate_opts()) ::
+    @spec framestamp(framestamp_opts()) ::
             StreamData.t(Framestamp.t())
     def framestamp(opts \\ []) do
       non_negative? = Keyword.get(opts, :non_negative?, false)
@@ -189,6 +191,62 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     end
 
     defp clip_drop_frames(frames, _), do: frames
+
+    @doc """
+      Yields Vtc.Framestamp.Range values.
+
+    ## Options
+
+    - `rate_opts`: The options to pass to the `framerate/1` generator for this range.
+
+    - `stamp_opts`: The options to pass to the `framestamp/1` generators for this range.
+
+    - `filter_empty?`: If `true`, filters 0-length ranges from the output.
+      Default: `false`.
+
+    ## Examples
+
+    ```elixir
+    property "returns input of negate/1" do
+      check all(positive <- StreamDataVtc.framestamp_range()) do
+        ...
+      end
+    end
+    ```
+    """
+    @spec framestamp_range(
+            rate_opts: framerate_opts(),
+            stamp_opts: framestamp_opts(),
+            filter_empty?: boolean()
+          ) :: StreamData.t(Framestamp.Range.t())
+    def framestamp_range(opts \\ []) do
+      rate_opts = Keyword.get(opts, :rate_opts, [])
+      stamp_opts = Keyword.get(opts, :stamp_opts, [])
+      filter_empty? = Keyword.get(opts, :filter_empty?, false)
+
+      value_stream =
+        StreamData.bind(framerate(rate_opts), fn rate ->
+          stamp_opts = Keyword.put_new(stamp_opts, :rate, rate)
+
+          {framestamp(stamp_opts), framestamp(stamp_opts)}
+          |> StreamData.tuple()
+          |> StreamData.map(fn {stamp_in, stamp_out} ->
+            stamp_in = Enum.min([stamp_in, stamp_out], Framestamp)
+            stamp_out = Enum.max([stamp_in, stamp_out], Framestamp)
+
+            Framestamp.Range.new!(stamp_in, stamp_out)
+          end)
+        end)
+
+      if filter_empty? do
+        StreamData.filter(value_stream, fn range ->
+          duration = Framestamp.Range.duration(range)
+          not Ratio.eq?(duration.seconds, 0)
+        end)
+      else
+        value_stream
+      end
+    end
 
     @doc """
     Runs a test, but does not fail if the operation causes a drop-frame overflow

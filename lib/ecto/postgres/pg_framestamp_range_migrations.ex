@@ -26,6 +26,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   ```sql
   CREATE TYPE framestamp_range AS RANGE (
     subtype = framestamp,
+    subtype_diff = framestamp_range_private.subtype_diff
+    canonical = framestamp_range_private.canonicalization
+  );
+  ```
+
+  ```sql
+  CREATE TYPE framestamp_fastrange AS RANGE (
+    subtype = double precision,
+    subtype_diff = float8mi
   );
   ```
 
@@ -86,33 +95,131 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     create_function_schemas()
 
     create_func_subtype_diff()
+    create_type_framestamp_range()
     create_func_canonicalization()
 
-    create_type_framestamp_range()
+    create_type_framestamp_fastrange()
+    create_func_framestamp_fastrange_from_stamps()
+    create_func_framestamp_fastrange_from_range()
+
+    # There is a limitation with PL/pgSQL where shell-types cannot be used as either
+    # arguments OR return types.
+    #
+    # However, in the user-facing API flow, the canonical function must be created
+    # before the range type with a shell type, then passed to the range type upon
+    # construction. Further, ALTER TYPE does not work on range functions out-of-the
+    # gate, so we cannot add it later... through the public API.
+    #
+    # Instead we are going to edit the pg_catalog directly and supply the function
+    # after-the-fact ourselves. Since this will all happen in a single transaction
+    # it should be functionally equivalent to creating it on the type as part of the
+    # initial call.
+    canonicalization = private_function(:canonicalization, Migration.repo())
+
+    Migration.execute("""
+      UPDATE pg_catalog.pg_range
+      SET
+          rngcanonical = '#{canonicalization}'::regproc
+      WHERE
+          pg_catalog.pg_range.rngcanonical = '-'::regproc
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngsubtype
+              AND pg_catalog.pg_type.typname = 'framestamp'
+          )
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngtypid
+              AND pg_catalog.pg_type.typname = 'framestamp_range'
+          );
+    """)
+
+    :ok
   end
 
   @doc section: :migrations_types
   @doc """
-  Adds `framestamp_range` composite type.
+  Adds `framestamp_range` RANGE type.
   """
   @spec create_type_framestamp_range() :: :ok
   def create_type_framestamp_range do
     subtype_diff = private_function(:subtype_diff, Migration.repo())
 
-    # As of now, pl/pgsql functions cannot be used to
-    canonicalization = private_function(:canonicalization, Migration.repo())
-
     Migration.execute("""
       DO $$ BEGIN
         CREATE TYPE framestamp_range AS RANGE (
           subtype = framestamp,
-          subtype_diff = #{subtype_diff},
-          canonical= #{canonicalization}
+          subtype_diff = #{subtype_diff}
         );
         EXCEPTION WHEN duplicate_object
           THEN null;
       END $$;
     """)
+  end
+
+  @doc section: :migrations_types
+  @doc """
+  Adds `framestamp_fastrange` RANGE type that uses double-precision floats under the
+  hood.
+  """
+  @spec create_type_framestamp_fastrange() :: :ok
+  def create_type_framestamp_fastrange do
+    Migration.execute("""
+      DO $$ BEGIN
+        CREATE TYPE framestamp_fastrange AS RANGE (
+            subtype = double precision,
+            subtype_diff = float8mi
+        );
+        EXCEPTION WHEN duplicate_object
+          THEN null;
+      END $$;
+    """)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp_fastrange(:framestamp, framestamp)` to construct fast ranges out
+  of framestamps.
+  """
+  @spec create_func_framestamp_fastrange_from_stamps() :: :ok
+  def create_func_framestamp_fastrange_from_stamps do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        "framestamp_fastrange",
+        args: [lower: :framestamp, upper: :framestamp],
+        returns: :framestamp_fastrange,
+        body: """
+        RETURN framestamp_fastrange(
+          CAST((lower).seconds as double precision),
+          CAST((upper).seconds as double precision)
+        );
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp_fastrange(:framestamp_range)` to construct fast ranges out
+  of the slower `framestamp_range` type.
+  """
+  @spec create_func_framestamp_fastrange_from_range() :: :ok
+  def create_func_framestamp_fastrange_from_range do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        "framestamp_fastrange",
+        args: [input: :framestamp_range],
+        returns: :framestamp_fastrange,
+        body: """
+        RETURN framestamp_fastrange(
+          CAST((LOWER(input)).seconds as double precision),
+          CAST((UPPER(input)).seconds as double precision)
+        );
+        """
+      )
+
+    Migration.execute(create_func)
   end
 
   @doc section: :migrations_private_functions
@@ -126,10 +233,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       Postgres.Utils.create_plpgsql_function(
         private_function(:subtype_diff, Migration.repo()),
         args: [a: :framestamp, b: :framestamp],
-        declares: [diff: {:rational, "a - b"}],
+        declares: [diff: {:framestamp, "a - b"}],
         returns: :"double precision",
         body: """
-        RETURN CAST(diff as double precision);
+        RETURN CAST((diff).seconds as double precision);
         """
       )
 
@@ -154,23 +261,40 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     """)
 
     framestamp_with_frames = PgFramestamp.Migrations.function(:with_frames, Migration.repo())
+    framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds, Migration.repo())
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
         private_function(:canonicalization, Migration.repo()),
         args: [input: :framestamp_range],
-        declares: [single_frame: {:framestamp, "#{framestamp_with_frames}(1, (LOWER(input)).rate)"}],
+        declares: [
+          single_frame: {:framestamp, "#{framestamp_with_frames}(1, (LOWER(input)).rate)"},
+          upper_stamp: {:framestamp, "UPPER(input)"},
+          lower_stamp: {:framestamp, "LOWER(input)"},
+          rates_match: {:boolean, "(lower_stamp).rate === (upper_stamp).rate"},
+          new_rate: :framerate
+        ],
         returns: :framestamp_range,
         body: """
         CASE
-          WHEN LOWER_INC(input) AND NOT UPPER_INC(input) THEN
+          WHEN LOWER_INC(input) AND NOT UPPER_INC(input) AND rates_match THEN
             RETURN input;
+
+          WHEN LOWER_INC(input) AND NOT UPPER_INC(input) THEN
+            new_rate := GREATEST((lower_stamp).rate, (upper_stamp).rate);
+            lower_stamp := #{framestamp_with_seconds}((lower_stamp).seconds, new_rate);
+            upper_stamp := #{framestamp_with_seconds}((upper_stamp).seconds, new_rate);
+            RETURN framestamp_range(lower_stamp, upper_stamp, '[)');
+
           WHEN LOWER_INC(input) AND UPPER_INC(input) THEN
-            RETURN framestamp_range(LOWER(input), UPPER(INPUT) + single_frame, '[)');
+            RETURN framestamp_range(lower_stamp, upper_stamp + single_frame, '[)');
+
           WHEN NOT LOWER_INC(input) AND UPPER_INC(input) THEN
-            RETURN framestamp_range(LOWER(input) + single_frame, UPPER(INPUT) + single_frame, '[)');
+            RETURN framestamp_range(lower_stamp + single_frame, upper_stamp + single_frame, '[)');
+
           WHEN NOT LOWER_INC(input) AND NOT UPPER_INC(input) THEN
-            RETURN framestamp_range(LOWER(input) + single_frame, UPPER(INPUT), '[)');
+            RETURN framestamp_range(lower_stamp + single_frame, upper_stamp, '[)');
+
         END CASE;
         """
       )

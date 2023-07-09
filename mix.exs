@@ -37,7 +37,9 @@ defmodule Vtc.MixProject do
             Vtc.Ecto.Postgres.PgFramerate,
             Vtc.Ecto.Postgres.PgFramerate.Migrations,
             Vtc.Ecto.Postgres.PgFramestamp,
-            Vtc.Ecto.Postgres.PgFramestamp.Migrations
+            Vtc.Ecto.Postgres.PgFramestamp.Migrations,
+            Vtc.Ecto.Postgres.PgFramestamp.Range,
+            Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations
           ],
           "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
         ],

@@ -1,6 +1,141 @@
 use Vtc.Ecto.Postgres.Utils
 
 defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range do
+  @moduledoc """
+  Defines a custom Range type for dealing with Framestamp ranges.
+
+  The new range types are defined as follows:
+
+  ```sql
+  CREATE TYPE framestamp_range AS RANGE (
+    subtype = framestamp,
+    subtype_diff = framestamp_range_private.subtype_diff
+    canonical = framestamp_range_private.canonicalization
+  );
+  ```
+
+  Framestamp ranges can be created in SQL expressions like so:
+
+  ```sql
+  SELECT framestamp_range(stamp_1, stamp_2, '[)')
+  ```
+
+  Framestamp fastranges can be created in SQL expressions like so:
+
+  ```sql
+  SELECT framestamp_fastrange(stamp_1, stamp_2)
+  ```
+
+  > #### `Indexing` {: .warning}
+  >
+  > `framestamp_range` is currently VERY slow when using a GiST index, consider using
+  > a [framestamp_fastrange](Vtc.Ecto.Postgres.PgFramestamp.Range.html#module-framestamp-fast-range)
+  > instead.
+
+  ## Canonicalization
+
+  Postgres `framestamp_range` values are ALWAYS coerced to *exclusive out* ranges. That
+  means that even if a [Framestamp.Range](`Vtc.Framestamp.Range`) has `:out_type` set to
+  `:inclusive` when it is sent to the database, it will come back from the database
+  with `:out_type` set to `:exclusive`, and the `:out` field will be adjusted
+  accordingly.
+
+  Further, when a Range operation, like a union, would result in an in and out point
+  with different framerates, the higher rate will always be selected.
+
+  This unlike the application behavior of `Vtc.Framestamp.Range`, which always inherets
+  the rate of the value that apears on the left side. This behavior may be updated to
+  match Vtc's application behavior in the future.
+
+  ## Framestamp Fast Range
+
+  In addition to `framestamp_range`, a `framestamp_fastrange` type is defined as well:
+
+  ```sql
+  CREATE TYPE framestamp_fastrange AS RANGE (
+    subtype = double precision,
+    subtype_diff = float8mi
+  );
+  ```
+
+  Fast ranges are meant to support GiST indexing, as in most cases, `framestamp_range`
+  will be VERY slow to index.
+
+  > #### `Frame-accurate` {: .warning}
+  >
+  > Unlike `framestamp_range`, `framestamp_fastrange` is NOT frame-accurate and should
+  > not be used where frame-accuracy is desired or required.
+
+  ## Field migrations
+
+  You can create `framestamp_range` fields during a migration like so:
+
+  ```elixir
+  alias Vtc.Framerate
+
+  create table("framestamp_ranges") do
+    add(:a, Framestamp.Range.type())
+    add(:b, Framestamp.Range.type())
+  end
+  ```
+
+  [Framestamp.Range](`Vtc.Framestamp.Range`) re-exports the `Ecto.Type` implementation
+  of this module, and can be used any place this module would be used.
+
+  ## Schema fields
+
+  Then in your schema module:
+
+  ```elixir
+  defmodule MyApp.FramestampRanges do
+  @moduledoc false
+  use Ecto.Schema
+
+  alias Vtc.Framestamp
+
+  @type t() :: %__MODULE__{
+          a: Framestamp.Range.t(),
+          b: Framestamp.Range.t()
+        }
+
+  schema "rationals_01" do
+    field(:a, Framestamp.Range)
+    field(:b, Framestamp.Range)
+  end
+  ```
+
+  ## Changesets
+
+  With the above setup, changesets should just work:
+
+  ```elixir
+  def changeset(schema, attrs) do
+    schema
+    |> Changeset.cast(attrs, [:a, :b])
+    |> Changeset.validate_required([:a, :b])
+  end
+  ```
+
+  Framestamp.Range values can be cast from the following values in changesets:
+
+  - [Framerate](`Vtc.Framestamp.Range`) structs.
+
+  ## Fragments
+
+  Framerate values must be explicitly cast using
+  [type/2](https://hexdocs.pm/ecto/Ecto.Query.html#module-interpolation-and-casting):
+
+  ```elixir
+  stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+  stamp_range = Framestamp.new!(stamp_in, stamp_out)
+
+  query = Query.from(
+    f in fragment("SELECT ? as r", type(^stamp_range, Framerate.Range)), select: f.r
+  )
+  ```
+  """
+
   use Ecto.Type
 
   alias Vtc.Ecto.Postgres.PgFramestamp
