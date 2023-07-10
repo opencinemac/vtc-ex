@@ -1,0 +1,323 @@
+# Ecto Quickstart
+
+[Vtc](https://hexdocs.pm/vtc) ships with a numer of 
+[Ecto custom types](https://hexdocs.pm/ecto/Ecto.Type.html) designed to work with 
+Postgres databases connected by [Postgrex](https://hexdocs.pm/postgrex/readme.html).
+
+## Ecto types
+
+The custom Ecto & Postgres types provided by Vtc are:
+
+#### [PgRational](`Vtc.Ecto.Postgres.PgRational`)
+- [Migrations Schema](`Vtc.Ecto.Postgres.PgRational.Migrations`)
+- Not re-exported, `Ratio` is not owned by Vtc.
+
+#### [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`)
+- [Migrations Schema](`Vtc.Ecto.Postgres.PgFramerate.Migrations`)
+- Re-exported by [Framerate](`Vtc.Framerate`)
+
+#### [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`)
+- [Migrations Schema](`Vtc.Ecto.Postgres.PgFramestamp.Migrations`)
+- Re-exported by [Framestamp](`Vtc.Framestamp`)
+  
+#### [PgFramestamp.Range](`Vtc.Ecto.Postgres.PgFramestamp.Range`)
+- [Migrations Schema](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations`)
+- Re-exported by [Framestamp.Range](`Vtc.Framestamp.Range`)
+
+## Configuration
+
+To enable ecto types in your application, set the following in your 
+`config/config.exs` file:
+
+```elixir
+config :vtc, Postgrex, include?: true
+```
+
+Without this setting, Vtc's Ecto modules will not compile when you compile your app.
+Once you have Postgrex types enabled, additional configuration is done at the 
+[Repo](https://hexdocs.pm/ecto/Ecto.Repo.html) level:
+
+```elixir
+config :vtc, Vtc.Test.Support.Repo,
+  adapter: Ecto.Adapters.Postgres,
+  vtc: [
+    rational: [
+      functions_schema: :rational,
+      functions_prefix: ""
+    ],
+    framerate: [
+      functions_schema: :framerate,
+      functions_prefix: ""
+    ],
+    framestamp: [
+      functions_schema: :framestamp,
+      functions_prefix: ""
+    ],
+    framestamp_range: [
+      functions_schema: :framestamp_range,
+      functions_prefix: ""
+    ]
+  ]
+
+config :vtc,
+  ecto_repos: [Vtc.Test.Support.Repo]
+```
+
+Each type can be configured to store it's support functions on a schema of your choice
+as well as have a custom, per-type function name prefix. 
+
+By default, all funcitons are added to the `public` schema, and are prefaced by their
+type name. For example, the [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) 
+[frames](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_frames/0`) function
+is created in the `public` schema, and named `framestamp_frames`.
+
+## Initial Migration
+
+To create all the Postgres types, functions, operators, casts, and operator classes
+that Vtc provides, run the following migration:
+
+```elixir
+defmodule Vtc.Test.Support.Repo.Migrations.AddPostgresTypes do
+  @moduledoc false
+  use Ecto.Migration
+
+  def change do
+    Vtc.Ecto.Postgres.Migrations.migrate()
+  end
+end
+```
+
+This migration is safe to run multiple times, and can be run again when new 
+functionality is added to Vtc.
+
+All objects created by the migration come complete with in-database documentation
+with links to the relevant Vtc docs. Using [DataGrip](https://www.jetbrains.com/datagrip/):
+
+![Database documentation](assets/db_documentation.png)
+
+## Ecto API
+
+Vtc's custom Ecto types are each implemented in a dedicated module. For instance, the
+`framestamp` type is implemented by [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`).
+
+However, each ecto type's functions are re-exported by the `Vtc` elixir type it is
+designed to work with, allowing you to mostly ignore the dedicated ecto module when
+creating migrations and schemas:
+
+```elixir
+defmodule MyApp.MySchema do
+  @moduledoc false
+  use Ecto.Migration
+
+  alias Vtc.Ecto.Postgres.PgFramestamp
+  alias Vtc.Framestamp
+
+  def change do
+    create table("my_table", primary_key: false) do
+      add(:id, :uuid, primary_key: true, null: false)
+      add(:a, Framestamp.type())
+      add(:b, Framestamp.type())
+    end
+  end
+end
+```
+
+Each type ships with a set of custom constraints that can be used for data integrity
+validation in migrations:
+
+#### Framestamp [constraint docs](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_field_constraints/2`)
+```elixir
+def change do
+  create table("my_table", primary_key: false) do
+    add(:b, Framestamp.type())
+  end
+
+  PgFramestamp.Migrations.create_field_constraints("my_table", :b)
+end
+```
+
+Vtc modules can be used directly in schemas:
+
+#### Framestamp [changeset casting docs](Vtc.Ecto.Postgres.PgFramestamp.html#module-changesets)
+```elixir
+defmodule Vtc.Test.Support.FramestampSchema01 do
+  @moduledoc false
+  use Ecto.Schema
+
+  alias Ecto.Changeset
+  alias Vtc.Framestamp
+
+  @type t() :: %__MODULE__{
+          id: Ecto.UUID.t(),
+          a: Framestamp.t(),
+          b: Framestamp.t()
+        }
+
+  @primary_key {:id, Ecto.UUID, autogenerate: true}
+
+  schema "my_table" do
+    field(:a, Framestamp)
+    field(:b, Framestamp)
+  end
+
+  @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t(%__MODULE__{})
+  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:id, :a, :b])
+end
+```
+
+Values can be used in Ecto queries using the [type/2](`Ecto.Query.API.type/2`) function.
+Vtc registers native operators for each type, so you can write queries like you would
+expect to with any other numeric type:
+
+#### query value
+```elixir
+iex> one_hour = Framestamp.with_frames("01:00:00:00", Rates.f23_98())
+iex> 
+iex> EdlEvents
+iex> |> where([event], event.start > type(^one_hour, Framestamp))
+iex> |> select([event], {event, event.end - event.in_framestamp})
+```
+
+The above query finds all events with a start time greater than `01:00:00:00` and
+returns the record AND its calculated duration.
+
+## Private functions
+
+Many of Vtc's postgres functions are prefaced with `__private__`, for instance, the
+`framestamp__private__add` function is used to back the addition `+` operator.
+
+These functions have no API stability guarantee, and callers should avoid calling them
+directly.
+
+## Framestamp Postgres functions
+
+{: .col-1}
+
+### [with_seconds/2](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_with_seconds/0`) 
+
+{: .col-2}
+
+#### Elixir
+```elixir
+iex> seconds = Ratio.new(3600)
+iex> rate = Rates.f23_98()
+iex> 
+iex> query =
+iex>   Query.from(
+iex>     f in fragment(
+iex>       "SELECT framestamp.with_seconds(?, ?) as r",
+iex>       type(^seconds, PgRational),
+iex>       type(^rate, Framerate)
+iex>     ),
+iex>     select: f.r
+iex>   )
+iex> 
+iex> query |> Repo.one!() |> Framestamp.load() |> inspect()
+"{:ok, <00:59:56:10 <23.98 NTSC>>}"
+```
+
+#### SQL
+
+```sql
+SELECT framestamp.with_seconds(
+  (3600, 1)::rational,
+  ((24000, 1001), '{non_drop}')::framerate
+);
+```
+
+Output:
+
+```text
+                     with_seconds
+------------------------------------------------------
+ ("(43200157,12000)","(""(24000,1001)"",{non_drop})")
+(1 row)
+```
+
+Notice that just like [Framestamp.with_seconds/3](`Vtc.Framestamp.with_seconds/3`),
+the seconds value is rounded to the neareset whole-frame on construction.
+
+### [with_frames/2](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_with_frames/0`) 
+
+{: .col-2}
+
+#### Elixir
+```elixir
+iex> frames = 24
+iex> rate = Rates.f23_98()
+iex> 
+iex> query =
+iex>   Query.from(
+iex>     f in fragment(
+iex>       "SELECT framestamp.with_frames(?, ?) as r",
+iex>       ^frames,
+iex>       type(^rate, Framerate)
+iex>     ),
+iex>     select: f.r
+iex>   )
+iex> 
+iex> query |> Repo.one!() |> Framestamp.load() |> inspect()
+"{:ok, <00:00:01:00 <23.98 NTSC>>}"
+```
+
+#### SQL
+
+```sql
+SELECT framestamp.with_frames(
+  24,
+  ((24000, 1001), '{non_drop}')::framerate
+);
+```
+
+Output:
+
+```text
+                   with_frames
+-------------------------------------------------
+ ("(1001,1000)","(""(24000,1001)"",{non_drop})")
+(1 row)
+```
+
+### [frame count](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_frames/0`)
+
+{: .col-2}
+
+#### Elixir
+```elixir
+iex> stamp =
+iex>   Framestamp.with_frames!(
+iex>     "01:00:00:00",
+iex>     Rates.f23_98()
+iex>   )
+iex> 
+iex> query =
+iex>   Query.from(
+iex>     f in fragment(
+iex>       "SELECT framestamp.frames(?) as r",
+iex>       type(^stamp, Framestamp)
+iex>     ),
+iex>     select: f.r
+iex>   )
+iex> 
+iex> Repo.one!(query)
+86400
+```
+
+#### SQL
+```sql
+SELECT framestamp.frames(
+  (
+    (18018, 5)::rational,
+    ((24000, 1001), '{non_drop}')::framerate
+  )
+);
+```
+
+Output:
+
+```text
+  frames
+--------
+  86400
+(1 row)
+```

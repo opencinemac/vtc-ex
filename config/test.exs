@@ -9,24 +9,20 @@ config :vtc, Vtc.Test.Support.Repo,
   database: "vtc_test",
   log: false,
   vtc: [
-    pg_rational: [
+    rational: [
       functions_schema: :rational,
-      functions_private_schema: :rational_private,
       functions_prefix: ""
     ],
-    pg_framerate: [
+    framerate: [
       functions_schema: :framerate,
-      functions_private_schema: :framerate_private,
       functions_prefix: ""
     ],
-    pg_framestamp: [
+    framestamp: [
       functions_schema: :framestamp,
-      functions_private_schema: :framestamp_private,
       functions_prefix: ""
     ],
-    pg_framestamp_range: [
+    framestamp_range: [
       functions_schema: :framestamp_range,
-      functions_private_schema: :framestamp_range_private,
       functions_prefix: ""
     ]
   ]

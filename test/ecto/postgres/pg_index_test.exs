@@ -150,24 +150,26 @@ defmodule Vtc.Ecto.Postgres.PgRationalIndexTest do
     end
   end
 
-  describe "PgFramestampRange | framestamp_fastrange" do
-    test "GIST indexing" do
-      inserted =
-        1..20_000
-        |> Enum.map(fn frames ->
-          FramestampSchema02.changeset(%FramestampSchema02{}, %{
-            id: Ecto.UUID.generate(),
-            a: Framestamp.with_frames!(frames - div(frames, 2), Rates.f24()),
-            b: Framestamp.with_frames!(frames, Rates.f24())
-          })
-        end)
-        |> Enum.map(&Changeset.apply_action!(&1, :insert))
-        |> Enum.map(&Map.take(&1, [:id, :a, :b]))
-        |> then(&Repo.insert_all(FramestampSchema02, &1))
+  describe "PgFramestampRange" do
+    test "framestamp_fastrange | GIST indexing" do
+      for _ <- 1..20 do
+        inserted =
+          1..1_000
+          |> Enum.map(fn frames ->
+            FramestampSchema02.changeset(%FramestampSchema02{}, %{
+              id: Ecto.UUID.generate(),
+              a: Framestamp.with_frames!(frames - div(frames, 2), Rates.f24()),
+              b: Framestamp.with_frames!(frames, Rates.f24())
+            })
+          end)
+          |> Enum.map(&Changeset.apply_action!(&1, :insert))
+          |> Enum.map(&Map.take(&1, [:id, :a, :b]))
+          |> then(&Repo.insert_all(FramestampSchema02, &1))
 
-      assert inserted == {20_000, nil}
+        assert inserted == {1_000, nil}
+      end
 
-      expected_plan_snippet = "Index Scan using framestamps_a_b_range on framestamps_02"
+      expected_plan_snippet = "Index Scan using framestamps_a_b_fastrange on framestamps_02"
 
       overlaps_plan =
         FramestampSchema02
@@ -191,6 +193,54 @@ defmodule Vtc.Ecto.Postgres.PgRationalIndexTest do
         )
         |> Query.select([events_01: events_01, events_02: events_02], {events_01.id, events_02.id})
         |> then(&Repo.explain(:all, &1))
+        |> dbg()
+
+      assert overlaps_plan =~ expected_plan_snippet
+    end
+
+    test "framestamp_range | GIST indexing" do
+      for _ <- 1..20 do
+        inserted =
+          1..1_000
+          |> Enum.map(fn frames ->
+            FramestampSchema02.changeset(%FramestampSchema02{}, %{
+              id: Ecto.UUID.generate(),
+              a: Framestamp.with_frames!(frames - div(frames, 2), Rates.f24()),
+              b: Framestamp.with_frames!(frames, Rates.f24())
+            })
+          end)
+          |> Enum.map(&Changeset.apply_action!(&1, :insert))
+          |> Enum.map(&Map.take(&1, [:id, :a, :b]))
+          |> then(&Repo.insert_all(FramestampSchema02, &1))
+
+        assert inserted == {1_000, nil}
+      end
+
+      expected_plan_snippet = "Index Scan using framestamps_a_b_range on framestamps_02"
+
+      overlaps_plan =
+        FramestampSchema02
+        |> Query.from(as: :events_01)
+        |> Query.join(
+          :inner,
+          [events_01: events_01],
+          events_02 in FramestampSchema02,
+          as: :events_02,
+          on:
+            fragment(
+              """
+              framestamp_range(?, ?)
+              && framestamp_range(?, ?)
+              """,
+              events_01.a,
+              events_01.b,
+              events_02.a,
+              events_02.b
+            )
+        )
+        |> Query.select([events_01: events_01, events_02: events_02], {events_01.id, events_02.id})
+        |> then(&Repo.explain(:all, &1))
+        |> dbg()
 
       assert overlaps_plan =~ expected_plan_snippet
     end

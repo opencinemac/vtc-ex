@@ -250,7 +250,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "#Postgres rational_private.greatest_common_denominator/2" do
+  describe "#Postgres rational.__private__greatest_common_denominator/2" do
     gcd_table = [
       %{a: 2, b: 4, expected: 2},
       %{a: 21, b: 14, expected: 7},
@@ -261,7 +261,8 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     table_test "<%= a %>, <%= b %> == <%= expected %>", gcd_table, test_case do
       %{a: a, b: b, expected: expected} = test_case
 
-      assert %Postgrex.Result{rows: rows} = Repo.query!("SELECT rational_private.greatest_common_denominator(#{a}, #{b})")
+      assert %Postgrex.Result{rows: rows} =
+               Repo.query!("SELECT rational.__private__greatest_common_denominator(#{a}, #{b})")
 
       assert [[^expected]] = rows
     end
@@ -270,7 +271,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational_private.greatest_common_denominator(-#{a}, #{b})")
+               Repo.query!("SELECT rational.__private__greatest_common_denominator(-#{a}, #{b})")
 
       assert [[^expected]] = rows
     end
@@ -279,7 +280,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational_private.greatest_common_denominator(#{a}, -#{b})")
+               Repo.query!("SELECT rational.__private__greatest_common_denominator(#{a}, -#{b})")
 
       assert [[^expected]] = rows
     end
@@ -288,13 +289,13 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{a: a, b: b, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational_private.greatest_common_denominator(-#{a}, -#{b})")
+               Repo.query!("SELECT rational.__private__greatest_common_denominator(-#{a}, -#{b})")
 
       assert [[^expected]] = rows
     end
   end
 
-  describe "#Postgres rational_private.simplify/1" do
+  describe "#Postgres rational.__private__simplify/1" do
     simplify_table = [
       %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
       %{numerator: -2, denominator: 4, expected: Ratio.new(-1, 2)},
@@ -309,7 +310,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
       %{numerator: numerator, denominator: denominator, expected: expected} = test_case
 
       assert %Postgrex.Result{rows: [[db_record]]} =
-               Repo.query!("SELECT rational_private.simplify((#{numerator}, #{denominator})::rational)")
+               Repo.query!("SELECT rational.__private__simplify((#{numerator}, #{denominator})::rational)")
 
       assert db_record == {expected.numerator, expected.denominator}
     end
@@ -322,7 +323,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
         expected = Ratio.new(numerator, denominator)
 
         assert %Postgrex.Result{rows: [[{db_numerator, db_denominator}]]} =
-                 Repo.query!("SELECT rational_private.simplify((#{numerator}, #{denominator})::rational)")
+                 Repo.query!("SELECT rational.__private__simplify((#{numerator}, #{denominator})::rational)")
 
         assert db_numerator == expected.numerator
         assert db_denominator == expected.denominator
@@ -742,7 +743,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "Postgres rational_private.comp/2" do
+  describe "Postgres rational.__private__comp/2" do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
@@ -751,7 +752,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
         query =
           Query.from(
             f in fragment(
-              "SELECT rational_private.cmp(?, ?) as r",
+              "SELECT rational.__private__cmp(?, ?) as r",
               type(^a, PgRational),
               type(^b, PgRational)
             ),
@@ -780,7 +781,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
       assert result =
                RationalsSchema02
-               |> Query.select([r], fragment("rational_private.cmp(?, ?)", r.a, r.b))
+               |> Query.select([r], fragment("rational.__private__cmp(?, ?)", r.a, r.b))
                |> Query.where([r], r.id == ^record_id)
                |> Repo.one!()
 

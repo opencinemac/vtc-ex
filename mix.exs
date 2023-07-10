@@ -13,13 +13,15 @@ defmodule Vtc.MixProject do
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
       test_coverage: [tool: :covertool],
+      aliases: aliases(),
       docs: [
         # The main page in the docs
         main: "readme",
-        logo: "zdocs/source/logo1.svg",
+        logo: "zdocs/source/assets/logo1.svg",
         extras: [
           "README.md",
           "zdocs/quickstart.cheatmd",
+          "zdocs/ecto_quickstart.cheatmd",
           "zdocs/history.md",
           "zdocs/framerate_vs_timebase.md",
           "zdocs/the_rational_rationale.md",
@@ -32,6 +34,7 @@ defmodule Vtc.MixProject do
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
           "Source Protocols": [Seconds, Frames],
           "Ecto Types": [
+            Vtc.Ecto.Postgres.Migrations,
             Vtc.Ecto.Postgres.PgRational,
             Vtc.Ecto.Postgres.PgRational.Migrations,
             Vtc.Ecto.Postgres.PgFramerate,
@@ -80,7 +83,7 @@ defmodule Vtc.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    include_postgrex? = not (:vtc |> Application.get_env(Postgres, []) |> Keyword.get(:include?, false))
+    include_postgrex? = not (:vtc |> Application.get_env(Postgrex, []) |> Keyword.get(:include?, false))
 
     [
       # Library Dependencies
@@ -114,4 +117,11 @@ defmodule Vtc.MixProject do
       links: %{"GitHub" => "https://github.com/opencinemac/vtc-ex"}
     ]
   end
+
+  defp aliases do
+    [docs: ["docs", &copy_docs_images/1]]
+  end
+
+  # copies documentation images into the hexdox directory
+  defp copy_docs_images(_), do: File.cp_r("zdocs/source/assets", "doc/assets")
 end

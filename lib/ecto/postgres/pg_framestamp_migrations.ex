@@ -47,9 +47,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     adapter: Ecto.Adapters.Postgres,
     ...
     vtc: [
-      pg_framestamp: [
+      framestamp: [
         functions_schema: :framestamp,
-        functions_private_schema: :framestamp_private,
         functions_prefix: "framestamp"
       ]
     ]
@@ -57,15 +56,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   Option definitions are as follows:
 
-  - `functions_schema`: The schema for "public" functions that will have backwards
-    compatibility guarantees and application code support. Default: `:public`.
-
-  - `functions_private_schema:` The schema for for developer-only "private" functions
-    that support the functions in the "framestamp" schema. Will NOT have backwards
-    compatibility guarantees NOR application code support. Default: `:public`.
+  - `functions_schema`: The postgres schema to store framestamp-related custom
+     functions.
 
   - `functions_prefix`: A prefix to add before all functions. Defaults to "framestamp"
-    for any function created in the "public" schema, and "" otherwise.
+    for any function created in the `:public` schema, and "" otherwise.
+
+  ## Private Functions
+
+  Some custom function names are prefaced with `__private__`. These functions should
+  not be called by end-users, as they are not subject to *any* API staility guarantees.
 
   ## Examples
 
@@ -147,17 +147,19 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Up to two schemas are created as detailed by the
+  Creates function schema as described by the
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_framestamp)
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:framestamp)
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framestamp.with_seconds(seconds, rate)` that rounds `seconds` to the
-  nearest whole frame based on `rate` and returns a constructed framestamp.
+  `framestamp.with_seconds(seconds, rate)`
+
+  Rounds `seconds` to the nearest whole frame based on `rate` and returns a constructed
+  `framestamp`.
   """
   @spec create_func_with_seconds() :: :ok
   def create_func_with_seconds do
@@ -199,8 +201,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framestamp.frames(framestamp)` that returns the frame's index in the timecode
-  stream where `0` is SMPTE midnight.
+  Converts `framestamp` to a frame number by the frame's index in the timecode
+  stream, with `0` as SMPTE midnight.
 
   Equivalent to [Framestamp.frames/2](`Vtc.Framestamp.frames/2`) with `:round` set to
   `trunc`.
@@ -225,7 +227,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.eq(a, b)` that backs the `=` operator.
+  `framestamp.__private__eq(framestamp, framestamp)`
+
+  Backs the `=` operator.
   """
   @spec create_func_eq() :: :ok
   def create_func_eq do
@@ -244,7 +248,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.strict_eq(a, b)` that backs the `===` operator.
+  Creates `framestamp.__private__strict_eq(a, b)` that backs the `===` operator.
   """
   @spec create_func_strict_eq() :: :ok
   def create_func_strict_eq do
@@ -264,7 +268,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.neq(a, b)` that backs the `<>` operator.
+  Creates `framestamp.__private__neq(a, b)` that backs the `<>` operator.
   """
   @spec create_func_neq() :: :ok
   def create_func_neq do
@@ -283,7 +287,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.strict_neq(a, b)` that backs the `!===` operator.
+  Creates `framestamp.__private__strict_neq(a, b)` that backs the `!===` operator.
   """
   @spec create_func_strict_neq() :: :ok
   def create_func_strict_neq do
@@ -303,7 +307,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.lt(a, b)` that backs the `<` operator.
+  Creates `framestamp.__private__lt(a, b)` that backs the `<` operator.
   """
   @spec create_func_lt() :: :ok
   def create_func_lt do
@@ -322,7 +326,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.lte(a, b)` that backs the `<=` operator.
+  Creates `framestamp.__private__lte(a, b)` that backs the `<=` operator.
   """
   @spec create_func_lte() :: :ok
   def create_func_lte do
@@ -341,7 +345,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.gt(a, b)` that backs the `>` operator.
+  Creates `framestamp.__private__gt(a, b)` that backs the `>` operator.
   """
   @spec create_func_gt() :: :ok
   def create_func_gt do
@@ -360,7 +364,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.gte(a, b)` that backs the `>=` operator.
+  Creates `framestamp.__private__gte(a, b)` that backs the `>=` operator.
   """
   @spec create_func_gte() :: :ok
   def create_func_gte do
@@ -379,7 +383,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.cmp(a, b)` used in the PgTimecode b-tree operator class.
+  Creates `framestamp.__private__cmp(a, b)` used in the PgTimecode b-tree operator class.
   """
   @spec create_func_cmp() :: :ok
   def create_func_cmp do
@@ -402,7 +406,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.add(a, b)` that backs the `+` operator.
+  Creates `framestamp.__private__add(a, b)` that backs the `+` operator.
 
   Just like [Framestamp.add/3](`Vtc.Framestamp.add/3`), if the `rate` of `a` and `b`
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
@@ -428,9 +432,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.add(a, b)` that backs the `-` operator.
+  `framestamp.__private__sub(a, b)`.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
+  Backs the `-` operator.
+
+  Just like [Framestamp.sub/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
@@ -454,7 +460,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.mult(:framestamp, :rational)` that backs the `*` operator.
+  Creates `framestamp.__private__mult(:framestamp, :rational)` that backs the `*` operator.
 
   Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
@@ -479,7 +485,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.div(:framestamp, :rational)` that backs the `/` operator.
+  Creates `framestamp.__private__div(:framestamp, :rational)` that backs the `/` operator.
 
   Just like [Framestamp.div/3](`Vtc.Framestamp.div/3`), `a`'s the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
@@ -540,7 +546,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.modulo(:framestamp, :rational)` that backs the `%`
+  Creates `framestamp.__private__modulo(:framestamp, :rational)` that backs the `%`
   operator.
 
   Just like [Framestamp.rem/3](`Vtc.Framestamp.rem/3`), this operation is done on the
@@ -942,13 +948,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
   def function(name, repo) do
-    function_prefix = Postgres.Utils.type_function_prefix(repo, :pg_framestamp)
+    function_prefix = Postgres.Utils.type_function_prefix(repo, :framestamp)
     "#{function_prefix}#{name}"
   end
 
   @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
   defp private_function(name, repo) do
-    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :pg_framestamp)
+    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :framestamp)
     "#{function_prefix}#{name}"
   end
 end
