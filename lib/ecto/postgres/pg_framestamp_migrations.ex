@@ -258,7 +258,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         args: [a: :framestamp, b: :framestamp],
         returns: :boolean,
         body: """
-        RETURN (a).seconds = (b.seconds)
+        RETURN (a).seconds = (b).seconds
           AND (a).rate === (b).rate;
         """
       )
@@ -423,7 +423,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
         returns: :framestamp,
         body: """
-        RETURN #{with_seconds}(seconds, (a).rate);
+        IF (a).rate === (b).rate THEN
+          RETURN (seconds, (a).rate)::framestamp;
+        ELSE
+          RETURN #{with_seconds}(seconds, (a).rate);
+        END IF;
         """
       )
 
@@ -451,7 +455,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
         returns: :framestamp,
         body: """
-        RETURN #{with_seconds}(seconds, (a).rate);
+        IF (a).rate === (b).rate THEN
+          RETURN (seconds, (a).rate)::framestamp;
+        ELSE
+          RETURN #{with_seconds}(seconds, (a).rate);
+        END IF;
         """
       )
 
@@ -523,7 +531,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_floor_div_rational() :: :ok
   def create_func_floor_div_rational do
     framestamp_frames = function(:frames, Migration.repo())
-    with_seconds = function(:with_seconds, Migration.repo())
+    simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
@@ -535,9 +543,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         ],
         returns: :framestamp,
         body: """
-        frames := DIV((frames, 1)::rational, b);
-        seconds := (frames, 1)::rational / (a).rate.playback;
-        RETURN #{with_seconds}(seconds, (a).rate);
+        frames := DIV(frames, b);
+        seconds := #{simplify}(frames / (a).rate.playback);
+        RETURN (seconds, (a).rate);
         """
       )
 
@@ -556,7 +564,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_modulo_rational() :: :ok
   def create_func_modulo_rational do
     framestamp_frames = function(:frames, Migration.repo())
-    with_seconds = function(:with_seconds, Migration.repo())
+    simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
@@ -568,9 +576,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         ],
         returns: :framestamp,
         body: """
-        frames := ROUND((frames, 1)::rational % b);
-        seconds := (frames, 1)::rational / (a).rate.playback;
-        RETURN #{with_seconds}(seconds, (a).rate);
+        frames := ROUND(frames % b);
+        seconds := #{simplify}(frames / (a).rate.playback);
+        RETURN (seconds, (a).rate)::framestamp;
         """
       )
 
@@ -934,7 +942,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         table,
         "#{field}_seconds_divisible_by_rate",
         check: """
-        ((#{field}).seconds * (#{field}).rate.playback) % (1, 1)::rational = (0, 1)::rational
+        ((#{field}).seconds * (#{field}).rate.playback) % 1::bigint = 0::bigint
         """
       )
 

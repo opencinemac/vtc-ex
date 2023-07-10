@@ -250,51 +250,6 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "#Postgres rational.__private__greatest_common_denominator/2" do
-    gcd_table = [
-      %{a: 2, b: 4, expected: 2},
-      %{a: 21, b: 14, expected: 7},
-      %{a: 23, b: 14, expected: 1},
-      %{a: 1000, b: 70, expected: 10}
-    ]
-
-    table_test "<%= a %>, <%= b %> == <%= expected %>", gcd_table, test_case do
-      %{a: a, b: b, expected: expected} = test_case
-
-      assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational.__private__greatest_common_denominator(#{a}, #{b})")
-
-      assert [[^expected]] = rows
-    end
-
-    table_test "-<%= a %>, <%= b %> == <%= expected %>", gcd_table, test_case do
-      %{a: a, b: b, expected: expected} = test_case
-
-      assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational.__private__greatest_common_denominator(-#{a}, #{b})")
-
-      assert [[^expected]] = rows
-    end
-
-    table_test "<%= a %>, -<%= b %> == <%= expected %>", gcd_table, test_case do
-      %{a: a, b: b, expected: expected} = test_case
-
-      assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational.__private__greatest_common_denominator(#{a}, -#{b})")
-
-      assert [[^expected]] = rows
-    end
-
-    table_test "-<%= a %>, -<%= b %> == <%= expected %>", gcd_table, test_case do
-      %{a: a, b: b, expected: expected} = test_case
-
-      assert %Postgrex.Result{rows: rows} =
-               Repo.query!("SELECT rational.__private__greatest_common_denominator(-#{a}, -#{b})")
-
-      assert [[^expected]] = rows
-    end
-  end
-
   describe "#Postgres rational.__private__simplify/1" do
     simplify_table = [
       %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},

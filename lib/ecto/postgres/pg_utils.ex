@@ -302,8 +302,8 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native CAST
   """
-  @spec create_cast(atom(), atom(), Macro.t()) :: Macro.t()
-  defmacro create_cast(left_type, right_type, func_name) do
+  @spec create_cast(atom(), atom(), Macro.t(), Macro.t()) :: Macro.t()
+  defmacro create_cast(left_type, right_type, func_name, opts \\ []) do
     quote do
       comment = unquote(__MODULE__).create_comment_string(__ENV__, :cast)
 
@@ -311,16 +311,21 @@ defmodule Vtc.Ecto.Postgres.Utils do
         unquote(left_type),
         unquote(right_type),
         unquote(func_name),
-        comment
+        comment,
+        unquote(opts)
       )
     end
   end
 
-  @spec create_cast_raw_sql(atom(), atom(), atom() | String.t(), String.t()) :: raw_sql()
-  def create_cast_raw_sql(left_type, right_type, func_name, comment) do
+  @spec create_cast_raw_sql(atom(), atom(), atom() | String.t(), String.t(), implicit: boolean()) :: raw_sql()
+  def create_cast_raw_sql(left_type, right_type, func_name, comment, opts) do
+    implicit = if Keyword.get(opts, :implicit, false), do: "AS IMPLICIT", else: ""
+
     """
     DO $wrapper$ BEGIN
-      CREATE CAST (#{left_type} AS #{right_type}) WITH FUNCTION #{func_name}(#{left_type});
+      CREATE CAST (#{left_type} AS #{right_type})
+      WITH FUNCTION #{func_name}(#{left_type})
+      #{implicit};
 
       COMMENT ON
       CAST (#{left_type} AS #{right_type})
