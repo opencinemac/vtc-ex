@@ -15,6 +15,8 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
   require Query
 
+  doctest Vtc.Ecto.Postgres.PgFramestamp.Migrations
+
   describe "#cast/1" do
     cast_table = [
       %{
@@ -765,7 +767,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres framestamp_private.cmp/2" do
+  describe "Postgres framestamp.__private__cmp/2" do
     setup context, do: TestCase.setup_framestamps(context)
 
     property "matches Framestamp" do
@@ -775,7 +777,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             ) do
         query =
           Query.from(
-            f in fragment("SELECT framestamp_private.cmp(?, ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            f in fragment("SELECT framestamp.__private__cmp(?, ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
             select: f.r
           )
 
@@ -805,7 +807,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       test_case
       |> Map.put(:expected, true)
       |> run_table_comparison_test(fn query ->
-        Query.where(query, [r], fragment("framestamp_private.cmp(?, ?) = ?", r.a, r.b, ^expected))
+        Query.where(query, [r], fragment("framestamp.__private__cmp(?, ?) = ?", r.a, r.b, ^expected))
       end)
     end
   end

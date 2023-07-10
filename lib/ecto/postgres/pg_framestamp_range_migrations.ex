@@ -41,7 +41,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   ## Schemas Created
 
   Up to two schemas are created as detailed by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#create_all/0-configuring-database-objects)
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
   section below.
 
   ## Configuring Database Objects
@@ -54,9 +54,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     adapter: Ecto.Adapters.Postgres,
     ...
     vtc: [
-      pg_framestamp_range: [
+      framestamp_range: [
         functions_schema: :framestamp_range,
-        functions_private_schema: :framestamp_range_private,
         functions_prefix: "framestamp_range"
       ]
     ]
@@ -64,15 +63,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   Option definitions are as follows:
 
-  - `functions_schema`: The schema for "public" functions that will have backwards
-    compatibility guarantees and application code support. Default: `:public`.
-
-  - `functions_private_schema:` The schema for for developer-only "private" functions
-    that support the functions in the "public" schema. Will NOT have backwards
-    compatibility guarantees NOR application code support. Default: `:public`.
+  - `functions_schema`: The postgres schema to store framestamp_range-related custom
+     functions.
 
   - `functions_prefix`: A prefix to add before all functions. Defaults to
-    "framestamp_range" for any function created in the "public" schema, and ""
+    "framestamp_range" for any function created in the `:public` schema, and ""
     otherwise.
 
   ## Examples
@@ -224,7 +219,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.subtype_diff(a, b)` used by the range type for more
+  Creates `framestamp.__private__subtype_diff(a, b)` used by the range type for more
   efficient GiST indexes.
   """
   @spec create_func_subtype_diff() :: :ok
@@ -245,7 +240,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp_private.canonicalization(a, b, type)` used by the range
+  Creates `framestamp.__private__canonicalization(a, b, type)` used by the range
   constructor to normalize ranges.
 
   Output ranges have an inclusive lower bound and an exclusive upper bound.
@@ -304,16 +299,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Up to two schemas are created as detailed by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
+  Creates function schema as described by the
+  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_framestamp_range)
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:framestamp_range)
 
   @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
   defp private_function(name, repo) do
-    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :pg_framestamp_range)
+    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :framestamp_range)
     "#{function_prefix}#{name}"
   end
 end

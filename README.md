@@ -91,11 +91,82 @@ iex> Framestamp.Range.intersection!(a, b)
 "<01:45:00:00 - 02:00:00:00 :exclusive <23.98 NTSC>>"
 ```
 
+## Ecto types
+
+Vtx ships with optional ecto types that can be used to accelerate you timecode workflow
+at the database level:
+
+```elixir
+## Migration file
+
+defmodule MyApp.MySchema do
+  @moduledoc false
+  use Ecto.Migration
+
+  alias Vtc.Ecto.Postgres.PgFramestamp
+  alias Vtc.Framestamp
+
+  def change do
+    create table("my_table", primary_key: false) do
+      add(:id, :uuid, primary_key: true, null: false)
+      add(:a, Framestamp.type())
+      add(:b, Framestamp.type())
+    end
+  end
+end
+```
+
+```elixir
+## Schema file
+
+defmodule Vtc.Test.Support.FramestampSchema01 do
+  @moduledoc false
+  use Ecto.Schema
+
+  alias Ecto.Changeset
+  alias Vtc.Framestamp
+
+  @type t() :: %__MODULE__{
+          id: Ecto.UUID.t(),
+          a: Framestamp.t(),
+          b: Framestamp.t()
+        }
+
+  @primary_key {:id, Ecto.UUID, autogenerate: true}
+
+  schema "my_table" do
+    field(:a, Framestamp)
+    field(:b, Framestamp)
+  end
+
+  @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t(%__MODULE__{})
+  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:id, :a, :b])
+end
+```
+
+Values can be used in Ecto queries using the [type/2](`Ecto.Query.API.type/2`) function.
+Vtc registers native operators for each type, so you can write queries like you would
+expect to:
+
+```elixir
+iex> one_hour = Framestamp.with_frames("01:00:00:00", Rates.f23_98())
+iex> 
+iex> EdlEvents
+iex> |> where([event], event.start > type(^one_hour, Framestamp))
+iex> |> select([event], {event, event.end - event.in_framestamp})
+```
+
+The above query finds all events with a start time greater than `01:00:00:00` and
+returns the record AND its calculated duration.
+
 ## Further Reading
 
-Check out the [Quickstart Guide](quickstart.html) for a more in 
-depth walkthrough of what `Vtc` can do, or dive straight into the 
-[API Reference](api-reference.html).
+Check out the [Quickstart Guide](quickstart.html) for a walkthrough of what `Vtc` 
+offers for application-level code, and the [Ecto Quickstart Guide](ecto_quickstart.cheatmd)
+for a deep-dive on working with Vtc's Postgres offertings.
+
+The [API Reference](api-reference.html) offers a complete technical accounting of Vtc's 
+capabilities.
 
 ## Goals
 
@@ -161,15 +232,16 @@ depth walkthrough of what `Vtc` can do, or dive straight into the
     - Rational[X]
       - [X] Native comparison operators
       - [X] Native arithmatic operators
-      - [X] Native indexing support
+      - [X] Native BTree index support
     - Framerate[X]
-    - Timecode[X]
+      - [X] Native comparison operators
+    - Framestamp[X]
       - [X] Native comparison operators
       - [X] Native arithmatic operators
-      - [X] Native indexing Support
+      - [X] Native BTree index support
       - [X] Native inspection functions
-    - Range
-      - [X] Native indexing support
+    - Framestamp.Range
+      - [X] Native GiST index support
       - [X] Native inspection functions
 
 ## Attributions

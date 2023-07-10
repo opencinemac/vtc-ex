@@ -1,4 +1,4 @@
-defmodule Vtc.Test.Support.Repo.Migrations.AddTimecodeSchemas do
+defmodule Vtc.Test.Support.Repo.Migrations.AddFramestampSchema01 do
   @moduledoc false
   use Ecto.Migration
 

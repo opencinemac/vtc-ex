@@ -52,9 +52,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     adapter: Ecto.Adapters.Postgres,
     ...
     vtc: [
-      pg_framerate: [
+      framerate: [
         functions_schema: :framerate,
-        functions_private_schema: :framerate_private,
         functions_prefix: "framerate"
       ]
     ]
@@ -62,15 +61,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   Option definitions are as follows:
 
-  - `functions_schema`: The schema for "public" functions that will have backwards
-    compatibility guarantees and application code support. Default: `:public`.
+  - `functions_schema`: The postgres schema to store framerate-related custom functions.
 
-  - `functions_private_schema:` The schema for for developer-only "private" functions
-    that support the functions in the "framerate" schema. Will NOT have backwards
-    compatibility guarantees NOR application code support. Default: `:public`.
+  - `functions_prefix`: A prefix to add before all functions. Defaults to "framestamp"
+    for any function created in the `:public` schema, and "" otherwise.
 
-  - `functions_prefix`: A prefix to add before all functions. Defaults to "framerate"
-    for any function created in the "public" schema, and "" otherwise.
+  ## Private Functions
+
+  Some custom function names are prefaced with `__private__`. These functions should
+  not be called by end-users, as they are not subject to *any* API staility guarantees.
 
   ## Examples
 
@@ -142,16 +141,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Up to two schemas are created as detailed by the
+  Creates function schema as described by the
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_framerate)
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:framerate)
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framerate_private.is_ntsc(rat)` function that returns true if the framerate
+  Creates `framerate.is_ntsc(rat)` function that returns true if the framerate
   is and NTSC drop or non-drop rate.
   """
   @spec create_func_is_ntsc() :: :ok
@@ -174,7 +173,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framerate_private.strict_eq(a, b)` that backs the `===` operator.
+  Creates `framerate.__private__strict_eq(a, b)` that backs the `===` operator.
   """
   @spec create_func_strict_eq() :: :ok
   def create_func_strict_eq do
@@ -195,7 +194,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framerate_private.strict_eq(a, b)` that backs the `===` operator.
+  Creates `framerate.__private__strict_eq(a, b)` that backs the `===` operator.
   """
   @spec create_func_strict_neq() :: :ok
   def create_func_strict_neq do
@@ -371,9 +370,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Returns the config-qualified name of the function for this type.
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
-  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :pg_framerate)}#{name}"
+  def function(name, repo), do: "#{Postgres.Utils.type_function_prefix(repo, :framerate)}#{name}"
 
   # Returns the config-qualified name of the function for this type.
   @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
-  defp private_function(name, repo), do: "#{Postgres.Utils.type_private_function_prefix(repo, :pg_framerate)}#{name}"
+  defp private_function(name, repo), do: "#{Postgres.Utils.type_private_function_prefix(repo, :framerate)}#{name}"
 end

@@ -54,9 +54,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     adapter: Ecto.Adapters.Postgres,
     ...
     vtc: [
-      pg_rational: [
+      rational: [
         functions_schema: :rational,
-        functions_private_schema: :rational_private,
         functions_prefix: "rational"
       ]
     ]
@@ -64,15 +63,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   Option definitions are as follows:
 
-  - `functions_schema`: The schema for "public" functions that will have backwards
-    compatibility guarantees and application code support. Default: `:public`.
+  - `functions_schema`: The postgres schema to store rational-related custom functions.
 
-  - `functions_private_schema:` The schema for for developer-only "private" functions
-    that support the functions in the "rational" schema. Will NOT havr backwards
-    compatibility guarantees NOR application code support. Default: `:public`.
+  - `functions_prefix`: A prefix to add before all functions. Defaults to "rational"
+    for any function created in the `:public` schema, and "" otherwise.
 
-  - `functions_prefix`: A prefix to add before all functions. Defaults to "rational" for
-    any function created in the "public" schema, and "" otherwise.
+  ## Private Functions
+
+  Some custom function names are prefaced with `__private__`. These functions should
+  not be called by end-users, as they are not subject to *any* API staility guarantees.
 
   ## Functions Created
 
@@ -177,16 +176,16 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_types
   @doc """
-  Up to two schemas are created as detailed by the
+  Creates function schema as described by the
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
   @spec create_function_schemas() :: :ok
-  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:pg_rational)
+  def create_function_schemas, do: Postgres.Utils.create_type_schemas(:rational)
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.greatest_common_denominator(a, b)` function that finds the
+  Creates `rational.__private__greatest_common_denominator(a, b)` function that finds the
   greatest common denominator between two bigint values.
   """
   @spec create_func_greatest_common_denominator() :: :ok
@@ -213,7 +212,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.simplify(rat)` function that simplifies a rational. Used at
+  Creates `rational.__private__simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
   @spec create_func_simplify() :: :ok
@@ -353,7 +352,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.add(a, b)` backing function for the `+` operator
+  Creates `rational.__private__add(a, b)` backing function for the `+` operator
   between two rationals.
   """
   @spec create_func_add() :: :ok
@@ -377,7 +376,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.sub(a, b)` backing function for the `-` operator
+  Creates `rational.__private__sub(a, b)` backing function for the `-` operator
   between two rationals.
   """
   @spec create_func_sub() :: :ok
@@ -401,7 +400,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.mult(a, b)` backing function for the `*` operator
+  Creates `rational.__private__mult(a, b)` backing function for the `*` operator
   between two rationals.
   """
   @spec create_func_mult() :: :ok
@@ -425,7 +424,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.div(a, b)` backing function for the `/` operator
+  Creates `rational.__private__div(a, b)` backing function for the `/` operator
   between two rationals.
   """
   @spec create_func_div() :: :ok
@@ -449,7 +448,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.div(a, b)` backing function for the `/` operator
+  Creates `rational.__private__div(a, b)` backing function for the `/` operator
   between two rationals.
   """
   @spec create_func_floor_div() :: :ok
@@ -470,7 +469,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.modulo(a, b)` backing function for the `%` operator
+  Creates `rational.__private__modulo(a, b)` backing function for the `%` operator
   between two rationals.
   """
   @spec create_func_modulo() :: :ok
@@ -501,7 +500,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.cmp(a, b)` that returns:
+  Creates `rational.__private__cmp(a, b)` that returns:
 
     - `1` if a > b
     - `0` if a == b
@@ -537,7 +536,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.eq(a, b)` that backs the `=` operator.
+  Creates `rational.__private__eq(a, b)` that backs the `=` operator.
   """
   @spec create_func_eq() :: :ok
   def create_func_eq do
@@ -556,7 +555,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.neq(a, b)` that backs the `<>` operator.
+  Creates `rational.__private__neq(a, b)` that backs the `<>` operator.
   """
   @spec create_func_neq() :: :ok
   def create_func_neq do
@@ -575,7 +574,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.lt(a, b)` that backs the `<` operator.
+  Creates `rational.__private__lt(a, b)` that backs the `<` operator.
   """
   @spec create_func_lt() :: :ok
   def create_func_lt do
@@ -594,7 +593,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.lte(a, b)` that backs the `<=` operator.
+  Creates `rational.__private__lte(a, b)` that backs the `<=` operator.
   """
   @spec create_func_lte() :: :ok
   def create_func_lte do
@@ -618,7 +617,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.gt(a, b)` that backs the `>` operator.
+  Creates `rational.__private__gt(a, b)` that backs the `>` operator.
   """
   @spec create_func_gt() :: :ok
   def create_func_gt do
@@ -637,7 +636,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational_private.gte(a, b)` that backs the `>=` operator.
+  Creates `rational.__private__gte(a, b)` that backs the `>=` operator.
   """
   @spec create_func_gte() :: :ok
   def create_func_gte do
@@ -976,7 +975,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec function(atom(), Ecto.Repo.t()) :: String.t()
   def function(name, repo) do
-    function_prefix = Postgres.Utils.type_function_prefix(repo, :pg_rational)
+    function_prefix = Postgres.Utils.type_function_prefix(repo, :rational)
     "#{function_prefix}#{name}"
   end
 
@@ -984,7 +983,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc false
   @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
   def private_function(name, repo) do
-    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :pg_rational)
+    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :rational)
     "#{function_prefix}#{name}"
   end
 end
