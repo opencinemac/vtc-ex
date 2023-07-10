@@ -111,7 +111,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     create_type()
     create_function_schemas()
 
-    create_func_greatest_common_denominator()
     create_func_simplify()
 
     create_func_minus()
@@ -149,7 +148,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     create_op_class_btree()
 
     create_func_cast_to_double_precison()
+    create_func_cast_bigint_to_rational()
+
     create_cast_double_precision()
+    create_cast_bigint_to_rational()
   end
 
   @doc section: :migrations_types
@@ -185,33 +187,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational.__private__greatest_common_denominator(a, b)` function that finds the
-  greatest common denominator between two bigint values.
-  """
-  @spec create_func_greatest_common_denominator() :: :ok
-  def create_func_greatest_common_denominator do
-    create_func =
-      Postgres.Utils.create_plpgsql_function(
-        private_function(:greatest_common_denominator, Migration.repo()),
-        args: [a: :bigint, b: :bigint],
-        returns: :bigint,
-        body: """
-        CASE
-          WHEN b = 0 THEN
-            RETURN ABS(a);
-          WHEN a = 0 THEN
-            RETURN ABS(b);
-          ELSE
-            RETURN #{private_function(:greatest_common_denominator, Migration.repo())}(b, a % b);
-        END CASE;
-        """
-      )
-
-    Migration.execute(create_func)
-  end
-
-  @doc section: :migrations_private_functions
-  @doc """
   Creates `rational.__private__simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
@@ -223,11 +198,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         args: [input: :rational],
         returns: :rational,
         declares: [
-          gcd:
-            {:bigint,
-             "#{private_function(:greatest_common_denominator, Migration.repo())}(input.numerator, input.denominator)"},
-          denominator: {:bigint, "ABS(input.denominator / gcd)"},
-          numerator: {:bigint, "input.numerator / gcd"}
+          greatest_denom: {:bigint, "gcd(input.numerator, input.denominator)"},
+          denominator: {:bigint, "ABS(input.denominator / greatest_denom)"},
+          numerator: {:bigint, "input.numerator / greatest_denom"}
         ],
         body: """
         IF (input).denominator < 0 THEN
@@ -348,6 +321,25 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Migration.execute(create_func)
   end
 
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates a native CAST from `bigint` to `rational`.
+  """
+  @spec create_func_cast_bigint_to_rational() :: :ok
+  def create_func_cast_bigint_to_rational do
+    create_func =
+      Postgres.Utils.create_plpgsql_function(
+        private_function(:cast_bigint_to_rational, Migration.repo()),
+        args: [value: :bigint],
+        returns: :rational,
+        body: """
+        RETURN (value, 1)::rational;
+        """
+      )
+
+    Migration.execute(create_func)
+  end
+
   ## ARITHMATIC BACKING FUNCS
 
   @doc section: :migrations_private_functions
@@ -385,13 +377,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       Postgres.Utils.create_plpgsql_function(
         private_function(:sub, Migration.repo()),
         args: [a: :rational, b: :rational],
-        declares: [
-          b_numerator: {:bigint, "(b).numerator * -1"},
-          b_negated: {:rational, "(b_numerator, (b).denominator)"}
-        ],
         returns: :rational,
         body: """
-        RETURN #{private_function(:add, Migration.repo())}(a, b_negated);
+        RETURN #{private_function(:add, Migration.repo())}(a, b * -1::bigint);
         """
       )
 
@@ -520,14 +508,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         ],
         returns: :integer,
         body: """
-        CASE
-          WHEN a_cmp > b_cmp THEN
-            RETURN 1;
-          WHEN a_cmp < b_cmp THEN
-            RETURN -1;
-          ELSE
-            RETURN 0;
-        END CASE;
+        RETURN sign(a_cmp - b_cmp);
         """
       )
 
@@ -602,13 +583,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         private_function(:lte, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
-          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"},
-          cmp_array: :"integer[]"
+          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
         ],
         returns: :boolean,
         body: """
-        cmp_array := ARRAY_APPEND(cmp_array, cmp);
-        RETURN cmp_array <@ '{-1, 0}';
+        RETURN cmp = -1 OR cmp = 0;
         """
       )
 
@@ -645,13 +624,11 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         private_function(:gte, Migration.repo()),
         args: [a: :rational, b: :rational],
         declares: [
-          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"},
-          cmp_array: :"integer[]"
+          cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
         ],
         returns: :boolean,
         body: """
-        cmp_array := ARRAY_APPEND(cmp_array, cmp);
-        RETURN cmp_array <@ '{1, 0}';
+        RETURN cmp = 1 OR cmp = 0;
         """
       )
 
@@ -927,6 +904,27 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         :rational,
         :"double precision",
         private_function(:cast_to_double, Migration.repo())
+      )
+
+    Migration.execute(create_cast)
+  end
+
+  @doc section: :migrations_casts
+  @doc """
+  Creates a native cast for:
+
+  ```sql
+  bigint AS rational
+  ```
+  """
+  @spec create_cast_bigint_to_rational() :: :ok
+  def create_cast_bigint_to_rational do
+    create_cast =
+      Postgres.Utils.create_cast(
+        :bigint,
+        :rational,
+        private_function(:cast_bigint_to_rational, Migration.repo()),
+        implicit: true
       )
 
     Migration.execute(create_cast)
