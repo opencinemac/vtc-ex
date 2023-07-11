@@ -393,7 +393,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec get_type_config(Ecto.Repo.t(), atom(), atom(), Keyword.value()) :: Keyword.value()
   def get_type_config(repo, type_name, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name) |> Keyword.get(opt, default)
+    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name, []) |> Keyword.get(opt, default)
 
   @doc """
   Returns a the public function prefix for a specific vtc Postgres type and Repo.

@@ -9,7 +9,6 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
   alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Ecto.Postgres.PgRational
 
-  @spec migrate() :: :ok
   @doc """
   Runs all migrations. Safe to run multiple times when updates are required.
 
@@ -20,6 +19,7 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
   - [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp.Migrations`)
   - [PgFramestamp.Range](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations`)
   """
+  @spec migrate() :: :ok
   def migrate do
     PgRational.Migrations.create_all()
     PgFramerate.Migrations.create_all()
