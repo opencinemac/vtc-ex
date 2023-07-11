@@ -204,16 +204,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [input: :rational],
       returns: :rational,
       declares: [
-        greatest_denom: {:bigint, "gcd(input.numerator, input.denominator)"},
+        greatest_denom: {:bigint, "GCD(input.numerator, input.denominator)"},
         denominator: {:bigint, "ABS(input.denominator / greatest_denom)"},
         numerator: {:bigint, "input.numerator / greatest_denom"}
       ],
       body: """
-      IF (input).denominator < 0 THEN
-        RETURN  (numerator * -1, denominator);
-      ELSE
-        RETURN (numerator, denominator);
-      END IF;
+      numerator := numerator * sign((input).denominator);
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -489,9 +486,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: [
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+      ],
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 0;
+      RETURN cmp_sign = 0;
       """
     )
   end
@@ -505,9 +507,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: [
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+      ],
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) != 0;
+      RETURN cmp_sign != 0;
       """
     )
   end
@@ -521,9 +528,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: [
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+      ],
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = -1;
+      RETURN cmp_sign = -1;
       """
     )
   end
@@ -538,11 +550,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       private_function(:lte, Migration.repo()),
       args: [a: :rational, b: :rational],
       declares: [
-        cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
       ],
       returns: :boolean,
       body: """
-      RETURN cmp = -1 OR cmp = 0;
+      RETURN cmp_sign = -1 or cmp_sign = 0;
       """
     )
   end
@@ -556,9 +570,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: [
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+      ],
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 1;
+      RETURN cmp_sign = 1;
       """
     )
   end
@@ -573,11 +592,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       private_function(:gte, Migration.repo()),
       args: [a: :rational, b: :rational],
       declares: [
-        cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
+        a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+        b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
       ],
       returns: :boolean,
       body: """
-      RETURN cmp = 1 OR cmp = 0;
+      RETURN cmp_sign = 1 or cmp_sign = 0;
       """
     )
   end

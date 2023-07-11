@@ -217,12 +217,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   def create_func_framestamp_fastrange_from_stamps do
     Postgres.Utils.create_plpgsql_function(
       "framestamp_fastrange",
-      args: [lower: :framestamp, upper: :framestamp],
+      args: [lower_stamp: :framestamp, upper_stamp: :framestamp],
       returns: :framestamp_fastrange,
       body: """
       RETURN framestamp_fastrange(
-        CAST((lower).seconds as double precision),
-        CAST((upper).seconds as double precision)
+        (lower_stamp).__seconds_n::double precision /  (lower_stamp).__seconds_d::double precision,
+        (upper_stamp).__seconds_n::double precision /  (upper_stamp).__seconds_d::double precision
       );
       """
     )
@@ -238,11 +238,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     Postgres.Utils.create_plpgsql_function(
       "framestamp_fastrange",
       args: [input: :framestamp_range],
+      declares: [
+        lower_stamp: {:framestamp, "LOWER(input)"},
+        upper_stamp: {:framestamp, "UPPER(input)"}
+      ],
       returns: :framestamp_fastrange,
       body: """
       RETURN framestamp_fastrange(
-        CAST((LOWER(input)).seconds as double precision),
-        CAST((UPPER(input)).seconds as double precision)
+        (lower_stamp).__seconds_n::double precision /  (lower_stamp).__seconds_d::double precision,
+        (upper_stamp).__seconds_n::double precision /  (upper_stamp).__seconds_d::double precision
       );
       """
     )
@@ -261,7 +265,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       declares: [diff: {:framestamp, "a - b"}],
       returns: :"double precision",
       body: """
-      RETURN CAST((diff).seconds as double precision);
+      RETURN (diff).__seconds_n::double precision /  (diff).__seconds_d::double precision;
       """
     )
   end
@@ -275,18 +279,35 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   """
   @spec create_func_canonical() :: {raw_sql(), raw_sql()}
   def create_func_canonical do
-    framestamp_with_frames = PgFramestamp.Migrations.function(:with_frames, Migration.repo())
     framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
       private_function(:canonical, Migration.repo()),
       args: [input: :framestamp_range],
       declares: [
-        single_frame: {:framestamp, "#{framestamp_with_frames}(1, (LOWER(input)).rate)"},
-        upper_stamp: {:framestamp, "UPPER(input)"},
         lower_stamp: {:framestamp, "LOWER(input)"},
-        rates_match: {:boolean, "(lower_stamp).rate === (upper_stamp).rate"},
-        new_rate: :framerate
+        upper_stamp: {:framestamp, "UPPER(input)"},
+        single_frame: {
+          :framestamp,
+          """
+          (
+            (lower_stamp).__rate_d,
+            (lower_stamp).__rate_n,
+            (lower_stamp).__rate_n,
+            (lower_stamp).__rate_d,
+            (lower_stamp).__rate_tags
+          )
+          """
+        },
+        rates_match: {
+          :boolean,
+          """
+          (upper_stamp).__rate_n = (lower_stamp).__rate_n
+          AND (upper_stamp).__rate_d = (lower_stamp).__rate_d
+          AND (upper_stamp).__rate_tags <@ (lower_stamp).__rate_tags
+          AND (upper_stamp).__rate_tags @> (lower_stamp).__rate_tags
+          """
+        }
       ],
       returns: :framestamp_range,
       body: """
@@ -295,10 +316,17 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
           RETURN input;
 
         WHEN LOWER_INC(input) AND NOT UPPER_INC(input) THEN
-          new_rate := GREATEST((lower_stamp).rate, (upper_stamp).rate);
-          lower_stamp := #{framestamp_with_seconds}((lower_stamp).seconds, new_rate);
-          upper_stamp := #{framestamp_with_seconds}((upper_stamp).seconds, new_rate);
-          RETURN framestamp_range(lower_stamp, upper_stamp, '[)');
+          RETURN framestamp_range(
+            #{framestamp_with_seconds}(
+              ((lower_stamp).__seconds_n, (lower_stamp).__seconds_d),
+              ((((lower_stamp).__rate_n, (lower_stamp).__rate_d)), (lower_stamp).__rate_tags)
+            ),
+            #{framestamp_with_seconds}(
+              ((upper_stamp).__seconds_n, (upper_stamp).__seconds_d),
+              ((((lower_stamp).__rate_n, (lower_stamp).__rate_d)), (lower_stamp).__rate_tags)
+            ),
+            '[)'
+          );
 
         WHEN LOWER_INC(input) AND UPPER_INC(input) THEN
           RETURN framestamp_range(lower_stamp, upper_stamp + single_frame, '[)');

@@ -4,6 +4,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
   alias Ecto.Changeset
   alias Ecto.Query
+  alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Framerate
   alias Vtc.Framestamp
@@ -206,27 +207,27 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
   serialization_table = [
     %{
       app_value: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
-      db_value: {{18_018, 5}, {{24_000, 1001}, ["non_drop"]}}
+      db_value: {18_018, 5, 24_000, 1001, ["non_drop"]}
     },
     %{
       app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f23_98()),
-      db_value: {{-18_018, 5}, {{24_000, 1001}, ["non_drop"]}}
+      db_value: {-18_018, 5, 24_000, 1001, ["non_drop"]}
     },
     %{
       app_value: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df()),
-      db_value: {{8_999_991, 2500}, {{30_000, 1001}, ["drop"]}}
+      db_value: {8_999_991, 2500, 30_000, 1001, ["drop"]}
     },
     %{
       app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f29_97_df()),
-      db_value: {{-8_999_991, 2500}, {{30_000, 1001}, ["drop"]}}
+      db_value: {-8_999_991, 2500, 30_000, 1001, ["drop"]}
     },
     %{
       app_value: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
-      db_value: {{3600, 1}, {{24, 1}, []}}
+      db_value: {3600, 1, 24, 1, []}
     },
     %{
       app_value: Framestamp.with_frames!("-01:00:00:00", Rates.f24()),
-      db_value: {{-3600, 1}, {{24, 1}, []}}
+      db_value: {-3600, 1, 24, 1, []}
     }
   ]
 
@@ -281,20 +282,6 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
       query = Query.from(f in fragment("SELECT ? as r", type(^app_value, Framestamp)), select: f.r)
       assert Repo.one!(query) == db_value
-    end
-
-    table_test "seconds field | <%= app_value %>", serialization_table, test_case do
-      %{db_value: {expected, _}, app_value: app_value} = test_case
-
-      query = Query.from(f in fragment("SELECT (?).seconds as r", type(^app_value, Framestamp)), select: f.r)
-      assert Repo.one!(query) == expected
-    end
-
-    table_test "rate field | <%= app_value %>", serialization_table, test_case do
-      %{db_value: {_, expected}, app_value: app_value} = test_case
-
-      query = Query.from(f in fragment("SELECT (?).rate as r", type(^app_value, Framestamp)), select: f.r)
-      assert Repo.one!(query) == expected
     end
 
     property "succeeds on good framestamp" do
@@ -361,16 +348,15 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     bad_insert_table = [
       %{
         name: "framerate negative",
-        sql_string: "((1, 1), ((-24, 1), '{}'))",
+        sql_string: "(1, 1, -24, 1, '{}')",
         framestamp: %Framestamp{seconds: Ratio.new(1), rate: %Framerate{playback: Ratio.new(-24), ntsc: nil}},
-        value: "((1, 1), ((-24, 1), '{}'))",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_rate_positive"
       },
       %{
         name: "framerate zero ",
-        sql_string: "((1, 1), ((0, 1), '{}'))",
+        sql_string: "(1, 1, 0, 1, '{}')",
         framestamp: %Framestamp{seconds: Ratio.new(1), rate: %Framerate{playback: Ratio.new(0), ntsc: nil}},
         field: :b,
         expected_code: :check_violation,
@@ -378,7 +364,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framerate zero denominator",
-        sql_string: "((1, 1), ((24, 0), '{}'))",
+        sql_string: "(1, 1, 24, 0, '{}')",
         framestamp: %Framestamp{
           seconds: Ratio.new(1),
           rate: %Framerate{playback: %Ratio{numerator: 24, denominator: 0}, ntsc: nil}
@@ -389,7 +375,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framerate negative denominator",
-        sql_string: "((1, 1), ((1, -1), '{}'))",
+        sql_string: "(1, 1, 1, -1, '{}')",
         framestamp: %Framestamp{
           seconds: Ratio.new(1),
           rate: %Framerate{playback: %Ratio{numerator: 1, denominator: -1}, ntsc: nil}
@@ -400,26 +386,26 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framerate bad tag with constraints",
-        sql_string: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        sql_string: "(18018, 5, 24000, 1001, '{bad_tag}')",
         field: :b,
         expected_code: :invalid_text_representation
       },
       %{
         name: "framerate bad tag without constraints",
-        sql_string: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        sql_string: "(18018, 5, 24000, 1001, '{bad_tag}')",
         field: :a,
         expected_code: :invalid_text_representation
       },
       %{
         name: "framerate multiple ntsc tags",
-        sql_string: "((0, 1), ((30000, 1001), '{drop, non_drop}'))",
+        sql_string: "(0, 1, 30000, 1001, '{drop, non_drop}')",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_ntsc_tags"
       },
       %{
         name: "framerate bad ntsc rate",
-        sql_string: "((1, 1), ((24, 1), '{non_drop}'))",
+        sql_string: "(1, 1, 24, 1, '{non_drop}')",
         framestamp: %Framestamp{
           seconds: Ratio.new(1),
           rate: %Framerate{playback: %Ratio{numerator: 24, denominator: 1}, ntsc: :non_drop}
@@ -430,7 +416,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framerate bad drop rate",
-        sql_string: "((0, 1), ((24000, 1001), '{drop}'))",
+        sql_string: "(0, 1, 24000, 1001, '{drop}')",
         framestamp: %Framestamp{
           seconds: Ratio.new(0),
           rate: %Framerate{playback: %Ratio{numerator: 24_000, denominator: 1001}, ntsc: :drop}
@@ -441,7 +427,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framestamp bad seconds",
-        sql_string: "((1, 1), ((24000, 1001), '{non_drop}'))",
+        sql_string: "(1, 1, 24000, 1001, '{non_drop}')",
         framestamp: %Framestamp{
           seconds: Ratio.new(1),
           rate: %Framerate{playback: %Ratio{numerator: 24_000, denominator: 1001}, ntsc: :non_drop}
@@ -503,8 +489,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert record = Repo.one!(query)
-        assert {:ok, ^expected} = Framestamp.load(record)
+        check_result(Repo.one!(query), expected)
       end
     end
   end
@@ -529,6 +514,32 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
         assert record = Repo.one!(query)
         assert {:ok, ^expected} = Framestamp.load(record)
+      end
+    end
+  end
+
+  describe "#Postgres framestamp.seconds/1" do
+    property "matches elixir value" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        %{seconds: expected} = framestamp
+
+        query = Query.from(f in fragment("SELECT framestamp.seconds(?) as r", type(^framestamp, Framestamp)), select: f.r)
+        assert record = Repo.one!(query)
+
+        assert {:ok, ^expected} = PgRational.load(record)
+      end
+    end
+  end
+
+  describe "#Postgres framestamp.rate/1" do
+    property "matches elixir value" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        %{rate: expected} = framestamp
+
+        query = Query.from(f in fragment("SELECT framestamp.rate(?) as r", type(^framestamp, Framestamp)), select: f.r)
+        assert record = Repo.one!(query)
+
+        assert {:ok, ^expected} = Framerate.load(record)
       end
     end
   end
@@ -921,9 +932,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
           select: f.r
         )
 
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      check_result(Repo.one!(query), expected)
     end
 
     mixed_rate_error_table = [
@@ -969,9 +978,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.add(a, b)
+        check_result(Repo.one!(query), Framestamp.add(a, b))
       end
     end
 
@@ -986,7 +993,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], r.a + r.b)
           end)
 
-        assert result == Framestamp.add(a, b)
+        check_result(result, Framestamp.add(a, b))
       end
     end
   end
@@ -1004,9 +1011,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
           select: f.r
         )
 
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      check_result(Repo.one!(query), expected)
     end
 
     property "matches Framestamp.add/2" do
@@ -1019,9 +1024,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.add(a, b, inherit_rate: :left)
+        check_result(Repo.one!(query), Framestamp.add(a, b, inherit_rate: :left))
       end
     end
 
@@ -1035,7 +1038,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? @+ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.add(a, b, inherit_rate: :left)
+        check_result(result, Framestamp.add(a, b, inherit_rate: :left))
       end
     end
   end
@@ -1048,14 +1051,11 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :right do
       %{a: a, b: b, expected: expected} = test_case
 
-      query =
-        Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-          select: f.r
-        )
-
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+        select: f.r
+      )
+      |> Repo.one!()
+      |> check_result(expected)
     end
 
     property "matches Framestamp.add/2" do
@@ -1063,14 +1063,13 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               a <- StreamDataVtc.framestamp(),
               b <- StreamDataVtc.framestamp()
             ) do
-        query =
-          Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-            select: f.r
-          )
+        expected = Framestamp.add(a, b, inherit_rate: :right)
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.add(a, b, inherit_rate: :right)
+        Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+        |> Repo.one!()
+        |> check_result(expected)
       end
     end
 
@@ -1084,7 +1083,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? +@ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.add(a, b, inherit_rate: :right)
+        check_result(result, Framestamp.add(a, b, inherit_rate: :right))
       end
     end
   end
@@ -1097,14 +1096,11 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
 
-      query =
-        Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-          select: f.r
-        )
-
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+        select: f.r
+      )
+      |> Repo.one!()
+      |> check_result(expected)
     end
 
     mixed_rate_error_table = [
@@ -1145,14 +1141,13 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               a <- StreamDataVtc.framestamp(rate: rate),
               b <- StreamDataVtc.framestamp(rate: rate)
             ) do
-        query =
-          Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-            select: f.r
-          )
+        expected = Framestamp.sub(a, b)
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.sub(a, b)
+        Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+        |> Repo.one!()
+        |> check_result(expected)
       end
     end
 
@@ -1167,7 +1162,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], r.a - r.b)
           end)
 
-        assert result == Framestamp.sub(a, b)
+        check_result(result, Framestamp.sub(a, b))
       end
     end
   end
@@ -1180,14 +1175,11 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :left do
       %{a: a, b: b, expected: expected} = test_case
 
-      query =
-        Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-          select: f.r
-        )
-
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+        select: f.r
+      )
+      |> Repo.one!()
+      |> check_result(expected)
     end
 
     property "matches Framestamp.sub/2" do
@@ -1195,14 +1187,13 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               a <- StreamDataVtc.framestamp(),
               b <- StreamDataVtc.framestamp()
             ) do
-        query =
-          Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-            select: f.r
-          )
+        expected = Framestamp.sub(a, b, inherit_rate: :left)
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.sub(a, b, inherit_rate: :left)
+        Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+        |> Repo.one!()
+        |> check_result(expected)
       end
     end
 
@@ -1216,7 +1207,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? @- ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.sub(a, b, inherit_rate: :left)
+        check_result(result, Framestamp.sub(a, b, inherit_rate: :left))
       end
     end
   end
@@ -1229,14 +1220,11 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :right do
       %{a: a, b: b, expected: expected} = test_case
 
-      query =
-        Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-          select: f.r
-        )
-
-      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-      assert %Framestamp{} = result
-      assert result == expected
+      Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+        select: f.r
+      )
+      |> Repo.one!()
+      |> check_result(expected)
     end
 
     property "matches Framestamp.sub/2" do
@@ -1244,14 +1232,13 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               a <- StreamDataVtc.framestamp(),
               b <- StreamDataVtc.framestamp()
             ) do
-        query =
-          Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
-            select: f.r
-          )
+        expected = Framestamp.sub(a, b, inherit_rate: :right)
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.sub(a, b, inherit_rate: :right)
+        Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+        |> Repo.one!()
+        |> check_result(expected)
       end
     end
 
@@ -1265,7 +1252,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? -@ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.sub(a, b, inherit_rate: :right)
+        check_result(result, Framestamp.sub(a, b, inherit_rate: :right))
       end
     end
   end
@@ -1274,16 +1261,14 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     property "matches Framestamp.mult/2" do
       check all(
               a <- StreamDataVtc.framestamp(),
-              b <- StreamDataVtc.rational()
+              multiplier <- StreamDataVtc.rational()
             ) do
         query =
-          Query.from(f in fragment("SELECT (? * ?) as r", type(^a, Framestamp), type(^b, PgRational)),
+          Query.from(f in fragment("SELECT (? * ?) as r", type(^a, Framestamp), type(^multiplier, PgRational)),
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.mult(a, b)
+        check_result(Repo.one!(query), Framestamp.mult(a, multiplier))
       end
     end
 
@@ -1299,7 +1284,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], r.a * type(^multiplier, PgRational))
           end)
 
-        assert result == Framestamp.mult(a, multiplier)
+        check_result(result, Framestamp.mult(a, multiplier))
       end
     end
   end
@@ -1315,9 +1300,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.div(dividend, divisor, round: :closest)
+        check_result(Repo.one!(query), Framestamp.div(dividend, divisor, round: :closest))
       end
     end
 
@@ -1333,7 +1316,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], r.a / type(^divisor, PgRational))
           end)
 
-        assert result == Framestamp.div(dividend, divisor, round: :closest)
+        check_result(result, Framestamp.div(dividend, divisor, round: :closest))
       end
     end
   end
@@ -1349,9 +1332,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.div(dividend, divisor, round: :trunc)
+        check_result(Repo.one!(query), Framestamp.div(dividend, divisor, round: :trunc))
       end
     end
 
@@ -1367,7 +1348,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("DIV(?, ?)", r.a, type(^divisor, PgRational)))
           end)
 
-        assert result == Framestamp.div(dividend, divisor, round: :trunc)
+        check_result(result, Framestamp.div(dividend, divisor, round: :trunc))
       end
     end
   end
@@ -1383,9 +1364,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             select: f.r
           )
 
-        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
-        assert %Framestamp{} = result
-        assert result == Framestamp.rem(dividend, divisor)
+        check_result(Repo.one!(query), Framestamp.rem(dividend, divisor))
       end
     end
 
@@ -1401,7 +1380,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? % ?)", r.a, type(^divisor, PgRational)))
           end)
 
-        assert result == Framestamp.rem(dividend, divisor)
+        check_result(result, Framestamp.rem(dividend, divisor))
       end
     end
   end
@@ -1440,15 +1419,25 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
              |> FramestampSchema01.changeset(%{a: a, b: b})
              |> Repo.insert()
 
-    assert {:ok, result} =
-             FramestampSchema01
-             |> select.()
-             |> Query.where([r], r.id == ^record_id)
-             |> Repo.one!()
-             |> Framestamp.load()
+    FramestampSchema01
+    |> select.()
+    |> Query.where([r], r.id == ^record_id)
+    |> Repo.one!()
+  end
 
-    assert %Framestamp{} = result
+  @spec check_result(PgFramestamp.db_record(), Framestamp.t()) :: :ok
+  defp check_result(result, expected) do
+    {seconds_n, seconds_d, rate_n, rate_d, _} = result
 
-    result
+    assert {:ok, ^expected} = Framestamp.load(result)
+
+    ## Make sure the result came in simplified and it wasn't simplified during loading
+    assert seconds_n == expected.seconds.numerator
+    assert seconds_d == expected.seconds.denominator
+
+    assert rate_n == expected.rate.playback.numerator
+    assert rate_d == expected.rate.playback.denominator
+
+    :ok
   end
 end

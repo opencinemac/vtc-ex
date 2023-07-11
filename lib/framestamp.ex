@@ -1,24 +1,22 @@
 defmodule Vtc.Framestamp do
   @moduledoc """
-  Represents a particular frame in a video clip.
+  Identifies a particular frame in a media stream.
 
-  New Framestamp values are created with the `with_seconds/3` and `with_frames/2`, and
-  other function prefaced by `with_*`.
+  New Framestamp values are created by `with_seconds/3` and `with_frames/2`.
 
-  Vtc express a philosophy of working with Timecode that is defined by two major
-  conceits:
+  Vtc's philosophy of working with Timecode is defined by two major conceits:
 
   1. A frame identifier is incomplete without a framerate.
      [More here](Vtc.Framestamp.html#module-why-include-framerate).
 
-  2. All frame identifiers commonly used in Video production boil down to being an
-     expression of either the real-world seconds of a frame, OR a squential index
+  2. All frame identifiers commonly used in Video production boil down to either
+     the real-world seconds-since-midnight that frame occurred, OR a squential index
      number. [More here](Vtc.Framestamp.html#module-parsing-seconds-t-or-frames-t).
 
   ## What is a framestamp?
 
-  Framestamps are an expression of Vtc's philosophy about working with timecode in
-  application code. On a technical level, a framestamp is comprised of:
+  Framestamps are a way to identify a media stream frame without requiring any
+  additional information. On a technical level, a framestamp is comprised of:
 
   - The real-world time that a frame occurred at, as represented by a rational value,
     measured in seconds since SMPTE timecode "midnight".
@@ -29,32 +27,31 @@ defmodule Vtc.Framestamp do
   - Any associated metadata about the source representation the framestamp was parsed
     from, such as SMPTE NTSC non-drop timecode.
 
-  So a fully-formed framestamp for `01:00:00:00` at `23.98 NTSC` would be
+  A fully-formed framestamp for `01:00:00:00` at `23.98 NTSC` would be
   `18018/5 @ 24000/1001 NTSC non-drop`.
 
   ### Why prefer seconds?
 
-  SMPTE [timecode](history.html), shown above, is the canonical way we identify an
-  individual frame in professional video workflows. As a human readable data type,
-  timecode strings are great. You can easily locate, compare, and add timecode strings
-  at a glance.
+  SMPTE [timecode](history.html) is the canonical way frames are identified in
+  professional video workflows. As a human-readable data type, timecode strings are
+  great. You can easily locate, compare, and add timecode strings at-a-glance.
 
   Why then, does Vtc come up with a new representation?
 
   Well, SMPTE timecode strings are *not* as great for computers. Let's take a quick look
   at what we want from a good frame identifier:
 
-  - Uniquely identify a frame in a specific video stream.
+  - Uniquely identifies a frame in a specific video stream.
 
-  - Sort by real-world occurrence.
+  - Sortable by real-world occurrence.
 
-  - Add / subtract values.
+  - Easily added/subtracted to each other.
 
   - All of the above, in mixed-framerate contexts.
 
   The last point is key, timecode is great... *if* all of your media is running at the
-  same framerate. For instance, when syncing footage and audio between two cameras --
-  one running at 24fps, and one running at 48fps -- `01:00:00:13` and `01:00:00:26` are
+  same framerate. For instance, when syncing media streams between two devices -- one
+  running at 24fps, and one running at 48fps -- `01:00:00:13` and `01:00:00:26` are
   equivalent values, as they were captured at the same point in time, and should be
   synced together. Timecode is an expression of *frame index* more than *frame seconds*,
   and as such, cannot be lexically sorted in mixed-rate settings. Further,
@@ -63,7 +60,7 @@ defmodule Vtc.Framestamp do
 
   Many programs convert timecode directly to an integer frame number for arithamtic and
   comparison operations where each frame on the clock is issued a continuous index,
-  zero `0` is `00:00:00:00`. Frame numbers, though, have the same issue with mixed-rate
+  with `0` as `00:00:00:00`. Frame numbers, though, have the same issue with mixed-rate
   values as timecode; `26` at 48 frames-per-second represents the same real-world time
   as `13` at 24 frames-per-seconds, and preserving that equality is important for
   operations like jam-syncing.
@@ -74,8 +71,7 @@ defmodule Vtc.Framestamp do
   ### Why rational numbers?
 
   We'll avoid a deep-dive over why we use a rational value over a float or decimal, but
-  you can read more on that choice
-  [here]([why we use rational values](the_rational_rationale.html).
+  you can read more on that choice [here](the_rational_rationale.html).
 
   The short version is that many common SMPTE-specified framerates are defined as
   irrational numbers. For instance, `23.98 NTSC` is defined as `24000/1001`
@@ -89,7 +85,7 @@ defmodule Vtc.Framestamp do
   ### Why include framerate?
 
   SMPTE timecode does not include a framerate in it's specification for frame
-  identifiers, i.e `01:00:00:00`. So why does `Vtc`?
+  identifiers, i.e `01:00:00:00`. So why does Vtc?
 
   Lets say that we are working with a given video file, and you are handed the timecode
   `01:00:00:12`. What frame does that belong to?
@@ -99,7 +95,7 @@ defmodule Vtc.Framestamp do
   it belongs to frame `216,000`, and if we are talking about `59.94 NTSC DF` media then
   it belongs to frame `215,784`.
 
-  What about the other direction. We need to calculate the SMPTE timecode for frame
+  What about the other direction? We need to calculate the SMPTE timecode for frame
   `48`, which we previously parsed from a timecode. Well if it was originally parsed
   using `23.98 NTSC` footage, then it is TC `00:00:02:00`, but if it is `59.94 NTSC`
   then it is TC `00:00:00:48`. Framerate is implicitly required for a SMPTE timecode
@@ -113,7 +109,7 @@ defmodule Vtc.Framestamp do
   represents, without knowing that scalar value's associated framerate. It's like having
   a timestamp without a timezone. Even in systems where all timestamps are converted to
   UTC, we often keep the timezone information around because it's just too useful in
-  mixed-timezone settings, and you can't be *sure* what a given timezone represents
+  mixed-timezone settings, and you can't be *sure* what a given timestamp represents
   in a vacuum if you don't have the associated timezone.
 
   Framerate -- especially in mixed rate settings, which Vtc considers a first-class use
