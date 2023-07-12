@@ -19,6 +19,19 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
 
+  > #### Required Permissions {: .warning}
+  >
+  > To add the framestamp_range
+  > [canonical](https://www.postgresql.org/docs/current/rangetypes.html#RANGETYPES-DISCRETE),
+  > we must directly add it to the `framestamp_range` type in the `pg_catalog` table.
+  > In most databases, this will require elevated permissions. See the
+  > `inject_canonical_function/0` for more information on why this is required.
+  >
+  > You can choose to skip this step if you wish my setting the `inject_canonical?`
+  > op to false, but operations that require discreet nudging of in and out points will
+  > not return correct results, and ranges with different upper/lowwer bound types will
+  > not be comparable.
+
   ## Types Created
 
   Calling this macro creates the following type definitions:
@@ -85,49 +98,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   end
   ```
   """
-  @spec create_all() :: :ok
-  def create_all do
+  @spec create_all(Keyword.t()) :: :ok
+  def create_all(opts \\ []) do
+    inject_canonical? = Keyword.get(opts, :inject_canonical?, true)
+
     create_function_schemas()
 
     create_func_subtype_diff()
     create_type_framestamp_range()
-    create_func_canonicalization()
+    create_func_canonical()
+
+    if inject_canonical? do
+      inject_canonical_function()
+    end
 
     create_type_framestamp_fastrange()
     create_func_framestamp_fastrange_from_stamps()
     create_func_framestamp_fastrange_from_range()
-
-    # There is a limitation with PL/pgSQL where shell-types cannot be used as either
-    # arguments OR return types.
-    #
-    # However, in the user-facing API flow, the canonical function must be created
-    # before the range type with a shell type, then passed to the range type upon
-    # construction. Further, ALTER TYPE does not work on range functions out-of-the
-    # gate, so we cannot add it later... through the public API.
-    #
-    # Instead we are going to edit the pg_catalog directly and supply the function
-    # after-the-fact ourselves. Since this will all happen in a single transaction
-    # it should be functionally equivalent to creating it on the type as part of the
-    # initial call.
-    canonicalization = private_function(:canonicalization, Migration.repo())
-
-    Migration.execute("""
-      UPDATE pg_catalog.pg_range
-      SET
-          rngcanonical = '#{canonicalization}'::regproc
-      WHERE
-          pg_catalog.pg_range.rngcanonical = '-'::regproc
-          AND EXISTS (
-              SELECT * FROM pg_catalog.pg_type
-              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngsubtype
-              AND pg_catalog.pg_type.typname = 'framestamp'
-          )
-          AND EXISTS (
-              SELECT * FROM pg_catalog.pg_type
-              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngtypid
-              AND pg_catalog.pg_type.typname = 'framestamp_range'
-          );
-    """)
 
     :ok
   end
@@ -149,6 +136,48 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
         EXCEPTION WHEN duplicate_object
           THEN null;
       END $$;
+    """)
+  end
+
+  @doc """
+  There is a limitation with PL/pgSQL where shell-types cannot be used as either
+  arguments OR return types.
+
+  However, in the user-facing API flow, the canonical function must be created
+  before the range type with a shell type, then passed to the range type upon
+  construction. Further, ALTER TYPE does not work on range functions out-of-the
+  gate, so we cannot add it later... through the public API.
+
+  Instead this function edits the pg_catalog directly and supply the function
+  after-the-fact ourselves. Since this will all happen in a single transaction
+  it should be functionally equivalent to creating it on the type as part of the
+  initial call.
+
+  > #### Permissions {: .warning}
+  >
+  > In most databases, directly editing the pg_catalog will require elevated
+  > permissions.
+  """
+  @spec inject_canonical_function() :: :ok
+  def inject_canonical_function do
+    canonical = private_function(:canonical, Migration.repo())
+
+    Migration.execute("""
+      UPDATE pg_catalog.pg_range
+      SET
+          rngcanonical = '#{canonical}'::regproc
+      WHERE
+          pg_catalog.pg_range.rngcanonical = '-'::regproc
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngsubtype
+              AND pg_catalog.pg_type.typname = 'framestamp'
+          )
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngtypid
+              AND pg_catalog.pg_type.typname = 'framestamp_range'
+          );
     """)
   end
 
@@ -245,8 +274,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   Output ranges have an inclusive lower bound and an exclusive upper bound.
   """
-  @spec create_func_canonicalization() :: :ok
-  def create_func_canonicalization do
+  @spec create_func_canonical() :: :ok
+  def create_func_canonical do
     Migration.execute("""
       DO $$ BEGIN
         CREATE TYPE framestamp_range;
@@ -260,7 +289,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
     create_func =
       Postgres.Utils.create_plpgsql_function(
-        private_function(:canonicalization, Migration.repo()),
+        private_function(:canonical, Migration.repo()),
         args: [input: :framestamp_range],
         declares: [
           single_frame: {:framestamp, "#{framestamp_with_frames}(1, (LOWER(input)).rate)"},
