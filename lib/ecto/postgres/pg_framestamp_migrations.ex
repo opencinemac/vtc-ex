@@ -935,14 +935,16 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_field_constraints(atom(), atom()) :: :ok
   def create_field_constraints(table, field) do
-    PgFramerate.Migrations.create_field_constraints(table, "(#{field}).rate", :"#{field}_rate")
+    sql_field = "#{table}.#{field}"
+
+    PgFramerate.Migrations.create_field_constraints(table, field, "(#{sql_field}).rate")
 
     seconds_divisible_by_rate =
       Migration.constraint(
         table,
         "#{field}_seconds_divisible_by_rate",
         check: """
-        ((#{field}).seconds * (#{field}).rate.playback) % 1::bigint = 0::bigint
+        ((#{sql_field}).seconds * (#{sql_field}).rate.playback) % 1::bigint = 0::bigint
         """
       )
 

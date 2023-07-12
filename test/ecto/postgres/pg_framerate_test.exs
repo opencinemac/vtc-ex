@@ -346,28 +346,28 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
         value: "((-24000, 1001), '{non_drop}')",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_positive"
+        expected_constraint: "b_rate_positive"
       },
       %{
         name: "zero",
         value: "((0, 1001), '{non_drop}')",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_positive"
+        expected_constraint: "b_rate_positive"
       },
       %{
         name: "zero denominator",
         value: "((24, 0), '{}')",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_positive"
+        expected_constraint: "b_rate_positive"
       },
       %{
         name: "negative denominator",
         value: "((24, -1), '{}')",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_positive"
+        expected_constraint: "b_rate_positive"
       },
       %{
         name: "bad tag with constraints",

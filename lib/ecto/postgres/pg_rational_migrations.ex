@@ -954,12 +954,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   """
   @spec create_field_constraints(atom(), atom()) :: :ok
   def create_field_constraints(table, field_name) do
+    sql_field = "#{table}.#{field_name}"
+
     constraint =
       Migration.constraint(
         table,
         "#{field_name}_denominator_positive",
         check: """
-        (#{field_name}).denominator > 0
+        (#{sql_field}).denominator > 0
         """
       )
 
