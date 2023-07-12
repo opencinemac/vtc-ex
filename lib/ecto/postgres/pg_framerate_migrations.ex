@@ -300,20 +300,20 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   ```
   """
   @spec create_field_constraints(atom(), atom() | String.t(), atom() | String.t()) :: :ok
-  def create_field_constraints(table, target_value, field \\ nil) do
-    field =
-      case {target_value, field} do
-        {target_value, nil} -> target_value
-        {_, field} -> field
+  def create_field_constraints(table, field_name, sql_value \\ nil) do
+    {field_name, sql_value} =
+      case {field_name, sql_value} do
+        {field_name, nil} -> {field_name, "#{table}.#{field_name}"}
+        {_, sql_value} -> {field_name, sql_value}
       end
 
     positive =
       Migration.constraint(
         table,
-        "#{field}_positive",
+        "#{field_name}_rate_positive",
         check: """
-        (#{target_value}).playback.denominator > 0
-        AND (#{target_value}).playback.numerator > 0
+        (#{sql_value}).playback.denominator > 0
+        AND (#{sql_value}).playback.numerator > 0
         """
       )
 
@@ -322,11 +322,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     ntsc_tags =
       Migration.constraint(
         table,
-        "#{field}_ntsc_tags",
+        "#{field_name}_ntsc_tags",
         check: """
         NOT (
-          ((#{target_value}).tags) @> '{drop}'::framerate_tags[]
-          AND ((#{target_value}).tags) @> '{non_drop}'::framerate_tags[]
+          ((#{sql_value}).tags) @> '{drop}'::framerate_tags[]
+          AND ((#{sql_value}).tags) @> '{non_drop}'::framerate_tags[]
         )
         """
       )
@@ -336,15 +336,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     ntsc_valid =
       Migration.constraint(
         table,
-        "#{field}_ntsc_valid",
+        "#{field_name}_ntsc_valid",
         check: """
-        NOT #{function(:is_ntsc, Migration.repo())}(#{target_value})
+        NOT #{function(:is_ntsc, Migration.repo())}(#{sql_value})
         OR (
             (
-              ROUND((#{target_value}).playback) * 1000,
+              ROUND((#{sql_value}).playback) * 1000,
               1001
             )::rational
-            = (#{target_value}).playback
+            = (#{sql_value}).playback
         )
         """
       )
@@ -354,10 +354,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
     drop_valid =
       Migration.constraint(
         table,
-        "#{field}_ntsc_drop_valid",
+        "#{field_name}_ntsc_drop_valid",
         check: """
-        NOT (#{target_value}).tags @> '{drop}'::framerate_tags[]
-        OR (#{target_value}).playback % (30000, 1001)::rational = (0, 1)::rational
+        NOT (#{sql_value}).tags @> '{drop}'::framerate_tags[]
+        OR (#{sql_value}).playback % (30000, 1001)::rational = (0, 1)::rational
         """
       )
 

@@ -404,21 +404,21 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         value: "((0, 1), ((30000, 1001), '{drop, non_drop}'))",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_rate_ntsc_tags"
+        expected_constraint: "b_ntsc_tags"
       },
       %{
         name: "framerate bad ntsc rate",
         value: "((1, 1), ((24, 1), '{non_drop}'))",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_rate_ntsc_valid"
+        expected_constraint: "b_ntsc_valid"
       },
       %{
         name: "framerate bad drop rate",
         value: "((0, 1), ((24000, 1001), '{drop}'))",
         field: :b,
         expected_code: :check_violation,
-        expected_constraint: "b_rate_ntsc_drop_valid"
+        expected_constraint: "b_ntsc_drop_valid"
       },
       %{
         name: "framestamp bad seconds",
