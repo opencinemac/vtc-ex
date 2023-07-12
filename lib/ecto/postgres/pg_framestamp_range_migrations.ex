@@ -21,10 +21,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   > #### Required Permissions {: .warning}
   >
-  > To add the framestamp_range
+  > To add the `framestamp_range`
   > [canonical](https://www.postgresql.org/docs/current/rangetypes.html#RANGETYPES-DISCRETE),
-  > we must directly add it to the `framestamp_range` type in the `pg_catalog` table.
-  > In most databases, this will require elevated permissions. See the
+  > function, we must directly add it to the `framestamp_range` type in the `pg_catalog`
+  > table. In most databases, this will require elevated permissions. See the
   > `inject_canonical_function/0` for more information on why this is required.
   >
   > You can choose to skip this step if you wish my setting the `inject_canonical?`
@@ -139,6 +139,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     """)
   end
 
+  @doc section: :migrations_types
   @doc """
   There is a limitation with PL/pgSQL where shell-types cannot be used as either
   arguments OR return types.
