@@ -73,6 +73,32 @@ defmodule Vtc.Ecto.Postgres.Utils do
     :ok
   end
 
+  @doc """
+  Run migrations, allowing callers to specigy
+  """
+  @spec run_migrations([(() -> raw_sql() | :skip)], include: Keyword.t(), exclude: Keyword.t()) :: :ok
+  def run_migrations(functions, opts) do
+    include = Keyword.get(opts, :include, [])
+    exclude = Keyword.get(opts, :exclude, [])
+    Enum.each(functions, &run_migration_function(&1, include, exclude))
+  end
+
+  @spec run_migration_function((() -> raw_sql() | :skip), [atom()], [atom()]) :: :ok
+  defp run_migration_function(function, includes, excludes) do
+    name = function |> Function.info() |> Keyword.fetch!(:name)
+
+    sql_command = function.()
+    included? = name in includes or includes == []
+    excluded? = name in excludes
+
+    if is_binary(sql_command) and included? and not excluded? do
+      Migration.execute(sql_command)
+      :ok
+    else
+      :ok
+    end
+  end
+
   @typedoc """
   Alias of String.t() that hints raw SQL text.
   """
@@ -362,21 +388,21 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Creates a public and private schema for a type based on the repo's confguration.
   """
-  @spec create_type_schemas(atom()) :: :ok
-  def create_type_schemas(type_name) do
+  @spec create_type_schema(atom()) :: raw_sql() | :skip
+  def create_type_schema(type_name) do
     functions_schema = get_type_config(Migration.repo(), type_name, :functions_schema, :public)
 
     if functions_schema != :public do
-      Migration.execute("""
-        DO $$ BEGIN
-          CREATE SCHEMA #{functions_schema};
-          EXCEPTION WHEN duplicate_schema
-            THEN null;
-        END $$;
-      """)
+      """
+      DO $$ BEGIN
+      CREATE SCHEMA #{functions_schema};
+      EXCEPTION WHEN duplicate_schema
+        THEN null;
+      END $$;
+      """
+    else
+      :skip
     end
-
-    :ok
   end
 
   @doc """

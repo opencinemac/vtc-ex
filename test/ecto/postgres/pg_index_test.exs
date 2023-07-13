@@ -193,7 +193,6 @@ defmodule Vtc.Ecto.Postgres.PgRationalIndexTest do
         )
         |> Query.select([events_01: events_01, events_02: events_02], {events_01.id, events_02.id})
         |> then(&Repo.explain(:all, &1))
-        |> dbg()
 
       assert overlaps_plan =~ expected_plan_snippet
     end

@@ -14,10 +14,24 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
 
   Migrations are run for:
 
-  - [PgRational](`Vtc.Ecto.Postgres.PgRational.Migrations`)
-  - [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate.Migrations`)
-  - [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp.Migrations`)
-  - [PgFramestamp.Range](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations`)
+  - [PgRational](`Vtc.Ecto.Postgres.PgRational.Migrations`).
+  - [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate.Migrations`).
+  - [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp.Migrations`).
+  - [PgFramestamp.Range](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations`).
+
+  ## Options
+
+  - `pg_rational_opts`: Options to pass to
+    [PgRational.Migrations.create_all/0](`Vtc.Ecto.Postgres.PgRational.Migrations.create_all/0`).
+
+  - `pg_framerate_opts`: Options to pass to
+    [PgFramerate.Migrations.create_all/0](`Vtc.Ecto.Postgres.PgFramerate.Migrations.create_all/0`).
+
+  - `pg_framestamp_opts`: Options to pass to
+    [PgFramestamp.Migrations.create_all/0](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_all/0`).
+
+  - `pg_framestamp_range_opts`: Options to pass to
+    [PgFramestamp.Rage.Migrations.create_all/0](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.create_all/0`).
 
   > #### Required Permissions {: .warning}
   >
@@ -33,12 +47,22 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
   > not return correct results, and ranges with different upper/lowwer bound types will
   > not be comparable.
   """
-  @spec migrate(Keyword.t()) :: :ok
+  @spec migrate(
+          pg_rational_opts: [include: Keyword.t(), exclude: Keyword.t()],
+          pg_framerate_opts: [include: Keyword.t(), exclude: Keyword.t()],
+          pg_framestamp_opts: [include: Keyword.t(), exclude: Keyword.t()],
+          pg_framestamp_range_opts: [include: Keyword.t(), exclude: Keyword.t()]
+        ) :: :ok
   def migrate(opts \\ []) do
-    PgRational.Migrations.create_all()
-    PgFramerate.Migrations.create_all()
-    PgFramestamp.Migrations.create_all()
-    PgFramestamp.Range.Migrations.create_all(opts)
+    pg_rational_opts = Keyword.get(opts, :pg_rational_opts, [])
+    pg_framerate_opts = Keyword.get(opts, :pg_framerate_opts, [])
+    pg_framestamp_opts = Keyword.get(opts, :pg_framestamp_opts, [])
+    pg_framestamp_range_opts = Keyword.get(opts, :pg_framestamp_range_opts, [])
+
+    PgRational.Migrations.create_all(pg_rational_opts)
+    PgFramerate.Migrations.create_all(pg_framerate_opts)
+    PgFramestamp.Migrations.create_all(pg_framestamp_opts)
+    PgFramestamp.Range.Migrations.create_all(pg_framestamp_range_opts)
 
     :ok
   end
