@@ -88,7 +88,8 @@ end
 ```
 
 This migration is safe to run multiple times, and can be run again when new 
-functionality is added to Vtc.
+functionality is added to Vtc. All migrations implement both `up` and `down` 
+functionality, and support rollbacks out of the box.
 
 All objects created by the migration come complete with in-database documentation
 with links to the relevant Vtc docs. Using [DataGrip](https://www.jetbrains.com/datagrip/):

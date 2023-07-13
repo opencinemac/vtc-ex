@@ -20,15 +20,18 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  Safe to run multiple times when new functionality is added in updates to this library.
-  Existing values will be skipped.
-
   This migration included all migraitons under the
   [Pg Types](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#pg-types),
   [Pg Operators](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#pg-operators),
   [Pg Functions](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#pg-functions), and
   [Pg Private Functions](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#pg-private-functions),
   headings.
+
+  Safe to run multiple times when new functionality is added in updates to this library.
+  Existing values will be skipped.
+
+  Individual migration functions return raw sql commands in an
+  {up_command, down_command} tuple.
 
   ## Options
 
@@ -126,36 +129,19 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @doc """
   Adds `framerate_tgs` enum type.
   """
-  @spec create_type_framerate_tags() :: raw_sql()
-  def create_type_framerate_tags do
-    """
-    DO $$ BEGIN
-      CREATE TYPE framerate_tags AS ENUM (
-        'drop',
-        'non_drop'
-      );
-      EXCEPTION WHEN duplicate_object
-        THEN null;
-    END $$;
-    """
-  end
+  @spec create_type_framerate_tags() :: {raw_sql(), raw_sql()}
+  def create_type_framerate_tags, do: Postgres.Utils.create_type(:framerate_tags, :enum, [:drop, :non_drop])
 
   @doc section: :migrations_types
   @doc """
   Adds `framerate` composite type.
   """
-  @spec create_type_framerate() :: raw_sql()
+  @spec create_type_framerate() :: {raw_sql(), raw_sql()}
   def create_type_framerate do
-    """
-    DO $$ BEGIN
-      CREATE TYPE framerate AS (
-        playback rational,
-        tags framerate_tags[]
-      );
-      EXCEPTION WHEN duplicate_object
-        THEN null;
-    END $$;
-    """
+    Postgres.Utils.create_type(:framerate,
+      playback: :rational,
+      tags: "framerate_tags[]"
+    )
   end
 
   ## FUNCTIONS
@@ -166,7 +152,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
-  @spec create_function_schemas() :: raw_sql()
+  @spec create_function_schemas() :: {raw_sql(), raw_sql()}
   def create_function_schemas, do: Postgres.Utils.create_type_schema(:framerate)
 
   @doc section: :migrations_functions
@@ -174,7 +160,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Creates `framerate.is_ntsc(rat)` function that returns true if the framerate
   is and NTSC drop or non-drop rate.
   """
-  @spec create_func_is_ntsc() :: raw_sql()
+  @spec create_func_is_ntsc() :: {raw_sql(), raw_sql()}
   def create_func_is_ntsc do
     Postgres.Utils.create_plpgsql_function(
       function(:is_ntsc, Migration.repo()),
@@ -193,7 +179,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @doc """
   Creates `framerate.__private__strict_eq(a, b)` that backs the `===` operator.
   """
-  @spec create_func_strict_eq() :: raw_sql()
+  @spec create_func_strict_eq() :: {raw_sql(), raw_sql()}
   def create_func_strict_eq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_eq, Migration.repo()),
@@ -211,7 +197,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @doc """
   Creates `framerate.__private__strict_eq(a, b)` that backs the `===` operator.
   """
-  @spec create_func_strict_neq() :: raw_sql()
+  @spec create_func_strict_neq() :: {raw_sql(), raw_sql()}
   def create_func_strict_neq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_neq, Migration.repo()),
@@ -232,7 +218,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Creates a custom :framerate, :framerate `===` operator that returns true if *both*
   the playback rate AND tags of a framerate are equal.
   """
-  @spec create_op_strict_eq() :: raw_sql()
+  @spec create_op_strict_eq() :: {raw_sql(), raw_sql()}
   def create_op_strict_eq do
     Postgres.Utils.create_operator(
       :===,
@@ -249,7 +235,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   Creates a custom :framerate, :framerate `===` operator that returns true if *both*
   the playback rate AND tags of a framerate are equal.
   """
-  @spec create_op_strict_neq() :: raw_sql()
+  @spec create_op_strict_neq() :: {raw_sql(), raw_sql()}
   def create_op_strict_neq do
     Postgres.Utils.create_operator(
       :"!===",

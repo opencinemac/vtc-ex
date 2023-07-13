@@ -16,16 +16,22 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddFramestampSchema02 do
 
     create(index("framestamps_02", [:b]))
 
-    execute("""
-      CREATE INDEX framestamps_a_b_fastrange
-        ON framestamps_02
-        USING GIST(framestamp_fastrange(a, b))
-    """)
+    create(
+      index(
+        "framestamps_02",
+        ["framestamp_range(a, b)"],
+        name: :framestamps_a_b_range,
+        using: :GIST
+      )
+    )
 
-    execute("""
-      CREATE INDEX framestamps_a_b_range
-        ON framestamps_02
-        USING GIST(framestamp_range(a, b))
-    """)
+    create(
+      index(
+        "framestamps_02",
+        ["framestamp_fastrange(a, b)"],
+        name: :framestamps_a_b_fastrange,
+        using: :GIST
+      )
+    )
   end
 end

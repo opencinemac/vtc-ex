@@ -33,6 +33,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
 
+  Individual migration functions return raw sql commands in an
+  {up_command, down_command} tuple.
+
   ## Options
 
   - `include`: A list of migration functions to inclide. If not set, all sub-migrations
@@ -150,7 +153,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       &create_func_gte/0,
       &create_op_eq/0,
       &create_op_neq/0,
-      &create_op_neq2/0,
       &create_op_lt/0,
       &create_op_lte/0,
       &create_op_gt/0,
@@ -173,18 +175,12 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   - `rationals` schema
   - `rationals_helpers` schema
   """
-  @spec create_type() :: raw_sql()
+  @spec create_type() :: {raw_sql(), raw_sql()}
   def create_type do
-    """
-    DO $$ BEGIN
-      CREATE TYPE rational AS (
-        numerator bigint,
-        denominator bigint
-      );
-      EXCEPTION WHEN duplicate_object
-        THEN null;
-    END $$;
-    """
+    Postgres.Utils.create_type(:rational,
+      numerator: :bigint,
+      denominator: :bigint
+    )
   end
 
   @doc section: :migrations_types
@@ -193,7 +189,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
-  @spec create_function_schemas() :: raw_sql()
+  @spec create_function_schemas() :: {raw_sql(), raw_sql()}
   def create_function_schemas, do: Postgres.Utils.create_type_schema(:rational)
 
   @doc section: :migrations_private_functions
@@ -201,7 +197,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__simplify(rat)` function that simplifies a rational. Used at
   the end of every rational operation to avoid overflows.
   """
-  @spec create_func_simplify() :: raw_sql()
+  @spec create_func_simplify() :: {raw_sql(), raw_sql()}
   def create_func_simplify do
     Postgres.Utils.create_plpgsql_function(
       private_function(:simplify, Migration.repo()),
@@ -227,7 +223,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.minus(rat)` function that flips the sign of the input value --
   makes a positive value negative and a negative value positive.
   """
-  @spec create_func_minus() :: raw_sql()
+  @spec create_func_minus() :: {raw_sql(), raw_sql()}
   def create_func_minus do
     Postgres.Utils.create_plpgsql_function(
       function(:minus, Migration.repo()),
@@ -244,7 +240,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `ABS(rational)` function that returns the absolute value of the rational
   value.
   """
-  @spec create_func_abs() :: raw_sql()
+  @spec create_func_abs() :: {raw_sql(), raw_sql()}
   def create_func_abs do
     Postgres.Utils.create_plpgsql_function(
       "ABS",
@@ -261,7 +257,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `ROUND(rational)` function that returns the rational input, rounded to the
   nearest :bigint.
   """
-  @spec create_func_round() :: raw_sql()
+  @spec create_func_round() :: {raw_sql(), raw_sql()}
   def create_func_round do
     Postgres.Utils.create_plpgsql_function(
       "ROUND",
@@ -286,7 +282,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `FLOOR(rational)` function that returns the rational input as a `bigint`,
   rounded towards zero, to match Postgres `FLOOR(real)` behavior.
   """
-  @spec create_func_floor() :: raw_sql()
+  @spec create_func_floor() :: {raw_sql(), raw_sql()}
   def create_func_floor do
     Postgres.Utils.create_plpgsql_function(
       "FLOOR",
@@ -302,7 +298,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a native CAST from `rational` to `double precision`.
   """
-  @spec create_func_cast_to_double_precison() :: raw_sql()
+  @spec create_func_cast_to_double_precison() :: {raw_sql(), raw_sql()}
   def create_func_cast_to_double_precison do
     Postgres.Utils.create_plpgsql_function(
       private_function(:cast_to_double, Migration.repo()),
@@ -318,7 +314,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a native CAST from `bigint` to `rational`.
   """
-  @spec create_func_cast_bigint_to_rational() :: raw_sql()
+  @spec create_func_cast_bigint_to_rational() :: {raw_sql(), raw_sql()}
   def create_func_cast_bigint_to_rational do
     Postgres.Utils.create_plpgsql_function(
       private_function(:cast_bigint_to_rational, Migration.repo()),
@@ -337,7 +333,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__add(a, b)` backing function for the `+` operator
   between two rationals.
   """
-  @spec create_func_add() :: raw_sql()
+  @spec create_func_add() :: {raw_sql(), raw_sql()}
   def create_func_add do
     Postgres.Utils.create_plpgsql_function(
       private_function(:add, Migration.repo()),
@@ -358,7 +354,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__sub(a, b)` backing function for the `-` operator
   between two rationals.
   """
-  @spec create_func_sub() :: raw_sql()
+  @spec create_func_sub() :: {raw_sql(), raw_sql()}
   def create_func_sub do
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub, Migration.repo()),
@@ -375,7 +371,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__mult(a, b)` backing function for the `*` operator
   between two rationals.
   """
-  @spec create_func_mult() :: raw_sql()
+  @spec create_func_mult() :: {raw_sql(), raw_sql()}
   def create_func_mult do
     Postgres.Utils.create_plpgsql_function(
       private_function(:mult, Migration.repo()),
@@ -396,7 +392,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__div(a, b)` backing function for the `/` operator
   between two rationals.
   """
-  @spec create_func_div() :: raw_sql()
+  @spec create_func_div() :: {raw_sql(), raw_sql()}
   def create_func_div do
     Postgres.Utils.create_plpgsql_function(
       private_function(:div, Migration.repo()),
@@ -417,7 +413,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__div(a, b)` backing function for the `/` operator
   between two rationals.
   """
-  @spec create_func_floor_div() :: raw_sql()
+  @spec create_func_floor_div() :: {raw_sql(), raw_sql()}
   def create_func_floor_div do
     Postgres.Utils.create_plpgsql_function(
       "DIV",
@@ -435,7 +431,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Creates `rational.__private__modulo(a, b)` backing function for the `%` operator
   between two rationals.
   """
-  @spec create_func_modulo() :: raw_sql()
+  @spec create_func_modulo() :: {raw_sql(), raw_sql()}
   def create_func_modulo do
     Postgres.Utils.create_plpgsql_function(
       private_function(:modulo, Migration.repo()),
@@ -468,7 +464,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   Used to back equality operators.
   """
-  @spec create_func_cmp() :: raw_sql()
+  @spec create_func_cmp() :: {raw_sql(), raw_sql()}
   def create_func_cmp do
     Postgres.Utils.create_plpgsql_function(
       private_function(:cmp, Migration.repo()),
@@ -488,7 +484,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__eq(a, b)` that backs the `=` operator.
   """
-  @spec create_func_eq() :: raw_sql()
+  @spec create_func_eq() :: {raw_sql(), raw_sql()}
   def create_func_eq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
@@ -504,7 +500,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__neq(a, b)` that backs the `<>` operator.
   """
-  @spec create_func_neq() :: raw_sql()
+  @spec create_func_neq() :: {raw_sql(), raw_sql()}
   def create_func_neq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
@@ -520,7 +516,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__lt(a, b)` that backs the `<` operator.
   """
-  @spec create_func_lt() :: raw_sql()
+  @spec create_func_lt() :: {raw_sql(), raw_sql()}
   def create_func_lt do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
@@ -536,7 +532,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__lte(a, b)` that backs the `<=` operator.
   """
-  @spec create_func_lte() :: raw_sql()
+  @spec create_func_lte() :: {raw_sql(), raw_sql()}
   def create_func_lte do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lte, Migration.repo()),
@@ -555,7 +551,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__gt(a, b)` that backs the `>` operator.
   """
-  @spec create_func_gt() :: raw_sql()
+  @spec create_func_gt() :: {raw_sql(), raw_sql()}
   def create_func_gt do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
@@ -571,7 +567,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates `rational.__private__gte(a, b)` that backs the `>=` operator.
   """
-  @spec create_func_gte() :: raw_sql()
+  @spec create_func_gte() :: {raw_sql(), raw_sql()}
   def create_func_gte do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gte, Migration.repo()),
@@ -592,7 +588,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `+` operator.
   """
-  @spec create_op_add() :: raw_sql()
+  @spec create_op_add() :: {raw_sql(), raw_sql()}
   def create_op_add do
     Postgres.Utils.create_operator(
       :+,
@@ -607,7 +603,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `-` operator.
   """
-  @spec create_op_sub() :: raw_sql()
+  @spec create_op_sub() :: {raw_sql(), raw_sql()}
   def create_op_sub do
     Postgres.Utils.create_operator(
       :-,
@@ -621,7 +617,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `*` operator.
   """
-  @spec create_op_mult() :: raw_sql()
+  @spec create_op_mult() :: {raw_sql(), raw_sql()}
   def create_op_mult do
     Postgres.Utils.create_operator(
       :*,
@@ -636,7 +632,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `/` operator.
   """
-  @spec create_op_div() :: raw_sql()
+  @spec create_op_div() :: {raw_sql(), raw_sql()}
   def create_op_div do
     Postgres.Utils.create_operator(
       :/,
@@ -650,7 +646,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `%` operator.
   """
-  @spec create_op_modulo() :: raw_sql()
+  @spec create_op_modulo() :: {raw_sql(), raw_sql()}
   def create_op_modulo do
     Postgres.Utils.create_operator(
       :%,
@@ -666,7 +662,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `=` operator.
   """
-  @spec create_op_eq() :: raw_sql()
+  @spec create_op_eq() :: {raw_sql(), raw_sql()}
   def create_op_eq do
     Postgres.Utils.create_operator(
       :=,
@@ -682,7 +678,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `<>` operator.
   """
-  @spec create_op_neq() :: raw_sql()
+  @spec create_op_neq() :: {raw_sql(), raw_sql()}
   def create_op_neq do
     Postgres.Utils.create_operator(
       :<>,
@@ -696,25 +692,9 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :rational, :rational `!=` operator.
-  """
-  @spec create_op_neq2() :: raw_sql()
-  def create_op_neq2 do
-    Postgres.Utils.create_operator(
-      :!=,
-      :rational,
-      :rational,
-      private_function(:neq, Migration.repo()),
-      commutator: :!=,
-      negator: :=
-    )
-  end
-
-  @doc section: :migrations_operators
-  @doc """
   Creates a custom :rational, :rational `<` operator.
   """
-  @spec create_op_lt() :: raw_sql()
+  @spec create_op_lt() :: {raw_sql(), raw_sql()}
   def create_op_lt do
     Postgres.Utils.create_operator(
       :<,
@@ -730,7 +710,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `<` operator.
   """
-  @spec create_op_lte() :: raw_sql()
+  @spec create_op_lte() :: {raw_sql(), raw_sql()}
   def create_op_lte do
     Postgres.Utils.create_operator(
       :<=,
@@ -746,7 +726,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `<` operator.
   """
-  @spec create_op_gt() :: raw_sql()
+  @spec create_op_gt() :: {raw_sql(), raw_sql()}
   def create_op_gt do
     Postgres.Utils.create_operator(
       :>,
@@ -762,7 +742,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a custom :rational, :rational `<` operator.
   """
-  @spec create_op_gte() :: raw_sql()
+  @spec create_op_gte() :: {raw_sql(), raw_sql()}
   def create_op_gte do
     Postgres.Utils.create_operator(
       :>=,
@@ -780,7 +760,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a B-tree operator class to support indexing on comparison operations.
   """
-  @spec create_op_class_btree() :: raw_sql()
+  @spec create_op_class_btree() :: {raw_sql(), raw_sql()}
   def create_op_class_btree do
     Postgres.Utils.create_operator_class(
       :rational_ops_btree,
@@ -809,7 +789,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   rational AS double precision
   ```
   """
-  @spec create_cast_double_precision() :: raw_sql()
+  @spec create_cast_double_precision() :: {raw_sql(), raw_sql()}
   def create_cast_double_precision do
     Postgres.Utils.create_cast(
       :rational,
@@ -826,7 +806,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   bigint AS rational
   ```
   """
-  @spec create_cast_bigint_to_rational() :: raw_sql()
+  @spec create_cast_bigint_to_rational() :: {raw_sql(), raw_sql()}
   def create_cast_bigint_to_rational do
     Postgres.Utils.create_cast(
       :bigint,

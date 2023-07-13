@@ -11,6 +11,6 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddFramerateSchemas do
       add(:b, PgFramerate.type())
     end
 
-    :ok = PgFramerate.Migrations.create_field_constraints(:framerates_01, :b)
+    PgFramerate.Migrations.create_field_constraints(:framerates_01, :b)
   end
 end
