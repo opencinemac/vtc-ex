@@ -160,7 +160,6 @@ defmodule Vtc.Ecto.Postgres.Utils do
         LANGUAGE plpgsql
         STRICT
         IMMUTABLE
-        LEAKPROOF
         PARALLEL SAFE
         #{cost_sql}
       AS $func$
