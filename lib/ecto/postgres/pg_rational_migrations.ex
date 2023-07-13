@@ -173,7 +173,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   - `rationals` schema
   - `rationals_helpers` schema
   """
-  @spec create_type() :: Postgres.Utils.raw_sql()
+  @spec create_type() :: raw_sql()
   def create_type do
     """
     DO $$ BEGIN
