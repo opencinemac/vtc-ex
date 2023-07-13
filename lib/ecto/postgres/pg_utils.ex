@@ -111,9 +111,10 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec create_plpgsql_function(Macro.t(), Macro.t()) :: Macro.t()
   defmacro create_plpgsql_function(name, opts) do
+    comment = create_comment_string(__CALLER__, :function)
+
     quote do
-      comment = unquote(__MODULE__).create_comment_string(__ENV__, :function)
-      opts = Keyword.put_new(unquote(opts), :comment, comment)
+      opts = Keyword.put_new(unquote(opts), :comment, unquote(comment))
       unquote(__MODULE__).create_plpgsql_function_raw_sql(unquote(name), opts)
     end
   end
@@ -198,9 +199,10 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec create_operator(Macro.t(), Macro.t(), Macro.t(), Macro.t(), Macro.t()) :: Macro.t()
   defmacro create_operator(name, left_type, right_type, func_name, opts \\ []) do
+    comment = create_comment_string(__CALLER__, :operator)
+
     quote do
-      comment = unquote(__MODULE__).create_comment_string(__ENV__, :operator)
-      opts = Keyword.put_new(unquote(opts), :comment, comment)
+      opts = Keyword.put_new(unquote(opts), :comment, unquote(comment))
 
       unquote(__MODULE__).create_operator_raw_sql(
         unquote(name),
@@ -248,16 +250,16 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec create_operator_class(atom(), atom(), atom(), Macro.t(), Macro.t()) :: Macro.t()
   defmacro create_operator_class(name, type, index_type, operators, functions) do
-    quote do
-      comment = unquote(__MODULE__).create_comment_string(__ENV__, :operator_class)
+    comment = create_comment_string(__CALLER__, :operator_class)
 
+    quote do
       unquote(__MODULE__).create_operator_class_raw_sql(
         unquote(name),
         unquote(type),
         unquote(index_type),
         unquote(operators),
         unquote(functions),
-        comment
+        unquote(comment)
       )
     end
   end
@@ -304,14 +306,14 @@ defmodule Vtc.Ecto.Postgres.Utils do
   """
   @spec create_cast(atom(), atom(), Macro.t(), Macro.t()) :: Macro.t()
   defmacro create_cast(left_type, right_type, func_name, opts \\ []) do
-    quote do
-      comment = unquote(__MODULE__).create_comment_string(__ENV__, :cast)
+    comment = create_comment_string(__CALLER__, :cast)
 
+    quote do
       unquote(__MODULE__).create_cast_raw_sql(
         unquote(left_type),
         unquote(right_type),
         unquote(func_name),
-        comment,
+        unquote(comment),
         unquote(opts)
       )
     end
@@ -337,25 +339,15 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   # Builds a comment string based on the calling function's docsting.
-  @doc false
   @spec create_comment_string(Macro.Env.t(), :type | :function | :cast | :operator | :operator_class) :: String.t()
-  def create_comment_string(env, object_type) do
+  defp create_comment_string(env, object_type) do
+    {_, doc_string} = Module.get_attribute(env.module, :doc)
+    doc_string = String.replace(doc_string, "'", "''")
+
     {func_name, func_arity} = env.function
-    {_, _, _, _, _, _, function_docs} = Code.fetch_docs(env.module)
 
     object_type = object_type |> Atom.to_string() |> String.capitalize()
     url = "https://hexdocs.pm/vtc/#{env.module}.html##{func_name}/#{func_arity}"
-
-    doc_string =
-      function_docs
-      |> Enum.find_value(fn
-        {{:function, ^func_name, ^func_arity}, _, _, doc_strings, _} ->
-          Map.fetch!(doc_strings, "en")
-
-        _ ->
-          false
-      end)
-      |> String.replace("'", "''")
 
     """
     Created by Vtc, a video timecode library for Elixir
