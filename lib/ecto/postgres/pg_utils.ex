@@ -3,6 +3,11 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   alias Ecto.Migration
 
+  @typedoc """
+  Alias of String.t() that hints raw SQL text.
+  """
+  @type raw_sql() :: String.t()
+
   ## Exposes a macro for defining modules that will only be compiled if the caller
   ## has set `:vtc, Postrgrex, :include?` to `true` in their application config.
 
@@ -76,33 +81,122 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Run migrations, allowing callers to specigy
   """
-  @spec run_migrations([(() -> raw_sql() | :skip)], include: Keyword.t(), exclude: Keyword.t()) :: :ok
+  @spec run_migrations([(() -> {raw_sql(), raw_sql()} | :skip)], include: Keyword.t(), exclude: Keyword.t()) :: :ok
   def run_migrations(functions, opts) do
     include = Keyword.get(opts, :include, [])
     exclude = Keyword.get(opts, :exclude, [])
+
     Enum.each(functions, &run_migration_function(&1, include, exclude))
   end
 
-  @spec run_migration_function((() -> raw_sql() | :skip), [atom()], [atom()]) :: :ok
+  @spec run_migration_function((() -> {raw_sql(), raw_sql()} | :skip), [atom()], [atom()]) :: :ok
   defp run_migration_function(function, includes, excludes) do
     name = function |> Function.info() |> Keyword.fetch!(:name)
 
-    sql_command = function.()
+    commands = function.()
     included? = name in includes or includes == []
     excluded? = name in excludes
 
-    if is_binary(sql_command) and included? and not excluded? do
-      Migration.execute(sql_command)
-      :ok
-    else
-      :ok
+    if commands != :skip and included? and not excluded? do
+      {up_command, down_command} = commands
+      Migration.execute(up_command, down_command)
     end
+
+    :ok
   end
 
   @typedoc """
-  Alias of String.t() that hints raw SQL text.
+  The possible classes of custom types.
   """
-  @type raw_sql() :: String.t()
+  @type type_class() :: :composite | :enum | :range
+
+  @typedoc """
+  Describes attributes that can go in the `AS` block for a type.
+
+  Compisute type: `field: type` keyword list.
+
+  Enum type: `value` list.
+
+  Range type: `attr: value` keyword list.
+  """
+  @type type_attrs() :: Keyword.t(atom() | raw_sql()) | [atom() | String.t()]
+
+  @doc """
+  Creates a custom postgres type.
+
+  ## Args
+
+  - `name`: The name of the type
+
+  - `type_class`: The type of type, if applicable. i.e., `:range`, `:enum`.
+    Default: `:composite`.
+
+  - `attrs`: Type attributes to go in the `AS` block.
+  """
+  @spec create_type(Macro.t(), type_class(), Macro.t()) :: Macro.t()
+  defmacro create_type(name, type_class \\ :composite, attrs) do
+    comment = create_comment_string(__CALLER__, :type)
+
+    quote do
+      unquote(__MODULE__).create_plpgsql_type_raw_sql(
+        unquote(name),
+        unquote(type_class),
+        unquote(attrs),
+        unquote(comment)
+      )
+    end
+  end
+
+  @doc false
+  @spec create_plpgsql_type_raw_sql(atom(), type_class(), type_attrs(), String.t()) :: {raw_sql(), raw_sql()}
+  def create_plpgsql_type_raw_sql(name, type_class, attrs, comment) do
+    {
+      create_type_raw_sql_up(name, type_class, attrs, comment),
+      create_type_raw_sql_down(name)
+    }
+  end
+
+  # Creates a custom type.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-createtype.html
+  @spec create_type_raw_sql_up(atom(), type_class(), type_attrs(), String.t()) :: raw_sql()
+  defp create_type_raw_sql_up(name, type_class, attrs, comment) do
+    type_class_sql =
+      case type_class do
+        :composite -> ""
+        type_class -> String.upcase("#{type_class} ")
+      end
+
+    attrs_sql =
+      Enum.map_join(attrs, ",\n", fn
+        {attr, value} -> if type_class == :range, do: "#{attr} = #{value}", else: "#{attr} #{value}"
+        enum_attr -> "'#{enum_attr}'"
+      end)
+
+    """
+    DO $$ BEGIN
+      CREATE TYPE #{name} AS #{type_class_sql}(
+        #{attrs_sql}
+      );
+
+      COMMENT ON
+      TYPE #{name}
+      IS '#{comment}';
+    EXCEPTION WHEN duplicate_object
+      THEN null;
+    END $$;
+    """
+  end
+
+  # Drops a custom type.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-droptype.html
+  @spec create_type_raw_sql_down(atom()) :: raw_sql()
+  defp create_type_raw_sql_down(name) do
+    """
+    DROP TYPE #{name};
+    """
+  end
 
   @typedoc """
   Options type for `plpgsql_add_function/2`
@@ -146,8 +240,19 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc false
-  @spec create_plpgsql_function_raw_sql(String.t(), create_func_opts()) :: raw_sql()
+  @spec create_plpgsql_function_raw_sql(String.t(), create_func_opts()) :: {raw_sql(), raw_sql()}
   def create_plpgsql_function_raw_sql(name, opts) do
+    {
+      create_plpgsql_function_raw_sql_up(name, opts),
+      create_plpgsql_function_raw_sql_down(name, opts)
+    }
+  end
+
+  # Creates a pl/pgsql function.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/plpgsql.html
+  @spec create_plpgsql_function_raw_sql_up(String.t(), create_func_opts()) :: raw_sql()
+  defp create_plpgsql_function_raw_sql_up(name, opts) do
     args = Keyword.get(opts, :args, [])
     returns = Keyword.fetch!(opts, :returns)
     declares = Keyword.get(opts, :declares, nil)
@@ -205,8 +310,9 @@ defmodule Vtc.Ecto.Postgres.Utils do
     """
   end
 
+  # Creates formatted information to inject into the function comment.
   @spec plpgsql_function_comment_info_block(Keyword.t(atom()), atom()) :: String.t()
-  def plpgsql_function_comment_info_block(args, returns) do
+  defp plpgsql_function_comment_info_block(args, returns) do
     args_sql = Enum.map_join(args, ", \n", fn {arg, type} -> "- `#{arg}`: `#{type}`" end)
     returns_sql = "**Returns**: #{returns}"
 
@@ -216,6 +322,19 @@ defmodule Vtc.Ecto.Postgres.Utils do
     #{args_sql}
 
     #{returns_sql}
+    """
+  end
+
+  # Drops a pl/pgsql function.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-createfunction.html
+  @spec create_plpgsql_function_raw_sql_down(String.t(), create_func_opts()) :: raw_sql()
+  defp create_plpgsql_function_raw_sql_down(name, opts) do
+    args = Keyword.get(opts, :args, [])
+    args_sql = Enum.map_join(args, ", ", fn {_, type} -> "#{type}" end)
+
+    """
+    DROP FUNCTION #{name}(#{args_sql});
     """
   end
 
@@ -240,8 +359,20 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc false
-  @spec create_operator_raw_sql(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) :: raw_sql()
+  @spec create_operator_raw_sql(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) ::
+          {raw_sql(), raw_sql()}
   def create_operator_raw_sql(name, left_type, right_type, func_name, opts) do
+    {
+      create_operator_raw_sql_up(name, left_type, right_type, func_name, opts),
+      create_operator_raw_sql_down(name, left_type, right_type)
+    }
+  end
+
+  # Creates a custom operator.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-dropoperator.html
+  @spec create_operator_raw_sql_up(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) :: raw_sql()
+  defp create_operator_raw_sql_up(name, left_type, right_type, func_name, opts) do
     commutator = Keyword.get(opts, :commutator)
     negator = Keyword.get(opts, :negator)
     comment = Keyword.get(opts, :comment)
@@ -267,6 +398,16 @@ defmodule Vtc.Ecto.Postgres.Utils do
       THEN null;
 
     END $wrapper$;
+    """
+  end
+
+  # Drops a custom operator.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-dropoperator.html
+  @spec create_operator_raw_sql_down(atom(), atom(), atom()) :: raw_sql()
+  defp create_operator_raw_sql_down(name, left_type, right_type) do
+    """
+    DROP OPERATOR #{name} (#{left_type}, #{right_type});
     """
   end
 
@@ -297,8 +438,26 @@ defmodule Vtc.Ecto.Postgres.Utils do
           Keyword.t(pos_integer()),
           [{String.t(), pos_integer()}],
           String.t()
-        ) :: raw_sql()
+        ) :: {raw_sql(), raw_sql()}
   def create_operator_class_raw_sql(name, type, index_type, operators, functions, comment) do
+    {
+      create_operator_class_raw_sql_up(name, type, index_type, operators, functions, comment),
+      create_operator_class_raw_sql_down(name, index_type)
+    }
+  end
+
+  # Create a custom operator class.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-createopclass.html
+  @spec create_operator_class_raw_sql_up(
+          atom(),
+          atom(),
+          atom(),
+          Keyword.t(pos_integer()),
+          [{String.t(), pos_integer()}],
+          String.t()
+        ) :: raw_sql()
+  defp create_operator_class_raw_sql_up(name, type, index_type, operators, functions, comment) do
     operators_sql_list =
       Enum.map(operators, fn {operator, index} ->
         "operator #{index} #{operator}"
@@ -326,6 +485,16 @@ defmodule Vtc.Ecto.Postgres.Utils do
     """
   end
 
+  # Drops a custom operator class.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-dropopclass.html
+  @spec create_operator_class_raw_sql_down(atom(), atom()) :: raw_sql()
+  defp create_operator_class_raw_sql_down(name, index_type) do
+    """
+    DROP OPERATOR CLASS #{name} USING #{index_type};
+    """
+  end
+
   @doc """
   Builds an SQL query for creating a new native CAST
   """
@@ -344,8 +513,21 @@ defmodule Vtc.Ecto.Postgres.Utils do
     end
   end
 
-  @spec create_cast_raw_sql(atom(), atom(), atom() | String.t(), String.t(), implicit: boolean()) :: raw_sql()
+  @doc false
+  @spec create_cast_raw_sql(atom(), atom(), atom() | String.t(), String.t(), implicit: boolean()) ::
+          {raw_sql(), raw_sql()}
   def create_cast_raw_sql(left_type, right_type, func_name, comment, opts) do
+    {
+      create_cast_raw_sql_up(left_type, right_type, func_name, comment, opts),
+      create_cast_raw_sql_down(left_type, right_type)
+    }
+  end
+
+  # Creates a custom operator cast.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-createcast.html
+  @spec create_cast_raw_sql_up(atom(), atom(), atom() | String.t(), String.t(), implicit: boolean()) :: raw_sql()
+  defp create_cast_raw_sql_up(left_type, right_type, func_name, comment, opts) do
     implicit = if Keyword.get(opts, :implicit, false), do: "AS IMPLICIT", else: ""
 
     """
@@ -360,6 +542,16 @@ defmodule Vtc.Ecto.Postgres.Utils do
     EXCEPTION WHEN duplicate_object
       THEN null;
     END $wrapper$;
+    """
+  end
+
+  # Drops a custom operator cast.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-dropcast.html
+  @spec create_cast_raw_sql_down(atom(), atom()) :: raw_sql()
+  defp create_cast_raw_sql_down(left_type, right_type) do
+    """
+    DROP CAST (#{left_type} AS #{right_type});
     """
   end
 
@@ -388,21 +580,42 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Creates a public and private schema for a type based on the repo's confguration.
   """
-  @spec create_type_schema(atom()) :: raw_sql() | :skip
+  @spec create_type_schema(atom()) :: {raw_sql(), raw_sql()} | :skip
   def create_type_schema(type_name) do
-    functions_schema = get_type_config(Migration.repo(), type_name, :functions_schema, :public)
+    schema_name = get_type_config(Migration.repo(), type_name, :functions_schema, :public)
 
-    if functions_schema != :public do
-      """
-      DO $$ BEGIN
-      CREATE SCHEMA #{functions_schema};
-      EXCEPTION WHEN duplicate_schema
-        THEN null;
-      END $$;
-      """
+    if schema_name != :public do
+      {
+        create_type_schema_up(schema_name),
+        create_type_schema_down(schema_name)
+      }
     else
       :skip
     end
+  end
+
+  # Creates a type's schema.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-createschema.html
+  @spec create_type_schema_up(atom()) :: raw_sql() | :skip
+  defp create_type_schema_up(schema_name) do
+    """
+    DO $$ BEGIN
+    CREATE SCHEMA #{schema_name};
+    EXCEPTION WHEN duplicate_schema
+      THEN null;
+    END $$;
+    """
+  end
+
+  # Drops a type's schema.
+  #
+  # Postgres docs: https://www.postgresql.org/docs/current/sql-dropschema.html
+  @spec create_type_schema_down(atom()) :: raw_sql() | :skip
+  defp create_type_schema_down(schema_name) do
+    """
+    DROP SCHEMA #{schema_name};
+    """
   end
 
   @doc """

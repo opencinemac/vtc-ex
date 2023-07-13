@@ -33,6 +33,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
 
+  Individual migration functions return raw sql commands in an
+  {up_command, down_command} tuple.
+
   ## Options
 
   - `include`: A list of migration functions to inclide. If not set, all sub-migrations
@@ -128,7 +131,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_func_modulo_rational/0,
       &create_op_eq/0,
       &create_op_neq/0,
-      &create_op_neq2/0,
       &create_op_strict_eq/0,
       &create_op_strict_neq/0,
       &create_op_lt/0,
@@ -150,18 +152,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Adds `framestamp` composite type.
   """
-  @spec create_type_framestamp() :: raw_sql()
+  @spec create_type_framestamp() :: {raw_sql(), raw_sql()}
   def create_type_framestamp do
-    """
-    DO $$ BEGIN
-      CREATE TYPE framestamp AS (
-        seconds rational,
-        rate framerate
-      );
-      EXCEPTION WHEN duplicate_object
-        THEN null;
-    END $$;
-    """
+    Postgres.Utils.create_type(:framestamp,
+      seconds: :rational,
+      rate: :framerate
+    )
   end
 
   @doc section: :migrations_types
@@ -170,7 +166,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
-  @spec create_function_schemas() :: raw_sql()
+  @spec create_function_schemas() :: {raw_sql(), raw_sql()}
   def create_function_schemas, do: Postgres.Utils.create_type_schema(:framestamp)
 
   @doc section: :migrations_functions
@@ -180,7 +176,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Rounds `seconds` to the nearest whole frame based on `rate` and returns a constructed
   `framestamp`.
   """
-  @spec create_func_with_seconds() :: raw_sql()
+  @spec create_func_with_seconds() :: {raw_sql(), raw_sql()}
   def create_func_with_seconds do
     Postgres.Utils.create_plpgsql_function(
       function(:with_seconds, Migration.repo()),
@@ -199,7 +195,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Creates `framestamp.with_frames(frames, rate)` that creates a framestamp for the
   given frame count.
   """
-  @spec create_func_with_frames() :: raw_sql()
+  @spec create_func_with_frames() :: {raw_sql(), raw_sql()}
   def create_func_with_frames do
     Postgres.Utils.create_plpgsql_function(
       function(:with_frames, Migration.repo()),
@@ -220,7 +216,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Equivalent to [Framestamp.frames/2](`Vtc.Framestamp.frames/2`) with `:round` set to
   `trunc`.
   """
-  @spec create_func_frames() :: raw_sql()
+  @spec create_func_frames() :: {raw_sql(), raw_sql()}
   def create_func_frames do
     Postgres.Utils.create_plpgsql_function(
       function(:frames, Migration.repo()),
@@ -241,7 +237,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   Backs the `=` operator.
   """
-  @spec create_func_eq() :: raw_sql()
+  @spec create_func_eq() :: {raw_sql(), raw_sql()}
   def create_func_eq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
@@ -257,7 +253,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__strict_eq(a, b)` that backs the `===` operator.
   """
-  @spec create_func_strict_eq() :: raw_sql()
+  @spec create_func_strict_eq() :: {raw_sql(), raw_sql()}
   def create_func_strict_eq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_eq, Migration.repo()),
@@ -274,7 +270,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__neq(a, b)` that backs the `<>` operator.
   """
-  @spec create_func_neq() :: raw_sql()
+  @spec create_func_neq() :: {raw_sql(), raw_sql()}
   def create_func_neq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
@@ -290,7 +286,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__strict_neq(a, b)` that backs the `!===` operator.
   """
-  @spec create_func_strict_neq() :: raw_sql()
+  @spec create_func_strict_neq() :: {raw_sql(), raw_sql()}
   def create_func_strict_neq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_neq, Migration.repo()),
@@ -307,7 +303,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__lt(a, b)` that backs the `<` operator.
   """
-  @spec create_func_lt() :: raw_sql()
+  @spec create_func_lt() :: {raw_sql(), raw_sql()}
   def create_func_lt do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
@@ -323,7 +319,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__lte(a, b)` that backs the `<=` operator.
   """
-  @spec create_func_lte() :: raw_sql()
+  @spec create_func_lte() :: {raw_sql(), raw_sql()}
   def create_func_lte do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lte, Migration.repo()),
@@ -339,7 +335,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__gt(a, b)` that backs the `>` operator.
   """
-  @spec create_func_gt() :: raw_sql()
+  @spec create_func_gt() :: {raw_sql(), raw_sql()}
   def create_func_gt do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
@@ -355,7 +351,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__gte(a, b)` that backs the `>=` operator.
   """
-  @spec create_func_gte() :: raw_sql()
+  @spec create_func_gte() :: {raw_sql(), raw_sql()}
   def create_func_gte do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gte, Migration.repo()),
@@ -371,7 +367,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__cmp(a, b)` used in the PgTimecode b-tree operator class.
   """
-  @spec create_func_cmp() :: raw_sql()
+  @spec create_func_cmp() :: {raw_sql(), raw_sql()}
   def create_func_cmp do
     rational_cmp = PgRational.Migrations.private_function(:cmp, Migration.repo())
 
@@ -395,7 +391,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_func_add() :: raw_sql()
+  @spec create_func_add() :: {raw_sql(), raw_sql()}
   def create_func_add do
     with_seconds = function(:with_seconds, Migration.repo())
 
@@ -424,7 +420,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_func_sub() :: raw_sql()
+  @spec create_func_sub() :: {raw_sql(), raw_sql()}
   def create_func_sub do
     with_seconds = function(:with_seconds, Migration.repo())
 
@@ -450,7 +446,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_func_mult_rational() :: raw_sql()
+  @spec create_func_mult_rational() :: {raw_sql(), raw_sql()}
   def create_func_mult_rational do
     with_seconds = function(:with_seconds, Migration.repo())
 
@@ -475,7 +471,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Unlike [Framestamp.div/3](`Vtc.Framestamp.div/3`), the result is rounded to the
   *closest* frame, rather than truncating ala integer division.
   """
-  @spec create_func_div_rational() :: raw_sql()
+  @spec create_func_div_rational() :: {raw_sql(), raw_sql()}
   def create_func_div_rational do
     with_seconds = function(:with_seconds, Migration.repo())
 
@@ -499,7 +495,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   frame count representation of the Framestamp, which is then used as the basis of a new
   framestamp.
   """
-  @spec create_func_floor_div_rational() :: raw_sql()
+  @spec create_func_floor_div_rational() :: {raw_sql(), raw_sql()}
   def create_func_floor_div_rational do
     framestamp_frames = function(:frames, Migration.repo())
     simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
@@ -529,7 +525,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   frame count representation of the Framestamp, which is then used as the basis of a new
   framestamp.
   """
-  @spec create_func_modulo_rational() :: raw_sql()
+  @spec create_func_modulo_rational() :: {raw_sql(), raw_sql()}
   def create_func_modulo_rational do
     framestamp_frames = function(:frames, Migration.repo())
     simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
@@ -557,7 +553,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Creates a custom :framestamp, :framestamp `=` operator that returns true if the
   real-world seconds values for both framestamps are equal.
   """
-  @spec create_op_eq() :: raw_sql()
+  @spec create_op_eq() :: {raw_sql(), raw_sql()}
   def create_op_eq do
     Postgres.Utils.create_operator(
       :=,
@@ -574,7 +570,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Creates a custom :framestamp, :framestamp `===` operator that returns true if *both*
   the real-world seconds values *and* the framerates for both framestamps are equal.
   """
-  @spec create_op_strict_eq() :: raw_sql()
+  @spec create_op_strict_eq() :: {raw_sql(), raw_sql()}
   def create_op_strict_eq do
     Postgres.Utils.create_operator(
       :===,
@@ -591,7 +587,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Creates a custom :framestamp, :framestamp `<>` operator that returns true if the
   real-world seconds values for both framestamps are not equal.
   """
-  @spec create_op_neq() :: raw_sql()
+  @spec create_op_neq() :: {raw_sql(), raw_sql()}
   def create_op_neq do
     Postgres.Utils.create_operator(
       :<>,
@@ -605,27 +601,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_operators
   @doc """
-  Creates a custom :framestamp, :framestamp `!=` operator that returns true if the
-  real-world seconds values for both framestamps are not equal.
-  """
-  @spec create_op_neq2() :: raw_sql()
-  def create_op_neq2 do
-    Postgres.Utils.create_operator(
-      :!=,
-      :framestamp,
-      :framestamp,
-      private_function(:neq, Migration.repo()),
-      commutator: :!=,
-      negator: :=
-    )
-  end
-
-  @doc section: :migrations_operators
-  @doc """
   Creates a custom :framestamp, :framestamp `!===` operator that returns true if `a` and
   `b` do not have the same real-world-seconds, framerate playback, or framerate tags.
   """
-  @spec create_op_strict_neq() :: raw_sql()
+  @spec create_op_strict_neq() :: {raw_sql(), raw_sql()}
   def create_op_strict_neq do
     Postgres.Utils.create_operator(
       :"!===",
@@ -641,7 +620,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `<` operator.
   """
-  @spec create_op_lt() :: raw_sql()
+  @spec create_op_lt() :: {raw_sql(), raw_sql()}
   def create_op_lt do
     Postgres.Utils.create_operator(
       :<,
@@ -657,7 +636,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `<=` operator.
   """
-  @spec create_op_lte() :: raw_sql()
+  @spec create_op_lte() :: {raw_sql(), raw_sql()}
   def create_op_lte do
     Postgres.Utils.create_operator(
       :<=,
@@ -673,7 +652,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `>` operator.
   """
-  @spec create_op_gt() :: raw_sql()
+  @spec create_op_gt() :: {raw_sql(), raw_sql()}
   def create_op_gt do
     Postgres.Utils.create_operator(
       :>,
@@ -689,7 +668,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `>=` operator.
   """
-  @spec create_op_gte() :: raw_sql()
+  @spec create_op_gte() :: {raw_sql(), raw_sql()}
   def create_op_gte do
     Postgres.Utils.create_operator(
       :>=,
@@ -711,7 +690,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_op_add() :: raw_sql()
+  @spec create_op_add() :: {raw_sql(), raw_sql()}
   def create_op_add do
     Postgres.Utils.create_operator(
       :+,
@@ -729,7 +708,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_op_sub() :: raw_sql()
+  @spec create_op_sub() :: {raw_sql(), raw_sql()}
   def create_op_sub do
     Postgres.Utils.create_operator(
       :-,
@@ -746,7 +725,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
-  @spec create_op_mult_rational() :: raw_sql()
+  @spec create_op_mult_rational() :: {raw_sql(), raw_sql()}
   def create_op_mult_rational do
     Postgres.Utils.create_operator(
       :*,
@@ -766,7 +745,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Unlike [Framestamp.div/3](`Vtc.Framestamp.div/3`), the result is rounded to the
   *closest* frame, rather than truncating ala integer division.
   """
-  @spec create_op_div_rational() :: raw_sql()
+  @spec create_op_div_rational() :: {raw_sql(), raw_sql()}
   def create_op_div_rational do
     Postgres.Utils.create_operator(
       :/,
@@ -784,7 +763,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   frame count representation of the Framestamp, which is then used as the basis of a new
   framestamp.
   """
-  @spec create_op_modulo_rational() :: raw_sql()
+  @spec create_op_modulo_rational() :: {raw_sql(), raw_sql()}
   def create_op_modulo_rational do
     Postgres.Utils.create_operator(
       :%,
@@ -800,7 +779,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a B-tree operator class to support indexing on comparison operations.
   """
-  @spec create_op_class_btree() :: raw_sql()
+  @spec create_op_class_btree() :: {raw_sql(), raw_sql()}
   def create_op_class_btree do
     Postgres.Utils.create_operator_class(
       :framestamp_ops_btree,

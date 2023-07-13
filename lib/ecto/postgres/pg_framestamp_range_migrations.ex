@@ -31,6 +31,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Safe to run multiple times when new functionality is added in updates to this library.
   Existing values will be skipped.
 
+  Individual migration functions return raw sql commands in an
+  {up_command, down_command} tuple.
+
   ## Options
 
   - `include`: A list of migration functions to inclide. If not set, all sub-migrations
@@ -138,20 +141,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   @doc """
   Adds `framestamp_range` RANGE type.
   """
-  @spec create_type_framestamp_range() :: raw_sql()
+  @spec create_type_framestamp_range() :: {raw_sql(), raw_sql()}
   def create_type_framestamp_range do
-    subtype_diff = private_function(:subtype_diff, Migration.repo())
-
-    """
-    DO $$ BEGIN
-      CREATE TYPE framestamp_range AS RANGE (
-        subtype = framestamp,
-        subtype_diff = #{subtype_diff}
-      );
-      EXCEPTION WHEN duplicate_object
-        THEN null;
-    END $$;
-    """
+    Postgres.Utils.create_type(:framestamp_range, :range,
+      subtype: :framestamp,
+      subtype_diff: private_function(:subtype_diff, Migration.repo())
+    )
   end
 
   @doc section: :migrations_types
@@ -174,27 +169,30 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   > In most databases, directly editing the pg_catalog will require elevated
   > permissions.
   """
-  @spec inject_canonical_function() :: raw_sql()
+  @spec inject_canonical_function() :: {raw_sql(), raw_sql()}
   def inject_canonical_function do
     canonical = private_function(:canonical, Migration.repo())
 
-    """
-    UPDATE pg_catalog.pg_range
-    SET
-        rngcanonical = '#{canonical}'::regproc
-    WHERE
-        pg_catalog.pg_range.rngcanonical = '-'::regproc
-        AND EXISTS (
-            SELECT * FROM pg_catalog.pg_type
-            WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngsubtype
-            AND pg_catalog.pg_type.typname = 'framestamp'
-        )
-        AND EXISTS (
-            SELECT * FROM pg_catalog.pg_type
-            WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngtypid
-            AND pg_catalog.pg_type.typname = 'framestamp_range'
-        );
-    """
+    {
+      """
+      UPDATE pg_catalog.pg_range
+      SET
+          rngcanonical = '#{canonical}'::regproc
+      WHERE
+          pg_catalog.pg_range.rngcanonical = '-'::regproc
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngsubtype
+              AND pg_catalog.pg_type.typname = 'framestamp'
+          )
+          AND EXISTS (
+              SELECT * FROM pg_catalog.pg_type
+              WHERE pg_catalog.pg_type.oid = pg_catalog.pg_range.rngtypid
+              AND pg_catalog.pg_type.typname = 'framestamp_range'
+          );
+      """,
+      ""
+    }
   end
 
   @doc section: :migrations_types
@@ -202,18 +200,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Adds `framestamp_fastrange` RANGE type that uses double-precision floats under the
   hood.
   """
-  @spec create_type_framestamp_fastrange() :: raw_sql()
+  @spec create_type_framestamp_fastrange() :: {raw_sql(), raw_sql()}
   def create_type_framestamp_fastrange do
-    """
-      DO $$ BEGIN
-        CREATE TYPE framestamp_fastrange AS RANGE (
-            subtype = double precision,
-            subtype_diff = float8mi
-        );
-        EXCEPTION WHEN duplicate_object
-          THEN null;
-      END $$;
-    """
+    Postgres.Utils.create_type(:framestamp_fastrange, :range,
+      subtype: "double precision",
+      subtype_diff: :float8mi
+    )
   end
 
   @doc section: :migrations_functions
@@ -221,7 +213,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp_fastrange(:framestamp, framestamp)` to construct fast ranges out
   of framestamps.
   """
-  @spec create_func_framestamp_fastrange_from_stamps() :: raw_sql()
+  @spec create_func_framestamp_fastrange_from_stamps() :: {raw_sql(), raw_sql()}
   def create_func_framestamp_fastrange_from_stamps do
     Postgres.Utils.create_plpgsql_function(
       "framestamp_fastrange",
@@ -241,7 +233,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp_fastrange(:framestamp_range)` to construct fast ranges out
   of the slower `framestamp_range` type.
   """
-  @spec create_func_framestamp_fastrange_from_range() :: raw_sql()
+  @spec create_func_framestamp_fastrange_from_range() :: {raw_sql(), raw_sql()}
   def create_func_framestamp_fastrange_from_range do
     Postgres.Utils.create_plpgsql_function(
       "framestamp_fastrange",
@@ -261,7 +253,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp.__private__subtype_diff(a, b)` used by the range type for more
   efficient GiST indexes.
   """
-  @spec create_func_subtype_diff() :: raw_sql()
+  @spec create_func_subtype_diff() :: {raw_sql(), raw_sql()}
   def create_func_subtype_diff do
     Postgres.Utils.create_plpgsql_function(
       private_function(:subtype_diff, Migration.repo()),
@@ -281,7 +273,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   Output ranges have an inclusive lower bound and an exclusive upper bound.
   """
-  @spec create_func_canonical() :: raw_sql()
+  @spec create_func_canonical() :: {raw_sql(), raw_sql()}
   def create_func_canonical do
     framestamp_with_frames = PgFramestamp.Migrations.function(:with_frames, Migration.repo())
     framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds, Migration.repo())
@@ -328,7 +320,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
-  @spec create_function_schemas() :: raw_sql()
+  @spec create_function_schemas() :: {raw_sql(), raw_sql()}
   def create_function_schemas, do: Postgres.Utils.create_type_schema(:framestamp_range)
 
   @spec private_function(atom(), Ecto.Repo.t()) :: String.t()

@@ -19,6 +19,9 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
   - [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp.Migrations`).
   - [PgFramestamp.Range](`Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations`).
 
+  All migrations implement both `up` and `down` functionality, and support rollbacks
+  out of the box.
+
   ## Options
 
   - `pg_rational_opts`: Options to pass to
