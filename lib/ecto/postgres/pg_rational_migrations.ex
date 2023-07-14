@@ -838,8 +838,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   PgRational.migration_add_field_constraints(:rationals, :b)
   ```
   """
-  @spec create_field_constraints(atom(), atom()) :: :ok
-  def create_field_constraints(table, field_name) do
+  @spec create_constraints(atom(), atom()) :: :ok
+  def create_constraints(table, field_name) do
     sql_field = "#{table}.#{field_name}"
 
     constraint =

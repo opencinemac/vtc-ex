@@ -979,7 +979,7 @@ defmodule Vtc.Framestamp do
 
   # Validates the rounding options for `divrem` and `rem`.
   @spec validate_divrem_rounding(round_frames: round(), round_remainder: round()) :: {round(), round()}
-  def validate_divrem_rounding(opts) do
+  defp validate_divrem_rounding(opts) do
     round_frames = Keyword.get(opts, :round_frames, :closest)
     round_remainder = Keyword.get(opts, :round_remainder, :closest)
 
@@ -1469,6 +1469,8 @@ defmodule Vtc.Framestamp do
     @impl Ecto.Type
     @spec dump(t()) :: {:ok, PgFramestamp.db_record()} | :error
     defdelegate dump(value), to: PgFramestamp
+
+    defdelegate validate_constraints(changeset, field, opts \\ []), to: PgFramestamp
   end
 end
 

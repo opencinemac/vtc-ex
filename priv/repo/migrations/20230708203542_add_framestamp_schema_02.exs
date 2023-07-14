@@ -12,7 +12,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddFramestampSchema02 do
       add(:b, Framestamp.type(), null: false)
     end
 
-    :ok = PgFramestamp.Migrations.create_field_constraints("framestamps_02", :b)
+    :ok = PgFramestamp.Migrations.create_constraints("framestamps_02", :b)
 
     create(index("framestamps_02", [:b]))
 
