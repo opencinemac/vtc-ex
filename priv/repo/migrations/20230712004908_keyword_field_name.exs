@@ -15,8 +15,8 @@ defmodule Vtc.Test.Support.Repo.Migrations.KeywordFieldName do
       add(:end, PgRational.type())
     end
 
-    PgRational.Migrations.create_field_constraints("rational_keyword_fieldnames_constraints", :in)
-    PgRational.Migrations.create_field_constraints("rational_keyword_fieldnames_constraints", :end)
+    PgRational.Migrations.create_constraints("rational_keyword_fieldnames_constraints", :in)
+    PgRational.Migrations.create_constraints("rational_keyword_fieldnames_constraints", :end)
 
     create table("framerate_keyword_fieldnames_constraints", primary_key: false) do
       add(:id, :uuid, primary_key: true, null: false)
@@ -24,8 +24,8 @@ defmodule Vtc.Test.Support.Repo.Migrations.KeywordFieldName do
       add(:end, Framerate.type())
     end
 
-    PgFramerate.Migrations.create_field_constraints("framerate_keyword_fieldnames_constraints", :in)
-    PgFramerate.Migrations.create_field_constraints("framerate_keyword_fieldnames_constraints", :end)
+    PgFramerate.Migrations.create_constraints("framerate_keyword_fieldnames_constraints", :in)
+    PgFramerate.Migrations.create_constraints("framerate_keyword_fieldnames_constraints", :end)
 
     create table("framestamp_keyword_fieldnames_constraints", primary_key: false) do
       add(:id, :uuid, primary_key: true, null: false)
@@ -33,7 +33,7 @@ defmodule Vtc.Test.Support.Repo.Migrations.KeywordFieldName do
       add(:end, Framestamp.type())
     end
 
-    PgFramestamp.Migrations.create_field_constraints("framestamp_keyword_fieldnames_constraints", :in)
-    PgFramestamp.Migrations.create_field_constraints("framestamp_keyword_fieldnames_constraints", :end)
+    PgFramestamp.Migrations.create_constraints("framestamp_keyword_fieldnames_constraints", :in)
+    PgFramestamp.Migrations.create_constraints("framestamp_keyword_fieldnames_constraints", :end)
   end
 end

@@ -361,6 +361,8 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     bad_insert_table = [
       %{
         name: "framerate negative",
+        sql_string: "((1, 1), ((-24, 1), '{}'))",
+        framestamp: %Framestamp{seconds: Ratio.new(1), rate: %Framerate{playback: Ratio.new(-24), ntsc: nil}},
         value: "((1, 1), ((-24, 1), '{}'))",
         field: :b,
         expected_code: :check_violation,
@@ -368,61 +370,82 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       },
       %{
         name: "framerate zero ",
-        value: "((1, 1), ((0, 1), '{}'))",
+        sql_string: "((1, 1), ((0, 1), '{}'))",
+        framestamp: %Framestamp{seconds: Ratio.new(1), rate: %Framerate{playback: Ratio.new(0), ntsc: nil}},
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_rate_positive"
       },
       %{
         name: "framerate zero denominator",
-        value: "((1, 1), ((24, 0), '{}'))",
+        sql_string: "((1, 1), ((24, 0), '{}'))",
+        framestamp: %Framestamp{
+          seconds: Ratio.new(1),
+          rate: %Framerate{playback: %Ratio{numerator: 24, denominator: 0}, ntsc: nil}
+        },
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_rate_positive"
       },
       %{
         name: "framerate negative denominator",
-        value: "((1, 1), ((1, -1), '{}'))",
+        sql_string: "((1, 1), ((1, -1), '{}'))",
+        framestamp: %Framestamp{
+          seconds: Ratio.new(1),
+          rate: %Framerate{playback: %Ratio{numerator: 1, denominator: -1}, ntsc: nil}
+        },
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_rate_positive"
       },
       %{
         name: "framerate bad tag with constraints",
-        value: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        sql_string: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
         field: :b,
         expected_code: :invalid_text_representation
       },
       %{
         name: "framerate bad tag without constraints",
-        value: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
+        sql_string: "((18018, 5), ((24000, 1001), '{bad_tag}'))",
         field: :a,
         expected_code: :invalid_text_representation
       },
       %{
         name: "framerate multiple ntsc tags",
-        value: "((0, 1), ((30000, 1001), '{drop, non_drop}'))",
+        sql_string: "((0, 1), ((30000, 1001), '{drop, non_drop}'))",
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_ntsc_tags"
       },
       %{
         name: "framerate bad ntsc rate",
-        value: "((1, 1), ((24, 1), '{non_drop}'))",
+        sql_string: "((1, 1), ((24, 1), '{non_drop}'))",
+        framestamp: %Framestamp{
+          seconds: Ratio.new(1),
+          rate: %Framerate{playback: %Ratio{numerator: 24, denominator: 1}, ntsc: :non_drop}
+        },
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_ntsc_valid"
       },
       %{
         name: "framerate bad drop rate",
-        value: "((0, 1), ((24000, 1001), '{drop}'))",
+        sql_string: "((0, 1), ((24000, 1001), '{drop}'))",
+        framestamp: %Framestamp{
+          seconds: Ratio.new(0),
+          rate: %Framerate{playback: %Ratio{numerator: 24_000, denominator: 1001}, ntsc: :drop}
+        },
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_ntsc_drop_valid"
       },
       %{
         name: "framestamp bad seconds",
-        value: "((1, 1), ((24000, 1001), '{non_drop}'))",
+        sql_string: "((1, 1), ((24000, 1001), '{non_drop}'))",
+        framestamp: %Framestamp{
+          seconds: Ratio.new(1),
+          rate: %Framerate{playback: %Ratio{numerator: 24_000, denominator: 1001}, ntsc: :non_drop}
+        },
         field: :b,
         expected_code: :check_violation,
         expected_constraint: "b_seconds_divisible_by_rate"
@@ -430,9 +453,9 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     ]
 
     table_test "error <%= name %>", bad_insert_table, test_case do
-      %{value: value, expected_code: expected_code, field: field} = test_case
+      %{sql_string: sql_string, expected_code: expected_code, field: field} = test_case
 
-      value_str = "#{value}::framestamp"
+      value_str = "#{sql_string}::framestamp"
       {a, b} = if field == :a, do: {value_str, "NULL"}, else: {"NULL", value_str}
 
       id = Ecto.UUID.generate()
@@ -444,6 +467,21 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       if expected_code == :check_violation do
         assert postgres.constraint == test_case.expected_constraint
       end
+    end
+
+    table_test "changeset constraint error", bad_insert_table, test_case,
+      if: test_case.expected_code == :check_violation and Map.has_key?(test_case, :framestamp) do
+      %{framestamp: framestamp, field: field} = test_case
+
+      {a, b} = if field == :a, do: {framestamp, nil}, else: {nil, framestamp}
+
+      assert {:error, %Changeset{errors: [{^field, error}]}} =
+               %FramestampSchema01{}
+               |> FramestampSchema01.changeset(%{a: a, b: b})
+               |> Framestamp.validate_constraints(:b)
+               |> Repo.insert()
+
+      assert error == {"is invalid", constraint: :check, constraint_name: test_case.expected_constraint}
     end
   end
 

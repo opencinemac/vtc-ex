@@ -17,6 +17,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @type raw_sql() :: String.t()
 
+  @typedoc """
+  SQL value that can be passed as an atom or a string.
+  """
+  @type sql_value() :: String.t() | atom()
+
   @doc section: :migrations_full
   @doc """
   Adds raw SQL queries to a migration for creating the database types, associated
@@ -798,10 +803,25 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     )
   end
 
+  @typedoc """
+  Option types for `create_constraints/2`.
+  """
+  @type constraint_opt() ::
+          {:create_seconds_divisible_by_rate?, boolean()}
+          | {:framerate_opts, PgFramerate.Migrations.constraint_opt()}
+
   @doc section: :migrations_constraints
   @doc """
   Creates basic constraints for a [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) /
   [Framestamp](`Vtc.Framestamp`) database field.
+
+  ## Options
+
+  - `create_seconds_divisible_by_rate?`: If true, creates
+    `{field_name}_seconds_divisible_by_rate` constraint (see below). Default: `true`.
+
+  - `framerate_opts`: Opts for framerate constraints. See
+    [PgFramerate.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramerate.Migrations.create_constraints/3`)
 
   ## Constraints created:
 
@@ -832,24 +852,42 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   PgRational.migration_add_field_constraints(:my_table, :b)
   ```
   """
-  @spec create_field_constraints(atom(), atom()) :: :ok
-  def create_field_constraints(table, field) do
-    sql_field = "#{table}.#{field}"
-
-    PgFramerate.Migrations.create_field_constraints(table, field, "(#{sql_field}).rate")
-
-    seconds_divisible_by_rate =
-      Migration.constraint(
-        table,
-        "#{field}_seconds_divisible_by_rate",
-        check: """
-        ((#{sql_field}).seconds * (#{sql_field}).rate.playback) % 1::bigint = 0::bigint
-        """
-      )
-
-    Migration.create(seconds_divisible_by_rate)
+  @spec create_constraints(atom(), atom(), [constraint_opt()]) :: :ok
+  def create_constraints(table, field, opts \\ []) do
+    table
+    |> build_constraint_list(field, opts)
+    |> Enum.each(&Migration.create(&1))
 
     :ok
+  end
+
+  # Compiles the constraint structs to be created in the database.
+  @doc false
+  @spec build_constraint_list(sql_value(), sql_value(), [constraint_opt()]) :: [Migration.Constraint.t()]
+  def build_constraint_list(table, field, opts) do
+    sql_field = "#{table}.#{field}"
+
+    framerate_opts =
+      opts
+      |> Keyword.get(:framerate_opts, [])
+      |> Keyword.put(:check_value, "(#{sql_field}).rate")
+
+    framerate_list = PgFramerate.Migrations.build_constraint_list(table, field, framerate_opts)
+
+    if Keyword.get(opts, :create_seconds_divisible_by_rate?, true) do
+      seconds_divisible_by_rate =
+        Migration.constraint(
+          table,
+          "#{field}_seconds_divisible_by_rate",
+          check: """
+          ((#{sql_field}).seconds * (#{sql_field}).rate.playback) % 1::bigint = 0::bigint
+          """
+        )
+
+      framerate_list ++ [seconds_divisible_by_rate]
+    else
+      framerate_list
+    end
   end
 
   @doc """

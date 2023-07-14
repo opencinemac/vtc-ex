@@ -107,6 +107,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
 
   alias Ecto.Changeset
   alias Vtc.Ecto.Postgres.PgFramerate
+  alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Framerate
   alias Vtc.Framestamp
@@ -183,4 +184,25 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   end
 
   def dump(_), do: :error
+
+  @doc section: :changeset_validators
+  @doc """
+  Adds all constraints created by
+  [PgFramestamp.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/3`)
+  to changeset.
+
+  ## Options
+
+  Pass the same options that were passed to
+  [PgFramestamp.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/3`)
+  """
+  @spec validate_constraints(Changeset.t(data), atom(), [PgFramestamp.Migrations.constraint_opt()]) :: Changeset.t(data)
+        when data: any()
+  def validate_constraints(changeset, field, opts \\ []) do
+    "dummy_table"
+    |> PgFramestamp.Migrations.build_constraint_list(field, opts)
+    |> Enum.reduce(changeset, fn constraint, changeset ->
+      Changeset.check_constraint(changeset, field, name: constraint.name)
+    end)
+  end
 end

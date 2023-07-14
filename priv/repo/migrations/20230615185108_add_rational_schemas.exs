@@ -17,8 +17,8 @@ defmodule Vtc.Test.Support.Repo.Migrations.AddRationalSchemas do
       add(:b, PgRational.type())
     end
 
-    PgRational.Migrations.create_field_constraints(:rationals_02, :a)
-    PgRational.Migrations.create_field_constraints(:rationals_02, :b)
+    PgRational.Migrations.create_constraints(:rationals_02, :a)
+    PgRational.Migrations.create_constraints(:rationals_02, :b)
 
     create(index("rationals_02", [:b]))
   end

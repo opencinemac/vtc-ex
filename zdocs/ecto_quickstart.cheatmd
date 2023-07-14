@@ -126,14 +126,14 @@ end
 Each type ships with a set of custom constraints that can be used for data integrity
 validation in migrations:
 
-#### Framestamp [constraint docs](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_field_constraints/2`)
+#### Framestamp [constraint docs](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/2`)
 ```elixir
 def change do
   create table("my_table", primary_key: false) do
     add(:b, Framestamp.type())
   end
 
-  PgFramestamp.Migrations.create_field_constraints("my_table", :b)
+  PgFramestamp.Migrations.create_constraints("my_table", :b)
 end
 ```
 

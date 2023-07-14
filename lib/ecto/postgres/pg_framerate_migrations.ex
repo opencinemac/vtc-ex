@@ -249,6 +249,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   ## CONSTRAINTS
 
+  @typedoc """
+  SQL value that can be passed as an atom or a string.
+  """
+  @type sql_value() :: String.t() | atom()
+
+  @typedoc """
+  Opts for `create_constraints/3`.
+  """
+  @type constraint_opt() ::
+          {:check_value, sql_value()}
+          | {:create_positive?, boolean()}
+          | {:create_ntsc_tags?, boolean()}
+          | {:create_ntsc_valid?, boolean()}
+          | {:create_ntsc_drop_valid?, boolean()}
+
   @doc section: :migrations_constraints
   @doc """
   Creates basic constraints for a [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) /
@@ -258,12 +273,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   - `table`: The table to make the constraint on.
 
-  - `target_value`: The target value to check. Can be be any sql fragment that resolves
-    to a `framerate` value.
+  - `field`: The name of the field being validated.
 
-  - `field`: The name of the field being validated. Can be omitted if `target_value`
-    is itself a field on `table`. This name is not used for anything but the constraint
-    names.
+  ## Options
+
+  - `check_value`: The target value to check. If not set, `table.field` will be used.
+
+  - `create_positive?`: `boolean` Add `{field}_positive` constraint (see below).
+    Default: `true`.
+
+  - `create_ntsc_tags?`: `boolean` Add `{field}_ntsc_tags` constraint (see below).
+    Default: `true`.
+
+  - `create_ntsc_valid?`: `boolean` Add `{field})_ntsc_valid` constraint (see below).
+    Default: `true`.
+
+  - `create_ntsc_drop_valid?`: `boolean` Add `{field})_ntsc_drop_valid` constraint
+    (see below). Default: `true`.
 
   ## Constraints created:
 
@@ -291,71 +317,97 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   PgRational.migration_add_field_constraints(:my_table, :b)
   ```
   """
-  @spec create_field_constraints(atom(), atom() | String.t(), atom() | String.t()) :: :ok
-  def create_field_constraints(table, field_name, sql_value \\ nil) do
-    {field_name, sql_value} =
-      case {field_name, sql_value} do
-        {field_name, nil} -> {field_name, "#{table}.#{field_name}"}
-        {_, sql_value} -> {field_name, sql_value}
-      end
-
-    positive =
-      Migration.constraint(
-        table,
-        "#{field_name}_rate_positive",
-        check: """
-        (#{sql_value}).playback.denominator > 0
-        AND (#{sql_value}).playback.numerator > 0
-        """
-      )
-
-    Migration.create(positive)
-
-    ntsc_tags =
-      Migration.constraint(
-        table,
-        "#{field_name}_ntsc_tags",
-        check: """
-        NOT (
-          ((#{sql_value}).tags) @> '{drop}'::framerate_tags[]
-          AND ((#{sql_value}).tags) @> '{non_drop}'::framerate_tags[]
-        )
-        """
-      )
-
-    Migration.create(ntsc_tags)
-
-    ntsc_valid =
-      Migration.constraint(
-        table,
-        "#{field_name}_ntsc_valid",
-        check: """
-        NOT #{function(:is_ntsc, Migration.repo())}(#{sql_value})
-        OR (
-            (
-              ROUND((#{sql_value}).playback) * 1000,
-              1001
-            )::rational
-            = (#{sql_value}).playback
-        )
-        """
-      )
-
-    Migration.create(ntsc_valid)
-
-    drop_valid =
-      Migration.constraint(
-        table,
-        "#{field_name}_ntsc_drop_valid",
-        check: """
-        NOT (#{sql_value}).tags @> '{drop}'::framerate_tags[]
-        OR (#{sql_value}).playback % (30000, 1001)::rational = (0, 1)::rational
-        """
-      )
-
-    Migration.create(drop_valid)
+  @spec create_constraints(sql_value(), sql_value(), [constraint_opt()]) :: :ok
+  def create_constraints(table, field_name, opts \\ []) do
+    table
+    |> build_constraint_list(field_name, opts)
+    |> Enum.each(&Migration.create(&1))
 
     :ok
+  end
+
+  # Compiles the constraint structs to be created in the database.
+  @doc false
+  @spec build_constraint_list(sql_value(), sql_value(), [constraint_opt()]) :: [Migration.Constraint.t()]
+  def build_constraint_list(table, field_name, opts) do
+    check_value = Keyword.get(opts, :check_value, nil)
+
+    {field_name, check_value} =
+      if is_nil(check_value) do
+        {field_name, "#{table}.#{field_name}"}
+      else
+        {field_name, check_value}
+      end
+
+    constraints = [
+      {
+        :create_positive?,
+        fn ->
+          Migration.constraint(
+            table,
+            "#{field_name}_rate_positive",
+            check: """
+            (#{check_value}).playback.denominator > 0
+            AND (#{check_value}).playback.numerator > 0
+            """
+          )
+        end
+      },
+      {
+        :create_ntsc_tags?,
+        fn ->
+          Migration.constraint(
+            table,
+            "#{field_name}_ntsc_tags",
+            check: """
+            NOT (
+              ((#{check_value}).tags) @> '{drop}'::framerate_tags[]
+              AND ((#{check_value}).tags) @> '{non_drop}'::framerate_tags[]
+            )
+            """
+          )
+        end
+      },
+      {
+        :create_ntsc_valid?,
+        fn ->
+          Migration.constraint(
+            table,
+            "#{field_name}_ntsc_valid",
+            check: """
+            NOT (
+              ((#{check_value}).tags) @> '{drop}'::framerate_tags[]
+              OR ((#{check_value}).tags) @> '{non_drop}'::framerate_tags[]
+            )
+            OR (
+                (
+                  ROUND((#{check_value}).playback) * 1000,
+                  1001
+                )::rational
+                = (#{check_value}).playback
+            )
+            """
+          )
+        end
+      },
+      {
+        :create_drop_valid?,
+        fn ->
+          Migration.constraint(
+            table,
+            "#{field_name}_ntsc_drop_valid",
+            check: """
+            NOT (#{check_value}).tags @> '{drop}'::framerate_tags[]
+            OR (#{check_value}).playback % (30000, 1001)::rational = (0, 1)::rational
+            """
+          )
+        end
+      }
+    ]
+
+    constraints
+    |> Enum.filter(fn {opt, _} -> Keyword.get(opts, opt, true) end)
+    |> Enum.map(fn {_, constraint_builder} -> constraint_builder.() end)
   end
 
   @doc """
