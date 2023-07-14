@@ -7,7 +7,7 @@ defmodule Vtc.MixProject do
   def project do
     [
       app: :vtc,
-      version: "0.2.0",
+      version: "0.13.15",
       description: "A SMPTE timecode library for Elixir",
       source_url: "https://github.com/opencinemac/vtc-ex",
       elixir: "~> 1.12",
