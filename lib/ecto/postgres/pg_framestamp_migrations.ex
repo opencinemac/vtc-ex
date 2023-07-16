@@ -400,7 +400,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__add(a, b)` that backs the `+` operator.
 
-  Raises exception if `a` and `b` do not have the same framerate.
+  Adds `a` to `b`.
+
+  **raises**: `data_exception` if `a` and `b` do not have the same framerate.
   """
   @spec create_func_add() :: {raw_sql(), raw_sql()}
   def create_func_add do
@@ -423,8 +425,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__add_inherit_lef(a, b)` that backs the `@+` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `a`'s rate and
-  round seconsd to the nearest whole-frame.
+  Adds `a` to `b`. If `a` and `b` do not have the same framerate, result will inherit
+  `a`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_func_add_inherit_left() :: {raw_sql(), raw_sql()}
   def create_func_add_inherit_left do
@@ -449,8 +451,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__add_inherit_right(a, b)` that backs the `+@` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `b`'s rate and
-  round seconsd to the nearest whole-frame.
+  Adds `a` to `b`. If `a` and `b` do not have the same framerate, result will inherit
+  `b`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_func_add_inherit_right() :: {raw_sql(), raw_sql()}
   def create_func_add_inherit_right do
@@ -475,7 +477,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   `framestamp.__private__sub(a, b)` that backs the `-` operator.
 
-  Raises exception if `a` and `b` do not have the same framerate.
+  Subtracts `a` from `b`.
+
+  **raises**: `data_exception` if `a` and `b` do not have the same framerate.
   """
   @spec create_func_sub() :: {raw_sql(), raw_sql()}
   def create_func_sub do
@@ -498,8 +502,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__sub_inherit_left(a, b)` that backs the `@-` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `a`'s rate and
-  round seconsd to the nearest whole-frame.
+  Subtracts `a` from `b`. If `a` and `b` do not have the same framerate, result will
+  inherit `a`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_func_sub_inherit_left() :: {raw_sql(), raw_sql()}
   def create_func_sub_inherit_left do
@@ -524,8 +528,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__sub_inherit_right(a, b)` that backs the `-@` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `b`'s rate and
-  round seconsd to the nearest whole-frame.
+  Subtracts `a` from `b`. If `a` and `b` do not have the same framerate, result will
+  inherit `b`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_func_sub_inherit_right() :: {raw_sql(), raw_sql()}
   def create_func_sub_inherit_right do
@@ -565,7 +569,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__mult(:framestamp, :rational)` that backs the `*` operator.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
+  Just like [Framestamp.mult/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
   field will be rounded to the nearest whole-frame to ensure data integrity.
   """
   @spec create_func_mult_rational() :: {raw_sql(), raw_sql()}
@@ -808,7 +812,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `+` operator.
 
-  Raises exception if `a` and `b` do not have the same framerate.
+  Adds `a` to `b`.
+
+  **raises**: `data_exception` if `a` and `b` do not have the same framerate.
   """
   @spec create_op_add() :: {raw_sql(), raw_sql()}
   def create_op_add do
@@ -825,8 +831,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `@+` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `a`'s rate and
-  round seconsd to the nearest whole-frame.
+  Adds `a` to `b`. If `a` and `b` do not have the same framerate, result will inherit
+  `a`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_op_add_inherit_left() :: {raw_sql(), raw_sql()}
   def create_op_add_inherit_left do
@@ -843,8 +849,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `+@` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `b`'s rate and
-  round seconsd to the nearest whole-frame.
+  Adds `a` to `b`. If `a` and `b` do not have the same framerate, result will inherit
+  `b`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_op_add_inherit_right() :: {raw_sql(), raw_sql()}
   def create_op_add_inherit_right do
@@ -861,9 +867,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `-` operator.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
-  are not equal, the result will inherit `a`'s framerate, and the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  Subtracts `a` from `b`.
+
+  **raises**: `data_exception` if `a` and `b` do not have the same framerate.
   """
   @spec create_op_sub() :: {raw_sql(), raw_sql()}
   def create_op_sub do
@@ -879,8 +885,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `@-` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `a`'s rate and
-  round seconsd to the nearest whole-frame.
+  Subtracts `a` from `b`. If `a` and `b` do not have the same framerate, result will
+  inherit `a`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_op_sub_inherit_left() :: {raw_sql(), raw_sql()}
   def create_op_sub_inherit_left do
@@ -896,8 +902,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `-@` operator.
 
-  If `a` and `b` do not have the same framerate, result will inherit `b`'s rate and
-  round seconsd to the nearest whole-frame.
+  Subtracts `a` from `b`. If `a` and `b` do not have the same framerate, result will
+  inherit `b`'s rate and round seconds to the nearest whole-frame.
   """
   @spec create_op_sub_inherit_right() :: {raw_sql(), raw_sql()}
   def create_op_sub_inherit_right do
@@ -913,8 +919,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :rational `*` operator.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  Just like [Framestamp.mult/3](`Vtc.Framestamp.mult/3`), `a`'s the internal `seconds`
+  value will be rounded to the nearest whole-frame to ensure data integrity.
   """
   @spec create_op_mult_rational() :: {raw_sql(), raw_sql()}
   def create_op_mult_rational do
@@ -931,7 +937,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Creates a custom :framestamp, :rational `/` operator.
 
   Just like [Framestamp.div/3](`Vtc.Framestamp.div/3`), `a`'s the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  value will be rounded to the nearest whole-frame to ensure data integrity.
 
   Unlike [Framestamp.div/3](`Vtc.Framestamp.div/3`), the result is rounded to the
   *closest* frame, rather than truncating ala integer division.
