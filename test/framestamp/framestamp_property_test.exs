@@ -268,7 +268,7 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
               a <-
                 StreamData.filter(
                   StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]]),
-                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1))
                 ),
               multiplier <- float()
             ) do
@@ -303,7 +303,7 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
               a <-
                 StreamData.filter(
                   StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]]),
-                  &Ratio.gt?(&1.rate.playback, Ratio.new(1, 1))
+                  &Ratio.gt?(&1.rate.playback, Ratio.new(1))
                 ),
               multiplier <- filter(float(), &(&1 != 0))
             ) do

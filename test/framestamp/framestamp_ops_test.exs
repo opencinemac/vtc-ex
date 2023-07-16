@@ -2,6 +2,7 @@ defmodule Vtc.FramestampTest.Ops do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
+  alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.Test.Support.CommonTables
@@ -266,12 +267,44 @@ defmodule Vtc.FramestampTest.Ops do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case do
-      %{a: a, b: b, expected: expected} = test_case
-      assert Framestamp.add(a, b) == expected
+    add_table = CommonTables.framestamp_add()
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: <%= opts %>", add_table, test_case do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      assert Framestamp.add(a, b, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", CommonTables.framestamp_add(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: <%= opts %> | flipped", add_table, test_case,
+      if: not Keyword.has_key?(test_case.opts, :inheret_rate) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      assert Framestamp.add(b, a, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: false]", add_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, false)
+
+      assert Framestamp.add(b, a, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :left]", add_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, :left)
+
+      assert Framestamp.add(b, a, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :right]", add_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, :right)
+
+      assert Framestamp.add(b, a, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer b", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -279,7 +312,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", CommonTables.framestamp_add(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | integer a", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -287,7 +320,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", CommonTables.framestamp_add(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string b", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -295,7 +328,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.add(a, b) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", CommonTables.framestamp_add(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | string a", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
@@ -390,17 +423,10 @@ defmodule Vtc.FramestampTest.Ops do
       },
       %{
         a: %Framestamp{seconds: Ratio.new(23, 24), rate: Rates.f24()},
-        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
-        opts: [round: :off, allow_partial_frames?: true],
+        b: %Framestamp{seconds: Ratio.new(1, 24), rate: Rates.f24()},
+        opts: [round: :off],
         description: "",
-        expected: %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
-        b: %Framestamp{seconds: Ratio.new(-5, 240), rate: Rates.f24()},
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "negative",
-        expected: %Framestamp{seconds: Ratio.new(-235, 240), rate: Rates.f24()}
+        expected: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
       }
     ]
 
@@ -416,18 +442,72 @@ defmodule Vtc.FramestampTest.Ops do
       error = assert_raise Framestamp.ParseError, fn -> Framestamp.add(a, b, round: :off) end
       assert error.reason == :partial_frame
     end
+
+    mixed_rate_error_table = [
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f48())
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Framestamp.with_frames!("01:00:00:00", Framerate.new!(Ratio.new(24_000, 1001), ntsc: nil))
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_ndf()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df())
+      }
+    ]
+
+    table_test "<%= a %> + <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
+      %{a: a, b: b} = test_case
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Framestamp.add(a, b) end
+
+      assert Framestamp.MixedRateArithmaticError.message(error) ==
+               "attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`." <>
+                 " try `:inheret_rate` option to `:left` or `:right`. alternatively," <>
+                 " do your calculation in seconds, then cast back to `Framestamp` with" <>
+                 " the appropriate rate"
+    end
   end
 
   describe "#sub/2" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case do
-      %{a: a, b: b, expected: expected} = test_case
-      assert Framestamp.sub(a, b) == expected
+    sub_table = CommonTables.framestamp_subtract()
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: <%= opts %>", sub_table, test_case do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+
+      assert Framestamp.sub(a, b, opts) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", CommonTables.framestamp_subtract(), test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: false]", sub_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, false)
+
+      assert Framestamp.sub(a, b, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :left]", sub_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, :left)
+
+      assert Framestamp.sub(a, b, opts) == expected
+    end
+
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :right]", sub_table, test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
+      %{a: a, b: b, opts: opts, expected: expected} = test_case
+      opts = Keyword.put(opts, :inheret_rate, :right)
+
+      assert Framestamp.sub(a, b, opts) == expected
+    end
+
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer b", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.frames(b)
@@ -435,7 +515,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", CommonTables.framestamp_subtract(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | integer a", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.frames(a)
@@ -443,7 +523,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", CommonTables.framestamp_subtract(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string b", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       b = Framestamp.smpte_timecode(b)
@@ -451,7 +531,7 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b) == expected
     end
 
-    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", CommonTables.framestamp_subtract(), test_case,
+    table_test "<%= a %> - <%= b %> == <%= expected %> | string a", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
       a = Framestamp.smpte_timecode(a)
@@ -543,20 +623,6 @@ defmodule Vtc.FramestampTest.Ops do
         opts: [round: :trunc],
         description: "negative",
         expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "",
-        expected: %Framestamp{seconds: Ratio.new(235, 240), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(-1), rate: Rates.f24()},
-        b: %Framestamp{seconds: Ratio.new(5, 240), rate: Rates.f24()},
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "negative",
-        expected: %Framestamp{seconds: Ratio.new(-245, 240), rate: Rates.f24()}
       }
     ]
 
@@ -571,6 +637,33 @@ defmodule Vtc.FramestampTest.Ops do
 
       error = assert_raise Framestamp.ParseError, fn -> Framestamp.sub(a, b, round: :off) end
       assert error.reason == :partial_frame
+    end
+
+    mixed_rate_error_table = [
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f48())
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Framestamp.with_frames!("01:00:00:00", Framerate.new!(Ratio.new(24_000, 1001), ntsc: nil))
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_ndf()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df())
+      }
+    ]
+
+    table_test "<%= a %> + <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
+      %{a: a, b: b} = test_case
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Framestamp.sub(a, b) end
+
+      assert Framestamp.MixedRateArithmaticError.message(error) ==
+               "attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`." <>
+                 " try `:inheret_rate` option to `:left` or `:right`. alternatively," <>
+                 " do your calculation in seconds, then cast back to `Framestamp` with" <>
+                 " the appropriate rate"
     end
   end
 
@@ -681,20 +774,6 @@ defmodule Vtc.FramestampTest.Ops do
         opts: [round: :ceil],
         description: "negative",
         expected: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: Ratio.new(239, 240),
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "",
-        expected: %Framestamp{seconds: Ratio.new(239, 240), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: Ratio.new(-239, 240),
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "negative",
-        expected: %Framestamp{seconds: Ratio.new(-239, 240), rate: Rates.f24()}
       }
     ]
 
@@ -800,20 +879,6 @@ defmodule Vtc.FramestampTest.Ops do
         opts: [round: :ceil],
         description: "negative",
         expected: %Framestamp{seconds: Ratio.new(0, 24), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: 48,
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "",
-        expected: %Framestamp{seconds: Ratio.new(1, 48), rate: Rates.f24()}
-      },
-      %{
-        a: %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()},
-        b: 48,
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "negative",
-        expected: %Framestamp{seconds: Ratio.new(1, 48), rate: Rates.f24()}
       }
     ]
 
@@ -1117,7 +1182,7 @@ defmodule Vtc.FramestampTest.Ops do
       b = 1
 
       exception = assert_raise ArgumentError, fn -> Framestamp.divrem(a, b, round_frames: :off) end
-      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+      assert Exception.message(exception) == "`:round_frames` cannot be `:off`"
     end
 
     test "round | remainder :off | raises" do
@@ -1126,7 +1191,7 @@ defmodule Vtc.FramestampTest.Ops do
 
       exception = assert_raise ArgumentError, fn -> Framestamp.divrem(a, b, round_remainder: :off) end
 
-      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
+      assert Exception.message(exception) == "`:round_remainder` cannot be `:off`"
     end
   end
 
@@ -1149,7 +1214,7 @@ defmodule Vtc.FramestampTest.Ops do
       b = 1
 
       exception = assert_raise ArgumentError, fn -> Framestamp.rem(a, b, round_frames: :off) end
-      assert Exception.message(exception) == "`round_frames` cannot be `:off`"
+      assert Exception.message(exception) == "`:round_frames` cannot be `:off`"
     end
 
     test "round | remainder :off | raises" do
@@ -1158,7 +1223,7 @@ defmodule Vtc.FramestampTest.Ops do
 
       exception = assert_raise ArgumentError, fn -> Framestamp.rem(a, b, round_remainder: :off) end
 
-      assert Exception.message(exception) == "`round_remainder` cannot be `:off`"
+      assert Exception.message(exception) == "`:round_remainder` cannot be `:off`"
     end
   end
 

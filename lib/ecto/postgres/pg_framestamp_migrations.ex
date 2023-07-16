@@ -129,7 +129,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_func_gte/0,
       &create_func_cmp/0,
       &create_func_add/0,
+      &create_func_add_inheret_left/0,
+      &create_func_add_inheret_right/0,
       &create_func_sub/0,
+      &create_func_sub_inheret_left/0,
+      &create_func_sub_inheret_right/0,
       &create_func_mult_rational/0,
       &create_func_div_rational/0,
       &create_func_floor_div_rational/0,
@@ -143,7 +147,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_op_gt/0,
       &create_op_gte/0,
       &create_op_add/0,
+      &create_op_add_inheret_left/0,
+      &create_op_add_inheret_right/0,
       &create_op_sub/0,
+      &create_op_sub_inheret_left/0,
+      &create_op_sub_inheret_right/0,
       &create_op_mult_rational/0,
       &create_op_div_rational/0,
       &create_op_modulo_rational/0,
@@ -392,16 +400,38 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates `framestamp.__private__add(a, b)` that backs the `+` operator.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.add/3`), if the `rate` of `a` and `b`
-  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  Raises exception if `a` and `b` do not have the same framerate.
   """
   @spec create_func_add() :: {raw_sql(), raw_sql()}
   def create_func_add do
+    Postgres.Utils.create_plpgsql_function(
+      private_function(:add, Migration.repo()),
+      args: [a: :framestamp, b: :framestamp],
+      declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+      returns: :framestamp,
+      body: """
+      IF (a).rate === (b).rate THEN
+        RETURN (seconds, (a).rate)::framestamp;
+      ELSE
+        #{sq_raise_mised_frame_arithmetic_error(:framestamp, :+)}
+      END IF;
+      """
+    )
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp.__private__add_inheret_lef(a, b)` that backs the `@+` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `a`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_func_add_inheret_left() :: {raw_sql(), raw_sql()}
+  def create_func_add_inheret_left do
     with_seconds = function(:with_seconds, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
-      private_function(:add, Migration.repo()),
+      private_function(:add_inheret_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
       declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
       returns: :framestamp,
@@ -417,20 +447,66 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  `framestamp.__private__sub(a, b)`.
+  Creates `framestamp.__private__add_inheret_right(a, b)` that backs the `+@` operator.
 
-  Backs the `-` operator.
-
-  Just like [Framestamp.sub/3](`Vtc.Framestamp.sub/3`), if the `rate` of `a` and `b`
-  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  If `a` and `b` do not have the same framerate, result will inheret `b`'s rate and
+  round seconsd to the nearest whole-frame.
   """
-  @spec create_func_sub() :: {raw_sql(), raw_sql()}
-  def create_func_sub do
+  @spec create_func_add_inheret_right() :: {raw_sql(), raw_sql()}
+  def create_func_add_inheret_right do
     with_seconds = function(:with_seconds, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
+      private_function(:add_inheret_right, Migration.repo()),
+      args: [a: :framestamp, b: :framestamp],
+      declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+      returns: :framestamp,
+      body: """
+      IF (a).rate === (b).rate THEN
+        RETURN (seconds, (b).rate)::framestamp;
+      ELSE
+        RETURN #{with_seconds}(seconds, (b).rate);
+      END IF;
+      """
+    )
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  `framestamp.__private__sub(a, b)` that backs the `-` operator.
+
+  Raises exception if `a` and `b` do not have the same framerate.
+  """
+  @spec create_func_sub() :: {raw_sql(), raw_sql()}
+  def create_func_sub do
+    Postgres.Utils.create_plpgsql_function(
       private_function(:sub, Migration.repo()),
+      args: [a: :framestamp, b: :framestamp],
+      declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+      returns: :framestamp,
+      body: """
+      IF (a).rate === (b).rate THEN
+        RETURN (seconds, (a).rate)::framestamp;
+      ELSE
+        #{sq_raise_mised_frame_arithmetic_error(:framestamp, :-)}
+      END IF;
+      """
+    )
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp.__private__sub_inheret_left(a, b)` that backs the `@-` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `a`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_func_sub_inheret_left() :: {raw_sql(), raw_sql()}
+  def create_func_sub_inheret_left do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    Postgres.Utils.create_plpgsql_function(
+      private_function(:sub_inheret_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
       declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
       returns: :framestamp,
@@ -442,6 +518,47 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       END IF;
       """
     )
+  end
+
+  @doc section: :migrations_private_functions
+  @doc """
+  Creates `framestamp.__private__sub_inheret_right(a, b)` that backs the `-@` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `b`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_func_sub_inheret_right() :: {raw_sql(), raw_sql()}
+  def create_func_sub_inheret_right do
+    with_seconds = function(:with_seconds, Migration.repo())
+
+    Postgres.Utils.create_plpgsql_function(
+      private_function(:sub_inheret_right, Migration.repo()),
+      args: [a: :framestamp, b: :framestamp],
+      declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+      returns: :framestamp,
+      body: """
+      IF (a).rate === (b).rate THEN
+        RETURN (seconds, (b).rate)::framestamp;
+      ELSE
+        RETURN #{with_seconds}(seconds, (b).rate);
+      END IF;
+      """
+    )
+  end
+
+  # Returns SQL statement to rause mixed framerate arithmatic operator.
+  @spec sq_raise_mised_frame_arithmetic_error(atom(), atom()) :: raw_sql()
+  defp sq_raise_mised_frame_arithmetic_error(type, operator) do
+    hint =
+      "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
+        " in seconds before casting back to #{type} with the appropriate framerate"
+
+    """
+    RAISE 'Mixed framerate arithmatic'
+    USING
+      ERRCODE = 'data_exception',
+      HINT = '#{hint}';
+    """
   end
 
   @doc section: :migrations_private_functions
@@ -691,9 +808,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc """
   Creates a custom :framestamp, :framestamp `+` operator.
 
-  Just like [Framestamp.add/3](`Vtc.Framestamp.add/3`), if the `rate` of `a` and `b`
-  are not equal, the result will inheret `a`'s framerate, and the internal `seconds`
-  field will be rounded to the nearest whole-frame to ensure data integrity.
+  Raises exception if `a` and `b` do not have the same framerate.
   """
   @spec create_op_add() :: {raw_sql(), raw_sql()}
   def create_op_add do
@@ -701,7 +816,44 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :+,
       :framestamp,
       :framestamp,
-      private_function(:add, Migration.repo())
+      private_function(:add, Migration.repo()),
+      commutator: :+
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `@+` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `a`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_op_add_inheret_left() :: {raw_sql(), raw_sql()}
+  def create_op_add_inheret_left do
+    Postgres.Utils.create_operator(
+      :"@+",
+      :framestamp,
+      :framestamp,
+      private_function(:add_inheret_left, Migration.repo()),
+      commutator: :"+@"
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `+@` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `b`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_op_add_inheret_right() :: {raw_sql(), raw_sql()}
+  def create_op_add_inheret_right do
+    Postgres.Utils.create_operator(
+      :"+@",
+      :framestamp,
+      :framestamp,
+      private_function(:add_inheret_right, Migration.repo()),
+      commutator: :"@+"
     )
   end
 
@@ -720,6 +872,40 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :framestamp,
       :framestamp,
       private_function(:sub, Migration.repo())
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `@-` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `a`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_op_sub_inheret_left() :: {raw_sql(), raw_sql()}
+  def create_op_sub_inheret_left do
+    Postgres.Utils.create_operator(
+      :"@-",
+      :framestamp,
+      :framestamp,
+      private_function(:sub_inheret_left, Migration.repo())
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom :framestamp, :framestamp `-@` operator.
+
+  If `a` and `b` do not have the same framerate, result will inheret `b`'s rate and
+  round seconsd to the nearest whole-frame.
+  """
+  @spec create_op_sub_inheret_right() :: {raw_sql(), raw_sql()}
+  def create_op_sub_inheret_right do
+    Postgres.Utils.create_operator(
+      :"-@",
+      :framestamp,
+      :framestamp,
+      private_function(:sub_inheret_right, Migration.repo())
     )
   end
 

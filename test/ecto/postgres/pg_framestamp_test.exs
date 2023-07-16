@@ -159,7 +159,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       %{
         name: "ratio",
         input: %{
-          smpte_timecode: Ratio.new(24, 1),
+          smpte_timecode: Ratio.new(24),
           rate: %{
             playback: [24_000, 1001],
             ntsc: :non_drop
@@ -238,7 +238,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
     bad_dump_table = [
       %{input: "01:00:00:00"},
-      %{input: Ratio.new(3600, 1)},
+      %{input: Ratio.new(3600)},
       %{input: {"01:00:00:00", Rates.f23_98()}},
       %{input: {{-3600, 1}, {{24, 1}, []}}}
     ]
@@ -908,11 +908,12 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres + (add)" do
+  describe "Postgres + (add, no rate inheretence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case do
+    table_test "<%= a %> + <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -925,10 +926,43 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       assert result == expected
     end
 
+    mixed_rate_error_table = [
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f48())
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Framestamp.with_frames!("01:00:00:00", Framerate.new!(Ratio.new(24_000, 1001), ntsc: nil))
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_ndf()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df())
+      }
+    ]
+
+    table_test "<%= a %> + <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
+      %{a: a, b: b} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? + ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      %{postgres: error} = assert_raise Postgrex.Error, fn -> Repo.one!(query) end
+      assert error.code == :data_exception
+      assert error.message == "Mixed framerate arithmatic"
+
+      assert error.hint ==
+               "try using `@+` or `+@` instead. alternatively, do calculations in seconds" <>
+                 " before casting back to framestamp with the appropriate framerate"
+    end
+
     property "matches Framestamp.add/2" do
       check all(
-              a <- StreamDataVtc.framestamp(),
-              b <- StreamDataVtc.framestamp()
+              rate <- StreamDataVtc.framerate(),
+              a <- StreamDataVtc.framestamp(rate: rate),
+              b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         query =
           Query.from(f in fragment("SELECT (? + ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
@@ -943,8 +977,9 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
     property "table fields" do
       check all(
-              a <- StreamDataVtc.framestamp(),
-              b <- StreamDataVtc.framestamp()
+              rate <- StreamDataVtc.framerate(),
+              a <- StreamDataVtc.framestamp(rate: rate),
+              b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         result =
           run_schema_arithmatic_test(a, b, fn query ->
@@ -956,11 +991,110 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres - (subtract)" do
+  describe "Postgres @+ (add, left rate inheretence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
-    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case do
+    table_test "<%= a %> @+ <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case,
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :left do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? @+ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.add/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? @+ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.add(a, b, inheret_rate: :left)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], fragment("(? @+ ?)", r.a, r.b))
+          end)
+
+        assert result == Framestamp.add(a, b, inheret_rate: :left)
+      end
+    end
+  end
+
+  describe "Postgres +@ (add, right rate inheretence)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> +@ <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case,
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :right do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.add/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? +@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.add(a, b, inheret_rate: :right)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], fragment("(? +@ ?)", r.a, r.b))
+          end)
+
+        assert result == Framestamp.add(a, b, inheret_rate: :right)
+      end
+    end
+  end
+
+  describe "Postgres - (subtract, no rate inheretence)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> - <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case,
+      if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -973,10 +1107,43 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
       assert result == expected
     end
 
+    mixed_rate_error_table = [
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f24()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f48())
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f23_98()),
+        b: Framestamp.with_frames!("01:00:00:00", Framerate.new!(Ratio.new(24_000, 1001), ntsc: nil))
+      },
+      %{
+        a: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_ndf()),
+        b: Framestamp.with_frames!("01:00:00:00", Rates.f29_97_df())
+      }
+    ]
+
+    table_test "<%= a %> - <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
+      %{a: a, b: b} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      %{postgres: error} = assert_raise Postgrex.Error, fn -> Repo.one!(query) end
+      assert error.code == :data_exception
+      assert error.message == "Mixed framerate arithmatic"
+
+      assert error.hint ==
+               "try using `@-` or `-@` instead. alternatively, do calculations in seconds" <>
+                 " before casting back to framestamp with the appropriate framerate"
+    end
+
     property "matches Framestamp.sub/2" do
       check all(
-              a <- StreamDataVtc.framestamp(),
-              b <- StreamDataVtc.framestamp()
+              rate <- StreamDataVtc.framerate(),
+              a <- StreamDataVtc.framestamp(rate: rate),
+              b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         query =
           Query.from(f in fragment("SELECT (? - ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
@@ -991,8 +1158,9 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
     property "table fields" do
       check all(
-              a <- StreamDataVtc.framestamp(),
-              b <- StreamDataVtc.framestamp()
+              rate <- StreamDataVtc.framerate(),
+              a <- StreamDataVtc.framestamp(rate: rate),
+              b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         result =
           run_schema_arithmatic_test(a, b, fn query ->
@@ -1000,6 +1168,104 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
           end)
 
         assert result == Framestamp.sub(a, b)
+      end
+    end
+  end
+
+  describe "Postgres @- (subtract, left rate inheretence)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> @- <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case,
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :left do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.sub/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? @- ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.sub(a, b, inheret_rate: :left)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], fragment("(? @- ?)", r.a, r.b))
+          end)
+
+        assert result == Framestamp.sub(a, b, inheret_rate: :left)
+      end
+    end
+  end
+
+  describe "Postgres -@ (subtract, right rate inheretence)" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:a, :b, :expected]
+
+    table_test "<%= a %> -@ <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case,
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :right do
+      %{a: a, b: b, expected: expected} = test_case
+
+      query =
+        Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+          select: f.r
+        )
+
+      assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+      assert %Framestamp{} = result
+      assert result == expected
+    end
+
+    property "matches Framestamp.sub/2" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        query =
+          Query.from(f in fragment("SELECT (? -@ ?) as r", type(^a, Framestamp), type(^b, Framestamp)),
+            select: f.r
+          )
+
+        assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
+        assert %Framestamp{} = result
+        assert result == Framestamp.sub(a, b, inheret_rate: :right)
+      end
+    end
+
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.framestamp(),
+              b <- StreamDataVtc.framestamp()
+            ) do
+        result =
+          run_schema_arithmatic_test(a, b, fn query ->
+            Query.select(query, [r], fragment("(? -@ ?)", r.a, r.b))
+          end)
+
+        assert result == Framestamp.sub(a, b, inheret_rate: :right)
       end
     end
   end

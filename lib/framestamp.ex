@@ -241,6 +241,7 @@ defmodule Vtc.Framestamp do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Eval
+  alias Vtc.Framestamp.MixedRateArithmaticError
   alias Vtc.Framestamp.ParseError
   alias Vtc.SMPTETimecode.Sections
   alias Vtc.Source.Frames
@@ -277,15 +278,16 @@ defmodule Vtc.Framestamp do
 
   - `:trunc`: Always round towards zero to the closest whole frame. Negative numbers
     round up and positive numbers round down.
+
+  - `:off`: Do not round. Will always raise if result would represent a non-whole-frame
+    value.
   """
-  @type round() :: :closest | :floor | :ceil | :trunc
+  @type round() :: :closest | :floor | :ceil | :trunc | :off
 
   @typedoc """
-  As `round/0`, but includes `:off` option to disable rounding entirely. Not all
-  functions exposed by this module make logical sense without some form of rouding, so
-  `:off` will not be accepted by all functions.
+  Describes which side to inheret the framerate from in mixed-rate arithmatic.
   """
-  @type maybe_round() :: round() | :off
+  @type inheret_rate_opt() :: :left | :right | false
 
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
@@ -306,11 +308,9 @@ defmodule Vtc.Framestamp do
 
   ## Options
 
-  - `round`: How to round the result with regards to whole-frames. Default: `:closest`.
-
-  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
-    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
-    Default: `false`.
+  - `round`: How to round the result with regards to whole-frames. If set to `:off`,
+    will return an error if the provided `seconds` value does not exactly represent
+    a whole-number frame count. Default: `:closest`.
 
   ## Examples
 
@@ -374,21 +374,20 @@ defmodule Vtc.Framestamp do
   @spec with_seconds(
           Seconds.t(),
           Framerate.t(),
-          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+          opts :: [round: round() | :off]
         ) :: parse_result()
   def with_seconds(seconds, rate, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
-    allow_partial_frames? = Keyword.get(opts, :allow_partial_frames?, false)
 
     with {:ok, seconds} <- Seconds.seconds(seconds, rate),
-         seconds = with_seconds_round_to_frame(seconds, rate, round),
-         :ok <- validate_whole_frames(seconds, rate, round, allow_partial_frames?) do
+         :ok <- validate_whole_frames(seconds, rate, round) do
+      seconds = with_seconds_round_to_frame(seconds, rate, round)
       {:ok, %__MODULE__{seconds: seconds, rate: rate}}
     end
   end
 
   # Rounds seconds value to the nearest whole-frame.
-  @spec with_seconds_round_to_frame(Ratio.t(), Framerate.t(), maybe_round()) :: Ratio.t()
+  @spec with_seconds_round_to_frame(Ratio.t(), Framerate.t(), round() | :off) :: Ratio.t()
   defp with_seconds_round_to_frame(seconds, _, :off), do: seconds
 
   defp with_seconds_round_to_frame(seconds, rate, round) do
@@ -400,18 +399,18 @@ defmodule Vtc.Framestamp do
   end
 
   # Validates that seconds is cleanly divisible by `rate.playback`.
-  @spec validate_whole_frames(Ratio.t(), Framerate.t(), maybe_round(), boolean()) :: :ok | {:error, ParseError.t()}
-  defp validate_whole_frames(seconds, rate, :off, false) do
-    remainder = seconds |> Ratio.mult(rate.playback) |> Rational.rem(Ratio.new(1, 1))
+  @spec validate_whole_frames(Ratio.t(), Framerate.t(), :off | round()) :: :ok | {:error, ParseError.t()}
+  defp validate_whole_frames(seconds, rate, :off) do
+    remainder = seconds |> Ratio.mult(rate.playback) |> Rational.rem(Ratio.new(1))
 
-    if Ratio.eq?(remainder, Ratio.new(0, 1)) do
+    if Ratio.eq?(remainder, Ratio.new(0)) do
       :ok
     else
       {:error, %ParseError{reason: :partial_frame}}
     end
   end
 
-  defp validate_whole_frames(_, _, _, _), do: :ok
+  defp validate_whole_frames(_, _, _), do: :ok
 
   @doc section: :parse
   @doc """
@@ -420,7 +419,7 @@ defmodule Vtc.Framestamp do
   @spec with_seconds!(
           Seconds.t(),
           Framerate.t(),
-          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+          opts :: [round: round() | :off]
         ) :: t()
   def with_seconds!(seconds, rate, opts \\ []) do
     seconds
@@ -681,12 +680,12 @@ defmodule Vtc.Framestamp do
 
   ## Options
 
+  - `inheret_rate`: Which side to inheret the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a.rate` does not match `b.rate`.
+    Default: `false`.
+
   - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
-
-  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
-    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
-    Default: `false`.
 
   ## Examples
 
@@ -703,13 +702,24 @@ defmodule Vtc.Framestamp do
 
   Two framestamps running at different rates:
 
-  ```elixir
-  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Framestamp.add(a, b)
+  iex> result = Framestamp.add(a, b, inheret_rate: :left)
   iex> inspect(result)
-  "<01:00:00:01 <23.98 NTSC>>"
+  "<01:00:00:03 <23.98 NTSC>>"
+  iex>
+  iex> result = Framestamp.add(a, b, inheret_rate: :right)
+  iex> inspect(result)
+  "<01:00:00:06 <47.95 NTSC>>"
+
+  If `:inheret_rate` is not set...
+
+  ```elixir
+  iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> Framestamp.add(a, b)
+  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inheret_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   Using a framestamps and a bare string:
@@ -725,12 +735,9 @@ defmodule Vtc.Framestamp do
   @spec add(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+          opts :: [inheret_rate: inheret_rate_opt(), round: round()]
         ) :: t()
-  def add(a, b, opts \\ []) do
-    {a, b} = cast_op_args(a, b)
-    a.seconds |> Ratio.add(b.seconds) |> with_seconds!(a.rate, opts)
-  end
+  def add(a, b, opts \\ []), do: do_arithmatic(a, b, :add, opts, &Ratio.add(&1, &2))
 
   @doc section: :arithmetic
   @doc """
@@ -743,6 +750,10 @@ defmodule Vtc.Framestamp do
   [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
+
+  - `inheret_rate`: Which side to inheret the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a.rate` does not match `b.rate`.
+    Default: `false`.
 
   - `round`: How to round the result with respect to whole-frames when mixing
     framerates. Default: `:closest`.
@@ -777,9 +788,22 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Framestamp.sub(a, b)
+  iex> result = Framestamp.sub(a, b, inheret_rate: :left)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
+  iex>
+  iex> result = Framestamp.sub(a, b, inheret_rate: :right)
+  iex> inspect(result)
+  "<01:00:00:02 <47.95 NTSC>>"
+  ```
+
+  If `:inheret_rate` is not set...
+
+  ```elixir
+  iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
+  iex> Framestamp.sub(a, b)
+  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inheret_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   Using a framestamps and a bare string:
@@ -792,11 +816,48 @@ defmodule Vtc.Framestamp do
   "<00:30:21:17 <23.98 NTSC>>"
   ```
   """
-  @spec sub(a :: t(), b :: t() | Frames.t(), opts :: [round: maybe_round(), allow_partial_frames?: boolean()]) :: t()
-  def sub(a, b, opts \\ []) do
-    {a, b} = cast_op_args(a, b)
-    a.seconds |> Ratio.sub(b.seconds) |> with_seconds!(a.rate, opts)
+  @spec sub(
+          a :: t() | Frames.t(),
+          b :: t() | Frames.t(),
+          opts :: [inheret_rate: inheret_rate_opt(), round: round()]
+        ) :: t()
+  def sub(a, b, opts \\ []), do: do_arithmatic(a, b, :sub, opts, &Ratio.sub(&1, &2))
+
+  # Runs a (Framestamp, Framestamp) arithamtic operation.
+  @spec do_arithmatic(
+          a :: t() | Frames.t(),
+          b :: t() | Frames.t(),
+          func_name :: :add | :sub,
+          opts :: [inheret_rate: inheret_rate_opt(), round: round()],
+          (Ratio.t(), Ratio.t() -> Ratio.t())
+        ) :: t()
+  defp do_arithmatic(a, b, func_name, opts, seconds_operation) do
+    inheret_rate = Keyword.get(opts, :inheret_rate, false)
+
+    case do_arithmatic_validate_rates(a, b, inheret_rate, func_name) do
+      :ok ->
+        {a, b} = cast_op_args(a, b)
+        new_rate = if inheret_rate == :left, do: a.rate, else: b.rate
+
+        a.seconds
+        |> seconds_operation.(b.seconds)
+        |> with_seconds!(new_rate, opts)
+
+      {:error, error} ->
+        raise error
+    end
   end
+
+  @spec do_arithmatic_validate_rates(t() | Frames.t(), t() | Frames.t(), inheret_rate_opt(), :add | :sub) ::
+          :ok | {:error, MixedRateArithmaticError.t()}
+  defp do_arithmatic_validate_rates(%Framestamp{rate: rate}, %Framestamp{rate: rate}, _, _), do: :ok
+  defp do_arithmatic_validate_rates(_, _, :left, _), do: :ok
+  defp do_arithmatic_validate_rates(_, _, :right, _), do: :ok
+  defp do_arithmatic_validate_rates(_, b, _, _) when not is_struct(b, Framestamp), do: :ok
+  defp do_arithmatic_validate_rates(a, _, _, _) when not is_struct(a, Framestamp), do: :ok
+
+  defp do_arithmatic_validate_rates(a, b, _, func_name),
+    do: {:error, %MixedRateArithmaticError{func_name: func_name, left_rate: a.rate, right_rate: b.rate}}
 
   # Casts args for ops with two values as long as at least one argument is a
   # `Framestamp`. The non-`Framestamp` argument inherents the `Framerate` of the
@@ -818,10 +879,6 @@ defmodule Vtc.Framestamp do
   - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:closest`.
 
-  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
-    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
-    Default: `false`.
-
   ## Examples
 
   ```elixir
@@ -841,7 +898,7 @@ defmodule Vtc.Framestamp do
   @spec mult(
           a :: t(),
           b :: Ratio.t() | number(),
-          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+          opts :: [round: round()]
         ) :: t()
   def mult(a, b, opts \\ []), do: a.seconds |> Ratio.mult(Ratio.new(b)) |> with_seconds!(a.rate, opts)
 
@@ -857,10 +914,6 @@ defmodule Vtc.Framestamp do
   - `round`: How to round the result with respect to whole-frame values. Defaults to
     `:trunc` to match `divmod` and the expected meaning of `div` to mean integer
     division in elixir.
-
-  - `allow_partial_frames?`: If true, when `round` is :off, will allow a `seconds` value
-    that is not cleanly divisible by `rate.playback`. Otherwise, will return an error.
-    Default: `false`.
 
   ## Examples
 
@@ -881,7 +934,7 @@ defmodule Vtc.Framestamp do
   @spec div(
           dividend :: t(),
           divisor :: Ratio.t() | number(),
-          opts :: [round: maybe_round(), allow_partial_frames?: boolean()]
+          opts :: [round: round()]
         ) :: t()
   def div(dividend, divisor, opts \\ []) do
     opts = Keyword.put_new(opts, :round, :trunc)
@@ -980,11 +1033,10 @@ defmodule Vtc.Framestamp do
   # Validates the rounding options for `divrem` and `rem`.
   @spec validate_divrem_rounding(round_frames: round(), round_remainder: round()) :: {round(), round()}
   defp validate_divrem_rounding(opts) do
-    round_frames = Keyword.get(opts, :round_frames, :closest)
-    round_remainder = Keyword.get(opts, :round_remainder, :closest)
-
-    with :ok <- ensure_round_enabled(round_frames, "round_frames"),
-         :ok <- ensure_round_enabled(round_remainder, "round_remainder") do
+    with :ok <- ensure_round_enabled(opts, :round_frames),
+         :ok <- ensure_round_enabled(opts, :round_remainder) do
+      round_frames = Keyword.get(opts, :round_frames, :closest)
+      round_remainder = Keyword.get(opts, :round_remainder, :closest)
       {round_frames, round_remainder}
     end
   end
@@ -1199,11 +1251,9 @@ defmodule Vtc.Framestamp do
   def frames(framestamp, opts \\ []) do
     round = Keyword.get(opts, :round, :closest)
 
-    with :ok <- ensure_round_enabled(round) do
-      framestamp.seconds
-      |> Ratio.mult(framestamp.rate.playback)
-      |> Rational.round(round)
-    end
+    framestamp.seconds
+    |> Ratio.mult(framestamp.rate.playback)
+    |> Rational.round(round)
   end
 
   @doc section: :convert
@@ -1221,13 +1271,7 @@ defmodule Vtc.Framestamp do
   ```
   """
   @spec smpte_timecode_sections(t(), opts :: [round: round()]) :: Sections.t()
-  def smpte_timecode_sections(framestamp, opts \\ []) do
-    round = Keyword.get(opts, :round, :closest)
-
-    with :ok <- ensure_round_enabled(round) do
-      Sections.from_framestamp(framestamp, opts)
-    end
-  end
+  def smpte_timecode_sections(framestamp, opts \\ []), do: Sections.from_framestamp(framestamp, opts)
 
   @doc section: :convert
   @doc """
@@ -1359,9 +1403,7 @@ defmodule Vtc.Framestamp do
   """
   @spec premiere_ticks(t(), opts :: [round: round()]) :: integer()
   def premiere_ticks(framestamp, opts \\ []) do
-    round = Keyword.get(opts, :round, :closest)
-
-    with :ok <- ensure_round_enabled(round) do
+    with :ok <- ensure_round_enabled(opts) do
       framestamp |> PremiereTicks.from_framestamp(opts) |> then(& &1.in)
     end
   end
@@ -1438,14 +1480,23 @@ defmodule Vtc.Framestamp do
   ```
   """
   @spec feet_and_frames(t(), opts :: [fiim_format: FilmFormat.t(), round: round()]) :: FeetAndFrames.t()
-  def feet_and_frames(framestamp, opts \\ []), do: FeetAndFrames.from_framestamp(framestamp, opts)
+  def feet_and_frames(framestamp, opts \\ []) do
+    with :ok <- ensure_round_enabled(opts) do
+      FeetAndFrames.from_framestamp(framestamp, opts)
+    end
+  end
 
   # Ensures that rounding is enabled for functions that cannot meaningfully turn
   # rounding off, such as those that must return an integer.
-  @spec ensure_round_enabled(maybe_round(), String.t()) :: :ok
-  defp ensure_round_enabled(round, arg_name \\ "round")
-  defp ensure_round_enabled(:off, arg_name), do: raise(ArgumentError.exception("`#{arg_name}` cannot be `:off`"))
-  defp ensure_round_enabled(_, _), do: :ok
+  @spec ensure_round_enabled(Keyword.t(), atom()) :: :ok
+  defp ensure_round_enabled(opts, opt \\ :round)
+
+  defp ensure_round_enabled(opts, opt) do
+    case Keyword.get(opts, opt, :closest) do
+      :off -> raise(ArgumentError.exception("`:#{opt}` cannot be `:off`"))
+      _ -> :ok
+    end
+  end
 
   @spec handle_raise_function({:ok, t()} | {:error, Exception.t()}) :: t()
   defp handle_raise_function({:ok, result}), do: result

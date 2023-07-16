@@ -180,7 +180,7 @@ defmodule Vtc.Framerate do
     end
   end
 
-  @zero Ratio.new(0, 1)
+  @zero Ratio.new(0)
 
   @spec validate_positive(Ratio.t()) :: :ok | {:error, ParseError.t()}
   defp validate_positive(rate) do

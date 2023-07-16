@@ -268,7 +268,7 @@ defmodule Vtc.Framestamp.Range do
   defp with_out_type(%{out_type: out_type} = range, out_type), do: range
 
   defp with_out_type(range, :inclusive) do
-    new_out = Framestamp.sub(range.out, 1, round: :off)
+    new_out = Framestamp.sub(range.out, 1)
     %__MODULE__{range | out: new_out, out_type: :inclusive}
   end
 
@@ -280,7 +280,7 @@ defmodule Vtc.Framestamp.Range do
   # Asdjusts an out TC to be an exclusive out.
   @spec adjust_out_exclusive(Framestamp.t(), out_type()) :: Framestamp.t()
   defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
-  defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1, round: :off)
+  defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1)
 
   @doc section: :inspect
   @doc """
