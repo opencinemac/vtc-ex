@@ -908,7 +908,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres + (add, no rate inheritence)" do
+  describe "Postgres + (add, no rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -991,7 +991,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres @+ (add, left rate inheritence)" do
+  describe "Postgres @+ (add, left rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -1040,7 +1040,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres +@ (add, right rate inheritence)" do
+  describe "Postgres +@ (add, right rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -1089,7 +1089,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres - (subtract, no rate inheritence)" do
+  describe "Postgres - (subtract, no rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -1172,7 +1172,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres @- (subtract, left rate inheritence)" do
+  describe "Postgres @- (subtract, left rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -1221,7 +1221,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres -@ (subtract, right rate inheritence)" do
+  describe "Postgres -@ (subtract, right rate inheritance)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
