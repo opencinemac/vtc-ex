@@ -275,31 +275,31 @@ defmodule Vtc.FramestampTest.Ops do
     end
 
     table_test "<%= a %> + <%= b %> == <%= expected %> | opts: <%= opts %> | flipped", add_table, test_case,
-      if: not Keyword.has_key?(test_case.opts, :inheret_rate) do
+      if: not Keyword.has_key?(test_case.opts, :inherit_rate) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
       assert Framestamp.add(b, a, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: false]", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: false]", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, false)
+      opts = Keyword.put(opts, :inherit_rate, false)
 
       assert Framestamp.add(b, a, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :left]", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: :left]", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, :left)
+      opts = Keyword.put(opts, :inherit_rate, :left)
 
       assert Framestamp.add(b, a, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :right]", add_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: :right]", add_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, :right)
+      opts = Keyword.put(opts, :inherit_rate, :right)
 
       assert Framestamp.add(b, a, opts) == expected
     end
@@ -465,7 +465,7 @@ defmodule Vtc.FramestampTest.Ops do
 
       assert Framestamp.MixedRateArithmaticError.message(error) ==
                "attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`." <>
-                 " try `:inheret_rate` option to `:left` or `:right`. alternatively," <>
+                 " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>
                  " the appropriate rate"
     end
@@ -483,26 +483,26 @@ defmodule Vtc.FramestampTest.Ops do
       assert Framestamp.sub(a, b, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: false]", sub_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: false]", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, false)
+      opts = Keyword.put(opts, :inherit_rate, false)
 
       assert Framestamp.sub(a, b, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :left]", sub_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: :left]", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, :left)
+      opts = Keyword.put(opts, :inherit_rate, :left)
 
       assert Framestamp.sub(a, b, opts) == expected
     end
 
-    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inheret_rate: :right]", sub_table, test_case,
+    table_test "<%= a %> + <%= b %> == <%= expected %> | opts: [inherit_rate: :right]", sub_table, test_case,
       if: is_binary(test_case.a) and is_binary(test_case.b) do
       %{a: a, b: b, opts: opts, expected: expected} = test_case
-      opts = Keyword.put(opts, :inheret_rate, :right)
+      opts = Keyword.put(opts, :inherit_rate, :right)
 
       assert Framestamp.sub(a, b, opts) == expected
     end
@@ -661,7 +661,7 @@ defmodule Vtc.FramestampTest.Ops do
 
       assert Framestamp.MixedRateArithmaticError.message(error) ==
                "attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`." <>
-                 " try `:inheret_rate` option to `:left` or `:right`. alternatively," <>
+                 " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>
                  " the appropriate rate"
     end

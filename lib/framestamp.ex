@@ -285,9 +285,9 @@ defmodule Vtc.Framestamp do
   @type round() :: :closest | :floor | :ceil | :trunc | :off
 
   @typedoc """
-  Describes which side to inheret the framerate from in mixed-rate arithmatic.
+  Describes which side to inherit the framerate from in mixed-rate arithmatic.
   """
-  @type inheret_rate_opt() :: :left | :right | false
+  @type inherit_rate_opt() :: :left | :right | false
 
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
@@ -673,14 +673,14 @@ defmodule Vtc.Framestamp do
   Add two framestamps.
 
   Uses the real-world seconds representation. When the rates of `a` and `b` are not
-  equal, the result will inheret the framerate of `a` and be rounded to the seconds
+  equal, the result will inherit the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
   [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
-  - `inheret_rate`: Which side to inheret the framerate from in mixed-rate calculations.
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
     If `false`, this function will raise if `a.rate` does not match `b.rate`.
     Default: `false`.
 
@@ -705,21 +705,21 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Framestamp.add(a, b, inheret_rate: :left)
+  iex> result = Framestamp.add(a, b, inherit_rate: :left)
   iex> inspect(result)
   "<01:00:00:03 <23.98 NTSC>>"
   iex>
-  iex> result = Framestamp.add(a, b, inheret_rate: :right)
+  iex> result = Framestamp.add(a, b, inherit_rate: :right)
   iex> inspect(result)
   "<01:00:00:06 <47.95 NTSC>>"
 
-  If `:inheret_rate` is not set...
+  If `:inherit_rate` is not set...
 
   ```elixir
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.add(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inheret_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   Using a framestamps and a bare string:
@@ -735,7 +735,7 @@ defmodule Vtc.Framestamp do
   @spec add(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inheret_rate: inheret_rate_opt(), round: round()]
+          opts :: [inherit_rate: inherit_rate_opt(), round: round()]
         ) :: t()
   def add(a, b, opts \\ []), do: do_arithmatic(a, b, :add, opts, &Ratio.add(&1, &2))
 
@@ -744,14 +744,14 @@ defmodule Vtc.Framestamp do
   Subtract `b` from `a`.
 
   Uses their real-world seconds representation. When the rates of `a` and `b` are not
-  equal, the result will inheret the framerate of `a` and be rounded to the seconds
+  equal, the result will inherit the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
   [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
-  - `inheret_rate`: Which side to inheret the framerate from in mixed-rate calculations.
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
     If `false`, this function will raise if `a.rate` does not match `b.rate`.
     Default: `false`.
 
@@ -788,22 +788,22 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
-  iex> result = Framestamp.sub(a, b, inheret_rate: :left)
+  iex> result = Framestamp.sub(a, b, inherit_rate: :left)
   iex> inspect(result)
   "<01:00:00:01 <23.98 NTSC>>"
   iex>
-  iex> result = Framestamp.sub(a, b, inheret_rate: :right)
+  iex> result = Framestamp.sub(a, b, inherit_rate: :right)
   iex> inspect(result)
   "<01:00:00:02 <47.95 NTSC>>"
   ```
 
-  If `:inheret_rate` is not set...
+  If `:inherit_rate` is not set...
 
   ```elixir
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.sub(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inheret_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   Using a framestamps and a bare string:
@@ -819,7 +819,7 @@ defmodule Vtc.Framestamp do
   @spec sub(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inheret_rate: inheret_rate_opt(), round: round()]
+          opts :: [inherit_rate: inherit_rate_opt(), round: round()]
         ) :: t()
   def sub(a, b, opts \\ []), do: do_arithmatic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
@@ -828,16 +828,16 @@ defmodule Vtc.Framestamp do
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
           func_name :: :add | :sub,
-          opts :: [inheret_rate: inheret_rate_opt(), round: round()],
+          opts :: [inherit_rate: inherit_rate_opt(), round: round()],
           (Ratio.t(), Ratio.t() -> Ratio.t())
         ) :: t()
   defp do_arithmatic(a, b, func_name, opts, seconds_operation) do
-    inheret_rate = Keyword.get(opts, :inheret_rate, false)
+    inherit_rate = Keyword.get(opts, :inherit_rate, false)
 
-    case do_arithmatic_validate_rates(a, b, inheret_rate, func_name) do
+    case do_arithmatic_validate_rates(a, b, inherit_rate, func_name) do
       :ok ->
         {a, b} = cast_op_args(a, b)
-        new_rate = if inheret_rate == :left, do: a.rate, else: b.rate
+        new_rate = if inherit_rate == :left, do: a.rate, else: b.rate
 
         a.seconds
         |> seconds_operation.(b.seconds)
@@ -848,7 +848,7 @@ defmodule Vtc.Framestamp do
     end
   end
 
-  @spec do_arithmatic_validate_rates(t() | Frames.t(), t() | Frames.t(), inheret_rate_opt(), :add | :sub) ::
+  @spec do_arithmatic_validate_rates(t() | Frames.t(), t() | Frames.t(), inherit_rate_opt(), :add | :sub) ::
           :ok | {:error, MixedRateArithmaticError.t()}
   defp do_arithmatic_validate_rates(%Framestamp{rate: rate}, %Framestamp{rate: rate}, _, _), do: :ok
   defp do_arithmatic_validate_rates(_, _, :left, _), do: :ok
@@ -871,7 +871,7 @@ defmodule Vtc.Framestamp do
   @doc """
   Scales `a` by `b`.
 
-  The result will inheret the framerate of `a` and be rounded to the seconds
+  The result will inherit the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame based on the `:round` option.
 
   ## Options

@@ -183,25 +183,25 @@ defmodule Vtc.Test.Support.CommonTables do
       %{
         a: {"01:00:00:00", Rates.f23_98()},
         b: {"01:00:00:00", Rates.f47_95()},
-        opts: [inheret_rate: :left],
+        opts: [inherit_rate: :left],
         expected: {"02:00:00:00", Rates.f23_98()}
       },
       %{
         a: {"01:00:00:00", Rates.f23_98()},
         b: {"01:00:00:00", Rates.f47_95()},
-        opts: [inheret_rate: :right],
+        opts: [inherit_rate: :right],
         expected: {"02:00:00:00", Rates.f47_95()}
       },
       %{
         a: {"01:00:00:00", Rates.f23_98()},
         b: {"00:00:00:02", Rates.f47_95()},
-        opts: [inheret_rate: :left],
+        opts: [inherit_rate: :left],
         expected: {"01:00:00:01", Rates.f23_98()}
       },
       %{
         a: {"01:00:00:00", Rates.f23_98()},
         b: {"00:00:00:02", Rates.f47_95()},
-        opts: [inheret_rate: :right],
+        opts: [inherit_rate: :right],
         expected: {"01:00:00:02", Rates.f47_95()}
       }
     ]
@@ -247,25 +247,25 @@ defmodule Vtc.Test.Support.CommonTables do
       %{
         a: {"02:00:00:00", Rates.f23_98()},
         b: {"01:00:00:00", Rates.f47_95()},
-        opts: [inheret_rate: :left],
+        opts: [inherit_rate: :left],
         expected: {"01:00:00:00", Rates.f23_98()}
       },
       %{
         a: {"02:00:00:00", Rates.f23_98()},
         b: {"01:00:00:00", Rates.f47_95()},
-        opts: [inheret_rate: :right],
+        opts: [inherit_rate: :right],
         expected: {"01:00:00:00", Rates.f47_95()}
       },
       %{
         a: {"01:00:00:02", Rates.f23_98()},
         b: {"00:00:00:02", Rates.f47_95()},
-        opts: [inheret_rate: :left],
+        opts: [inherit_rate: :left],
         expected: {"01:00:00:01", Rates.f23_98()}
       },
       %{
         a: {"01:00:00:02", Rates.f23_98()},
         b: {"00:00:00:02", Rates.f47_95()},
-        opts: [inheret_rate: :right],
+        opts: [inherit_rate: :right],
         expected: {"01:00:00:02", Rates.f47_95()}
       }
     ]

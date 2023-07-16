@@ -908,7 +908,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres + (add, no rate inheretence)" do
+  describe "Postgres + (add, no rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -991,12 +991,12 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres @+ (add, left rate inheretence)" do
+  describe "Postgres @+ (add, left rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
     table_test "<%= a %> @+ <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case,
-      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :left do
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :left do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -1021,7 +1021,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
         assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
         assert %Framestamp{} = result
-        assert result == Framestamp.add(a, b, inheret_rate: :left)
+        assert result == Framestamp.add(a, b, inherit_rate: :left)
       end
     end
 
@@ -1035,17 +1035,17 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? @+ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.add(a, b, inheret_rate: :left)
+        assert result == Framestamp.add(a, b, inherit_rate: :left)
       end
     end
   end
 
-  describe "Postgres +@ (add, right rate inheretence)" do
+  describe "Postgres +@ (add, right rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
     table_test "<%= a %> +@ <%= b %> == <%= expected %>", CommonTables.framestamp_add(), test_case,
-      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :right do
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :right do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -1070,7 +1070,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
         assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
         assert %Framestamp{} = result
-        assert result == Framestamp.add(a, b, inheret_rate: :right)
+        assert result == Framestamp.add(a, b, inherit_rate: :right)
       end
     end
 
@@ -1084,12 +1084,12 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? +@ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.add(a, b, inheret_rate: :right)
+        assert result == Framestamp.add(a, b, inherit_rate: :right)
       end
     end
   end
 
-  describe "Postgres - (subtract, no rate inheretence)" do
+  describe "Postgres - (subtract, no rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
@@ -1172,12 +1172,12 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
-  describe "Postgres @- (subtract, left rate inheretence)" do
+  describe "Postgres @- (subtract, left rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
     table_test "<%= a %> @- <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case,
-      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :left do
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :left do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -1202,7 +1202,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
         assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
         assert %Framestamp{} = result
-        assert result == Framestamp.sub(a, b, inheret_rate: :left)
+        assert result == Framestamp.sub(a, b, inherit_rate: :left)
       end
     end
 
@@ -1216,17 +1216,17 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? @- ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.sub(a, b, inheret_rate: :left)
+        assert result == Framestamp.sub(a, b, inherit_rate: :left)
       end
     end
   end
 
-  describe "Postgres -@ (subtract, right rate inheretence)" do
+  describe "Postgres -@ (subtract, right rate inheritence)" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :b, :expected]
 
     table_test "<%= a %> -@ <%= b %> == <%= expected %>", CommonTables.framestamp_subtract(), test_case,
-      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inheret_rate) == :right do
+      if: (is_binary(test_case.a) and is_binary(test_case.b)) or Keyword.get(test_case.opts, :inherit_rate) == :right do
       %{a: a, b: b, expected: expected} = test_case
 
       query =
@@ -1251,7 +1251,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
         assert {:ok, result} = query |> Repo.one!() |> Framestamp.load()
         assert %Framestamp{} = result
-        assert result == Framestamp.sub(a, b, inheret_rate: :right)
+        assert result == Framestamp.sub(a, b, inherit_rate: :right)
       end
     end
 
@@ -1265,7 +1265,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
             Query.select(query, [r], fragment("(? -@ ?)", r.a, r.b))
           end)
 
-        assert result == Framestamp.sub(a, b, inheret_rate: :right)
+        assert result == Framestamp.sub(a, b, inherit_rate: :right)
       end
     end
   end

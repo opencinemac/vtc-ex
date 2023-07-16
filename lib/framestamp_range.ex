@@ -411,7 +411,7 @@ defmodule Vtc.Framestamp.Range do
   As `intersection`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is no overlap.
 
-  This returned range inherets the framerate and `out_type` from `a`.
+  This returned range inherits the framerate and `out_type` from `a`.
 
   ## Examples
 
@@ -476,7 +476,7 @@ defmodule Vtc.Framestamp.Range do
   As `separation`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is overlap.
 
-  This returned range inherets the framerate and `out_type` from `a`.
+  This returned range inherits the framerate and `out_type` from `a`.
 
   ## Examples
 

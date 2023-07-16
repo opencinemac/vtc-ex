@@ -1,7 +1,7 @@
 defmodule Vtc.Framestamp.MixedRateArithmaticError do
   @moduledoc """
   Exception returned when mixed-rate arithmatic was attempted without specifying which
-  side of the operation's rate should be inhereted.
+  side of the operation's rate should be inherited.
 
   ## Struct Fields
 
@@ -30,7 +30,7 @@ defmodule Vtc.Framestamp.MixedRateArithmaticError do
   @spec message(t()) :: String.t()
   def message(error) do
     "attempted `Framestamp.#{error.func_name}(a, b)` where `a.rate` does not match" <>
-      " `b.rate`. try `:inheret_rate` option to `:left` or `:right`." <>
+      " `b.rate`. try `:inherit_rate` option to `:left` or `:right`." <>
       " alternatively, do your calculation in seconds, then cast back to `Framestamp`" <>
       " with the appropriate rate"
   end
