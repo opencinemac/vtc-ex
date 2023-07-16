@@ -252,11 +252,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       function(:with_seconds, Migration.repo()),
       args: [seconds: :rational, rate: :framerate],
-      declares: [rounded: :bigint],
       returns: :framestamp,
       body: """
-      rounded := ROUND((rate).playback * seconds);
-      seconds := rounded / (rate).playback;
+      seconds := ROUND((rate).playback * seconds);
+      seconds := seconds / (rate).playback;
 
       RETURN (
         (seconds).numerator,
@@ -369,11 +368,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = 0;
@@ -392,18 +387,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_eq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = 0
-        AND (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags;
+             AND #{sql_check_rate_equal(:a, :b)};
       """
     )
   end
@@ -417,11 +405,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign != 0;
@@ -440,18 +424,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_neq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign != 0
         OR (a).__rate_n != (b).__rate_n
         OR (a).__rate_d != (b).__rate_d
-        OR NOT (a).__rate_tags <@ (b).__rate_tags
-        OR NOT (a).__rate_tags @> (b).__rate_tags;
+        OR NOT (a).__rate_tags = (b).__rate_tags;
       """
     )
   end
@@ -465,11 +444,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = -1;
@@ -486,11 +461,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lte, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = -1 or cmp_sign = 0;
@@ -507,11 +478,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = 1;
@@ -528,11 +495,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gte, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
-        cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
       RETURN cmp_sign = 1 or cmp_sign = 0;
@@ -549,10 +512,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:cmp, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
-        b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"}
-      ],
+      declares: compare_declarations(),
       returns: :integer,
       body: """
       RETURN SIGN(a_cmp - b_cmp);
@@ -572,26 +532,18 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_add() :: {raw_sql(), raw_sql()}
   def create_func_add do
-    simplify = private_function(:simplify, Migration.repo())
-
     Postgres.Utils.create_plpgsql_function(
       private_function(:add, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) + ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
-      IF (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags
-      THEN
+      IF #{sql_check_rate_equal(:a, :b)} THEN
+        #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (a).__rate_n,
           (a).__rate_d,
           (a).__rate_tags
@@ -613,32 +565,27 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_add_inherit_left() :: {raw_sql(), raw_sql()}
   def create_func_add_inherit_left do
     with_seconds = function(:with_seconds, Migration.repo())
-    simplify = private_function(:simplify, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
       private_function(:add_inherit_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) + ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
+      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
       IF (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags
+         AND (a).__rate_d = (b).__rate_d
       THEN
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (a).__rate_n,
           (a).__rate_d,
           (a).__rate_tags
         )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
+        RETURN #{with_seconds}((numerator, denominator), (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
       END IF;
       """
     )
@@ -654,32 +601,27 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_add_inherit_right() :: {raw_sql(), raw_sql()}
   def create_func_add_inherit_right do
     with_seconds = function(:with_seconds, Migration.repo())
-    simplify = private_function(:simplify, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
       private_function(:add_inherit_right, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) + ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
+      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
       IF (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags
+         AND (a).__rate_d = (b).__rate_d
       THEN
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (b).__rate_n,
           (b).__rate_d,
           (b).__rate_tags
         )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
+        RETURN #{with_seconds}((numerator, denominator), (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
       END IF;
       """
     )
@@ -695,26 +637,18 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_sub() :: {raw_sql(), raw_sql()}
   def create_func_sub do
-    simplify = private_function(:simplify, Migration.repo())
-
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) - ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      IF (a).__rate_n = (b).__rate_n
-         AND (a).__rate_d = (b).__rate_d
-         AND (a).__rate_tags <@ (b).__rate_tags
-         AND (a).__rate_tags @> (b).__rate_tags
-      THEN
+      IF #{sql_check_rate_equal(:a, :b)} THEN
+        #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (a).__rate_n,
           (a).__rate_d,
           (a).__rate_tags
@@ -736,32 +670,27 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_sub_inherit_left() :: {raw_sql(), raw_sql()}
   def create_func_sub_inherit_left do
     with_seconds = function(:with_seconds, Migration.repo())
-    simplify = private_function(:simplify, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub_inherit_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) - ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
+      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
       IF (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags
+         AND (a).__rate_d = (b).__rate_d
       THEN
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (a).__rate_n,
           (a).__rate_d,
           (a).__rate_tags
         )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
+        RETURN #{with_seconds}((numerator, denominator), (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
       END IF;
       """
     )
@@ -777,50 +706,30 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_sub_inherit_right() :: {raw_sql(), raw_sql()}
   def create_func_sub_inherit_right do
     with_seconds = function(:with_seconds, Migration.repo())
-    simplify = private_function(:simplify, Migration.repo())
 
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub_inherit_right, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [
-        numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) - ((b).__seconds_n * (a).__seconds_d)"},
-        denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
-        seconds: {:rational, "#{simplify}(numerator, denominator)"}
-      ],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
+      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
       IF (a).__rate_n = (b).__rate_n
-        AND (a).__rate_d = (b).__rate_d
-        AND (a).__rate_tags <@ (b).__rate_tags
-        AND (a).__rate_tags @> (b).__rate_tags
+         AND (a).__rate_d = (b).__rate_d
       THEN
         RETURN (
-          (seconds).numerator,
-          (seconds).denominator,
+          numerator,
+          denominator,
           (b).__rate_n,
           (b).__rate_d,
           (b).__rate_tags
         )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
+        RETURN #{with_seconds}((numerator, denominator), (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
       END IF;
       """
     )
-  end
-
-  # Returns SQL statement to rause mixed framerate arithmatic operator.
-  @spec sq_raise_mised_frame_arithmetic_error(atom(), atom()) :: raw_sql()
-  defp sq_raise_mised_frame_arithmetic_error(type, operator) do
-    hint =
-      "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
-        " in seconds before casting back to #{type} with the appropriate framerate"
-
-    """
-    RAISE 'Mixed framerate arithmatic'
-    USING
-      ERRCODE = 'data_exception',
-      HINT = '#{hint}';
-    """
   end
 
   @doc section: :migrations_private_functions
@@ -904,6 +813,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       body: """
       frames := DIV(frames, b);
       seconds := #{simplify}(frames / playback);
+
       RETURN (
         (seconds).numerator,
         (seconds).denominator,
@@ -941,6 +851,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       body: """
       frames := ROUND(frames % b);
       seconds := #{simplify}(frames / playback);
+
       RETURN (
         (seconds).numerator,
         (seconds).denominator,
@@ -1369,6 +1280,79 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     else
       framerate_list
     end
+  end
+
+  ### SQL fragment builders
+
+  # Returns declaration list for comparison operators,
+  @spec compare_declarations() :: Postgres.Utils.function_declarations()
+  defp compare_declarations do
+    [
+      a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
+      b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
+      cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+    ]
+  end
+
+  # Returns subtraction declarations.
+  @spec addition_declares() :: Postgres.Utils.function_declarations()
+  defp addition_declares do
+    [
+      numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) + ((b).__seconds_n * (a).__seconds_d)"},
+      denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
+      greatest_denom: {:bigint, "GCD(numerator, denominator)"}
+    ]
+  end
+
+  # Returns subtraction declarations.
+  @spec subtraction_declares() :: Postgres.Utils.function_declarations()
+  defp subtraction_declares do
+    [
+      numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) - ((b).__seconds_n * (a).__seconds_d)"},
+      denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
+      greatest_denom: {:bigint, "GCD(numerator, denominator)"}
+    ]
+  end
+
+  # Returns SQL statement to rause mixed framerate arithmatic operator.
+  @spec sq_raise_mised_frame_arithmetic_error(atom(), atom()) :: raw_sql()
+  defp sq_raise_mised_frame_arithmetic_error(type, operator) do
+    hint =
+      "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
+        " in seconds before casting back to #{type} with the appropriate framerate"
+
+    """
+    RAISE 'Mixed framerate arithmatic'
+    USING
+      ERRCODE = 'data_exception',
+      HINT = '#{hint}';
+    """
+  end
+
+  # Checks if two framestamps' framerates are equal. Currently, a framestamp will never
+  # have more than one tag, so we can cheat a little and just check if the arrays are
+  # equal. If we ever add additional tags, this check will need to change.
+  @spec sql_check_rate_equal(atom(), atom()) :: raw_sql()
+  defp sql_check_rate_equal(a_stamp_name, b_stamp_name) do
+    Enum.join(
+      [
+        "(#{a_stamp_name}).__rate_n = (#{b_stamp_name}).__rate_n",
+        "(#{a_stamp_name}).__rate_d = (#{b_stamp_name}).__rate_d",
+        "(#{a_stamp_name}).__rate_tags = (#{b_stamp_name}).__rate_tags"
+      ],
+      " AND "
+    )
+  end
+
+  # Inlines the logic to simplify a fraction. Calling a pl/pgSQL function has
+  # significant overhead, so if we can simplify ourselves we make big gains.
+  @spec sql_inline_simplify(atom(), atom(), atom()) :: raw_sql()
+  defp sql_inline_simplify(numerator_var, denominator_var, gcd_var) do
+    """
+    #{numerator_var} := #{numerator_var} / #{gcd_var};
+    #{numerator_var} := #{numerator_var} * SIGN(#{denominator_var});
+    #{denominator_var} := ABS(#{denominator_var} / #{gcd_var});
+    """
   end
 
   @doc """
