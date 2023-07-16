@@ -702,6 +702,7 @@ defmodule Vtc.Framestamp do
 
   Two framestamps running at different rates:
 
+  ```elixir
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex>
@@ -712,6 +713,7 @@ defmodule Vtc.Framestamp do
   iex> result = Framestamp.add(a, b, inherit_rate: :right)
   iex> inspect(result)
   "<01:00:00:06 <47.95 NTSC>>"
+  ```
 
   If `:inherit_rate` is not set...
 
@@ -771,17 +773,6 @@ defmodule Vtc.Framestamp do
   "<00:30:21:17 <23.98 NTSC>>"
   ```
 
-  When `b` is greater than `a`, the result is negative:
-
-  ```elixir
-  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
-  iex> b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
-  iex>
-  iex> result = Framestamp.sub(a, b)
-  iex> inspect(result)
-  "<-01:00:00:00 <23.98 NTSC>>"
-  ```
-
   Two framestamps running at different rates:
 
   ```elixir
@@ -804,6 +795,17 @@ defmodule Vtc.Framestamp do
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.sub(a, b)
   ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ```
+
+  When `b` is greater than `a`, the result is negative:
+
+  ```elixir
+  iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> b = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+  iex>
+  iex> result = Framestamp.sub(a, b)
+  iex> inspect(result)
+  "<-01:00:00:00 <23.98 NTSC>>"
   ```
 
   Using a framestamps and a bare string:
