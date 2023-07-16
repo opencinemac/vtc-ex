@@ -241,6 +241,12 @@ defmodule Vtc.Framerate do
   when_pg_enabled do
     use Ecto.Type
 
+    @doc section: :ecto_migrations
+    @doc """
+    The database type for [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`).
+
+    Can be used in migrations as the fields type.
+    """
     @impl Ecto.Type
     @spec type() :: atom()
     defdelegate type, to: PgFramerate

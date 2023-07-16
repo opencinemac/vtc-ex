@@ -1507,6 +1507,12 @@ defmodule Vtc.Framestamp do
   when_pg_enabled do
     use Ecto.Type
 
+    @doc section: :ecto_migrations
+    @doc """
+    The database type for [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`).
+
+    Can be used in migrations as the fields type.
+    """
     @impl Ecto.Type
     @spec type() :: atom()
     defdelegate type, to: PgFramestamp
@@ -1523,6 +1529,19 @@ defmodule Vtc.Framestamp do
     @spec dump(t()) :: {:ok, PgFramestamp.db_record()} | :error
     defdelegate dump(value), to: PgFramestamp
 
+    @doc section: :changeset_validators
+    @doc """
+    Adds all constraints created by
+    [PgFramestamp.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/3`)
+    to changeset to be added as changeset errors rather than raised.
+
+    ## Options
+
+    Pass the same options that were passed to
+    [PgFramestamp.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/3`)
+    """
+    @spec validate_constraints(Changeset.t(data), atom(), [PgFramestamp.Migrations.constraint_opt()]) :: Changeset.t(data)
+          when data: any()
     defdelegate validate_constraints(changeset, field, opts \\ []), to: PgFramestamp
   end
 end
