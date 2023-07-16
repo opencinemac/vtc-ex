@@ -322,3 +322,70 @@ Output:
   86400
 (1 row)
 ```
+
+## Framestamp Postgres operators
+
+#### Available operators
+| name  | type     | args                       | result        | description                                    |
+| ----- | -------- | -------------------------- | ------------- | ---------------------------------------------- |
+| `=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds == `b` seconds            |
+| `<`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds < `b` seconds             |
+| `<=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds            |
+| `>`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds             |
+| `>=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds            |
+| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, raises if framerates do not match   |
+| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from left         |
+| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from right        |
+| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, raises if framerates do not match |
+| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, inherit framerate from left       |
+| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, inherit framerate from right      |
+| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication, rounds to nearest whole-frame |
+| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division, rounds to nearest frame             |
+| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division, rounds down to nearest frame  |
+| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder, returns leftover frames from `DIV` |
+.
+
+### Mixed rate arithmatic
+
+{: .col-2}
+
+#### Elixir
+```elixir
+iex> a = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+iex> b = Framestamp.with_frames!("01:00:00:00", Rates.f47_95())
+iex> 
+iex> query =
+iex>   Query.from(
+iex>     f in fragment(
+iex>       "SELECT "? +@ ? as r",
+iex>       type(^a, Framestamp),
+iex>       type(^b, Framestamp)
+iex>     ),
+iex>     select: f.r
+iex>   )
+iex> 
+iex> Repo.one!(query) |> Framestamp.load() |> inspect()
+"{:ok, <02:00:00:00 <47.95 NTSC>>}"
+```
+
+#### SQL
+```sql
+SELECT
+  (
+    (18018, 5)::rational,
+    ((24000, 1001), '{non_drop}')::framerate
+  )::framestamp
+  +@ (
+    (18018, 5)::rational,
+    ((48000, 1001), '{non_drop}')::framerate
+  )::framestamp;
+```
+
+Output:
+
+```text
+                   ?column?
+-----------------------------------------------
+ ("(36036,5)","(""(48000,1001)"",{non_drop})")
+(1 row)
+```

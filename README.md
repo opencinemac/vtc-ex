@@ -262,7 +262,7 @@ by adding `vtc` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:vtc, "~> 0.12"}
+    {:vtc, "~> 0.14"}
   ]
 end
 ```

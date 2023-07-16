@@ -268,7 +268,7 @@ defmodule Vtc.Framestamp.Range do
   defp with_out_type(%{out_type: out_type} = range, out_type), do: range
 
   defp with_out_type(range, :inclusive) do
-    new_out = Framestamp.sub(range.out, 1, round: :off)
+    new_out = Framestamp.sub(range.out, 1)
     %__MODULE__{range | out: new_out, out_type: :inclusive}
   end
 
@@ -280,7 +280,7 @@ defmodule Vtc.Framestamp.Range do
   # Asdjusts an out TC to be an exclusive out.
   @spec adjust_out_exclusive(Framestamp.t(), out_type()) :: Framestamp.t()
   defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
-  defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1, round: :off)
+  defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1)
 
   @doc section: :inspect
   @doc """
@@ -411,7 +411,7 @@ defmodule Vtc.Framestamp.Range do
   As `intersection`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is no overlap.
 
-  This returned range inherets the framerate and `out_type` from `a`.
+  This returned range inherits the framerate and `out_type` from `a`.
 
   ## Examples
 
@@ -476,7 +476,7 @@ defmodule Vtc.Framestamp.Range do
   As `separation`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is overlap.
 
-  This returned range inherets the framerate and `out_type` from `a`.
+  This returned range inherits the framerate and `out_type` from `a`.
 
   ## Examples
 

@@ -636,7 +636,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.intersection(b, a) == expected
     end
 
-    test "inherets a's rate in mixed rate operations" do
+    test "inherits a's rate in mixed rate operations" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
       expected = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
@@ -645,7 +645,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert result == expected
     end
 
-    test "inherets a's out_type in mixed type operations" do
+    test "inherits a's out_type in mixed type operations" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       expected = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
@@ -681,7 +681,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.intersection!(a, b) == expected
     end
 
-    test "zero-length inherets a's rate in mixed rate operations" do
+    test "zero-length inherits a's rate in mixed rate operations" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f23_98()})
 
@@ -689,7 +689,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.intersection!(a, b) == expected
     end
 
-    test "zero-length inherets a's out_type" do
+    test "zero-length inherits a's out_type" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
 
@@ -771,7 +771,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.separation(b, a) == expected
     end
 
-    test "inherets a's rate in mixed rate operations" do
+    test "inherits a's rate in mixed rate operations" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
       expected = TestCase.setup_range({"02:00:00:00", "03:00:00:00", Rates.f23_98()})
@@ -780,7 +780,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert result == expected
     end
 
-    test "inherets a's out_type in mixed type operations" do
+    test "inherits a's out_type in mixed type operations" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
       expected = {"02:00:00:00", "03:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
@@ -816,7 +816,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.separation!(a, b) == expected
     end
 
-    test "zero-length inherets a's rate in mixed rate operations" do
+    test "zero-length inherits a's rate in mixed rate operations" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
 
@@ -824,7 +824,7 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.separation!(a, b) == expected
     end
 
-    test "zero-length inherets a's out_type" do
+    test "zero-length inherits a's out_type" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
 

@@ -55,6 +55,7 @@ defmodule Vtc.MixProject do
           Convert: &(&1[:section] == :convert),
           Consts: &(&1[:section] == :consts),
           Perfs: &(&1[:section] == :perfs),
+          "Ecto Migrations": &(&1[:section] == :ecto_migrations),
           "Changeset Validations": &(&1[:section] == :changeset_validators),
           Full: &(&1[:section] == :migrations_full),
           "Pg Constraints": &(&1[:section] == :migrations_constraints),

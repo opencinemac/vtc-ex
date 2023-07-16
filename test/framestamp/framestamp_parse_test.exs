@@ -108,7 +108,7 @@ defmodule Vtc.FramestampTest.Parse do
         %FeetAndFrames{feet: 2700, frames: 0, film_format: :ff35mm_2perf},
         %FeetAndFrames{feet: 4320, frames: 0, film_format: :ff16mm}
       ],
-      seconds: Ratio.new(3600, 1),
+      seconds: Ratio.new(3600),
       frames: 86_400,
       timecode: "01:00:00:00",
       runtime: "01:00:00.0",
@@ -136,7 +136,7 @@ defmodule Vtc.FramestampTest.Parse do
         %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_2perf},
         %FeetAndFrames{feet: 0, frames: 0, film_format: :ff16mm}
       ],
-      seconds: Ratio.new(0, 1),
+      seconds: Ratio.new(0),
       frames: 0,
       timecode: "00:00:00;00",
       runtime: "00:00:00.0",
@@ -332,7 +332,7 @@ defmodule Vtc.FramestampTest.Parse do
       name: "00:00:00;00 59.94 Drop-Frame",
       rate: Rates.f59_94_df(),
       seconds_inputs: [
-        Ratio.new(0, 1),
+        Ratio.new(0),
         0.0,
         "00:00:00.0",
         %PremiereTicks{in: 0}
@@ -345,7 +345,7 @@ defmodule Vtc.FramestampTest.Parse do
         %FeetAndFrames{feet: 0, frames: 0, film_format: :ff35mm_2perf},
         %FeetAndFrames{feet: 0, frames: 0, film_format: :ff16mm}
       ],
-      seconds: Ratio.new(0, 1),
+      seconds: Ratio.new(0),
       frames: 0,
       timecode: "00:00:00;00",
       runtime: "00:00:00.0",
@@ -531,18 +531,6 @@ defmodule Vtc.FramestampTest.Parse do
       opts: [round: :ceil],
       description: "negative",
       expected: Ratio.new(-23, 24)
-    },
-    %{
-      input: Ratio.new(239, 240),
-      opts: [round: :off, allow_partial_frames?: true],
-      description: "",
-      expected: Ratio.new(239, 240)
-    },
-    %{
-      input: Ratio.new(-239, 240),
-      opts: [round: :off, allow_partial_frames?: true],
-      description: "negative",
-      expected: Ratio.new(-239, 240)
     }
   ]
 
@@ -569,13 +557,13 @@ defmodule Vtc.FramestampTest.Parse do
     # Sub 1fps framerates can cause issues with our validations, so we want to test
     # some examples of that here.
     round_sub_1_fps_table = [
-      %{input: Ratio.new(3, 1), expected: Ratio.new(3, 1)},
-      %{input: Ratio.new(-3, 1), expected: Ratio.new(-3, 1)},
-      %{input: Ratio.new(2, 1), expected: Ratio.new(3, 1)},
-      %{input: Ratio.new(-2, 1), expected: Ratio.new(-3, 1)},
-      %{input: Ratio.new(1, 1), expected: Ratio.new(0, 1)},
-      %{input: Ratio.new(-1, 1), expected: Ratio.new(0, 1)},
-      %{input: Ratio.new(0, 1), expected: Ratio.new(0, 1)}
+      %{input: Ratio.new(3), expected: Ratio.new(3)},
+      %{input: Ratio.new(-3), expected: Ratio.new(-3)},
+      %{input: Ratio.new(2), expected: Ratio.new(3)},
+      %{input: Ratio.new(-2), expected: Ratio.new(-3)},
+      %{input: Ratio.new(1), expected: Ratio.new(0)},
+      %{input: Ratio.new(-1), expected: Ratio.new(0)},
+      %{input: Ratio.new(0), expected: Ratio.new(0)}
     ]
 
     table_test "round | :closest | <%= input %> @ 1/3 fps -> <%= expected %>", round_sub_1_fps_table, test_case do
@@ -595,8 +583,7 @@ defmodule Vtc.FramestampTest.Parse do
     test "ParseTimecodeError when partial frames | round | :off" do
       {:error, %Framestamp.ParseError{} = error} = Framestamp.with_seconds(Ratio.new(239, 240), Rates.f24(), round: :off)
 
-      expected_message =
-        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+      expected_message = "`seconds` is not cleanly divisible by `rate.playback`"
 
       assert :partial_frame == error.reason
       assert Framestamp.ParseError.message(error) == expected_message
@@ -642,8 +629,7 @@ defmodule Vtc.FramestampTest.Parse do
           Framestamp.with_seconds!(Ratio.new(239, 240), Rates.f24(), round: :off)
         end
 
-      expected_message =
-        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+      expected_message = "`seconds` is not cleanly divisible by `rate.playback`"
 
       assert :partial_frame == error.reason
       assert Framestamp.ParseError.message(error) == expected_message
@@ -820,16 +806,6 @@ defmodule Vtc.FramestampTest.Parse do
         opts: [round: :floor],
         description: "negative",
         expected: Ratio.new(-1, 24)
-      },
-      %{
-        input: PremiereTicks.per_second() - 1,
-        opts: [round: :off, allow_partial_frames?: true],
-        description: "",
-        expected:
-          Ratio.new(
-            PremiereTicks.per_second() - 1,
-            PremiereTicks.per_second()
-          )
       }
     ]
 
@@ -846,8 +822,7 @@ defmodule Vtc.FramestampTest.Parse do
                |> then(&%PremiereTicks{in: &1})
                |> Framestamp.with_seconds(Rates.f24(), round: :off)
 
-      expected_message =
-        "`seconds` is not cleanly divisible by `rate.playback`. This check can be turned off by setting `:allow_partial_frames?` to `true`"
+      expected_message = "`seconds` is not cleanly divisible by `rate.playback`"
 
       assert :partial_frame == error.reason
       assert Framestamp.ParseError.message(error) == expected_message
@@ -909,15 +884,6 @@ defmodule Vtc.FramestampTest.Parse do
       framestamp = %Framestamp{seconds: Ratio.new(231, 240), rate: Rates.f24()}
       assert Framestamp.frames(framestamp, round: :ceil) == 24
     end
-
-    test "round: :off, allow_partial_frames?: true raises" do
-      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      exception =
-        assert_raise ArgumentError, fn -> Framestamp.frames(framestamp, round: :off, allow_partial_frames?: true) end
-
-      assert Exception.message(exception) == "`round` cannot be `:off`"
-    end
   end
 
   describe "#timecode/2" do
@@ -959,17 +925,6 @@ defmodule Vtc.FramestampTest.Parse do
     test "round | :ceil" do
       framestamp = %Framestamp{seconds: Ratio.new(231, 240), rate: Rates.f24()}
       assert Framestamp.smpte_timecode(framestamp, round: :ceil) == "00:00:01:00"
-    end
-
-    test "round: :off, allow_partial_frames?: true raises" do
-      framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
-
-      exception =
-        assert_raise ArgumentError, fn ->
-          Framestamp.smpte_timecode(framestamp, round: :off, allow_partial_frames?: true)
-        end
-
-      assert Exception.message(exception) == "`round` cannot be `:off`"
     end
   end
 
@@ -1094,7 +1049,7 @@ defmodule Vtc.FramestampTest.Parse do
       framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception = assert_raise ArgumentError, fn -> Framestamp.premiere_ticks(framestamp, round: :off) end
-      assert Exception.message(exception) == "`round` cannot be `:off`"
+      assert Exception.message(exception) == "`:round` cannot be `:off`"
     end
   end
 
@@ -1206,7 +1161,7 @@ defmodule Vtc.FramestampTest.Parse do
       framestamp = %Framestamp{seconds: Ratio.new(1), rate: Rates.f24()}
 
       exception = assert_raise ArgumentError, fn -> Framestamp.feet_and_frames(framestamp, round: :off) end
-      assert Exception.message(exception) == "`round` cannot be `:off`"
+      assert Exception.message(exception) == "`:round` cannot be `:off`"
     end
   end
 

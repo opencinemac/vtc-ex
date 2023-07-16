@@ -30,7 +30,7 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
       },
       %{
         name: "map with playback Ratio",
-        input: %{playback: Ratio.new(24, 1)},
+        input: %{playback: Ratio.new(24)},
         expected: Rates.f24()
       },
       %{

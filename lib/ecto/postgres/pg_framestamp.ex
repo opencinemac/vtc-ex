@@ -115,7 +115,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
 
   @doc section: :ecto_migrations
   @doc """
-  The database type for [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`).
+  The database type for [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`).
 
   Can be used in migrations as the fields type.
   """
@@ -128,8 +128,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   """
   @type db_record() :: {PgRational.db_record(), PgFramerate.db_record()}
 
-  # Handles casting PgRational fields in `Ecto.Changeset`s.
-  @doc false
+  @doc """
+  The database type for [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`).
+
+  Can be used in migrations as the fields type.
+  """
   @impl Ecto.Type
   @spec cast(Framestamp.t() | %{String.t() => any()} | %{atom() => any()}) :: {:ok, Framerate.t()} | :error
   def cast(%Framestamp{} = framestamp), do: {:ok, framestamp}

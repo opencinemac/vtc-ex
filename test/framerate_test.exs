@@ -12,7 +12,7 @@ defmodule Vtc.FramerateTest do
       %{
         name: "23.98 NTSC",
         inputs: [
-          Ratio.new(24, 1),
+          Ratio.new(24),
           Ratio.new(24_000, 1001),
           24,
           24.0,
@@ -28,12 +28,12 @@ defmodule Vtc.FramerateTest do
         ntsc: :non_drop,
         coerce_ntsc?: true,
         playback: Ratio.new(24_000, 1001),
-        timebase: Ratio.new(24, 1)
+        timebase: Ratio.new(24)
       },
       %{
         name: "29.97 NTSC DF",
         inputs: [
-          Ratio.new(30, 1),
+          Ratio.new(30),
           Ratio.new(30_000, 1001),
           30,
           30.0,
@@ -47,12 +47,12 @@ defmodule Vtc.FramerateTest do
         ntsc: :drop,
         coerce_ntsc?: true,
         playback: Ratio.new(30_000, 1001),
-        timebase: Ratio.new(30, 1)
+        timebase: Ratio.new(30)
       },
       %{
         name: "59.94 NTSC DF",
         inputs: [
-          Ratio.new(60, 1),
+          Ratio.new(60),
           Ratio.new(60_000, 1001),
           60,
           60.0,
@@ -66,7 +66,7 @@ defmodule Vtc.FramerateTest do
         ntsc: :drop,
         coerce_ntsc?: true,
         playback: Ratio.new(60_000, 1001),
-        timebase: Ratio.new(60, 1)
+        timebase: Ratio.new(60)
       },
       %{
         name: "11000/1001 NTSC",
@@ -77,12 +77,12 @@ defmodule Vtc.FramerateTest do
         ntsc: :non_drop,
         coerce_ntsc?: false,
         playback: Ratio.new(11_000, 1001),
-        timebase: Ratio.new(11, 1)
+        timebase: Ratio.new(11)
       },
       %{
         name: "24 fps",
         inputs: [
-          Ratio.new(24, 1),
+          Ratio.new(24),
           24,
           24.0,
           "24/1",
@@ -90,13 +90,13 @@ defmodule Vtc.FramerateTest do
         ],
         ntsc: nil,
         coerce_ntsc?: false,
-        playback: Ratio.new(24, 1),
-        timebase: Ratio.new(24, 1)
+        playback: Ratio.new(24),
+        timebase: Ratio.new(24)
       },
       %{
         name: "error - non-positive | true",
         inputs: [
-          Ratio.new(0, 1),
+          Ratio.new(0),
           Ratio.new(-24, 1),
           0,
           -24,
@@ -146,7 +146,7 @@ defmodule Vtc.FramerateTest do
       %{
         name: "error - bad drop",
         inputs: [
-          Ratio.new(24, 1),
+          Ratio.new(24),
           24,
           "24/1",
           "29"
@@ -273,61 +273,61 @@ defmodule Vtc.FramerateTest do
         const: Rates.f23_98(),
         ntsc: :non_drop,
         playback: Ratio.new(24_000, 1001),
-        timebase: Ratio.new(24, 1)
+        timebase: Ratio.new(24)
       },
       %{
         const: Rates.f24(),
         ntsc: nil,
-        playback: Ratio.new(24, 1),
-        timebase: Ratio.new(24, 1)
+        playback: Ratio.new(24),
+        timebase: Ratio.new(24)
       },
       %{
         const: Rates.f29_97_ndf(),
         ntsc: :non_drop,
         playback: Ratio.new(30_000, 1001),
-        timebase: Ratio.new(30, 1)
+        timebase: Ratio.new(30)
       },
       %{
         const: Rates.f29_97_df(),
         ntsc: :drop,
         playback: Ratio.new(30_000, 1001),
-        timebase: Ratio.new(30, 1)
+        timebase: Ratio.new(30)
       },
       %{
         const: Rates.f30(),
         ntsc: nil,
-        playback: Ratio.new(30, 1),
-        timebase: Ratio.new(30, 1)
+        playback: Ratio.new(30),
+        timebase: Ratio.new(30)
       },
       %{
         const: Rates.f47_95(),
         ntsc: :non_drop,
         playback: Ratio.new(48_000, 1001),
-        timebase: Ratio.new(48, 1)
+        timebase: Ratio.new(48)
       },
       %{
         const: Rates.f48(),
         ntsc: nil,
-        playback: Ratio.new(48, 1),
-        timebase: Ratio.new(48, 1)
+        playback: Ratio.new(48),
+        timebase: Ratio.new(48)
       },
       %{
         const: Rates.f59_94_ndf(),
         ntsc: :non_drop,
         playback: Ratio.new(60_000, 1001),
-        timebase: Ratio.new(60, 1)
+        timebase: Ratio.new(60)
       },
       %{
         const: Rates.f59_94_df(),
         ntsc: :drop,
         playback: Ratio.new(60_000, 1001),
-        timebase: Ratio.new(60, 1)
+        timebase: Ratio.new(60)
       },
       %{
         const: Rates.f60(),
         ntsc: nil,
-        playback: Ratio.new(60, 1),
-        timebase: Ratio.new(60, 1)
+        playback: Ratio.new(60),
+        timebase: Ratio.new(60)
       }
     ]
 

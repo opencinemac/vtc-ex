@@ -302,7 +302,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     test "can be used on table fields" do
       assert {:ok, %{id: record_id}} =
                %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
                |> Repo.insert()
 
       assert {:ok, result} =
@@ -332,7 +332,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     test "can be used on table fields | negative" do
       assert {:ok, %{id: record_id}} =
                %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(-3, 4), b: Ratio.new(1, 1)})
+               |> RationalsSchema01.changeset(%{a: Ratio.new(-3, 4), b: Ratio.new(1)})
                |> Repo.insert()
 
       assert {:ok, result} =
@@ -348,7 +348,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     test "can be used on table fields | positive" do
       assert {:ok, %{id: record_id}} =
                %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
                |> Repo.insert()
 
       assert {:ok, result} =
@@ -403,7 +403,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     test "can be used on table fields" do
       assert {:ok, %{id: record_id}} =
                %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
                |> Repo.insert()
 
       result =
@@ -457,7 +457,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     test "can be used on table fields" do
       assert {:ok, %{id: record_id}} =
                %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1, 1)})
+               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
                |> Repo.insert()
 
       result =
@@ -580,7 +580,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(f in fragment("SELECT DIV(?, ?) as r", type(^a, PgRational), type(^b, PgRational)),
@@ -603,7 +603,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "table fields" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         result =
           run_schema_arithmatic_test(a, b, fn query ->
@@ -619,7 +619,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(f in fragment("SELECT ? / ? as r", type(^a, PgRational), type(^b, PgRational)),
@@ -643,7 +643,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "table fields" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         result =
           run_schema_arithmatic_test(a, b, fn query ->
@@ -659,7 +659,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         expected = Rational.rem(a, b)
 
@@ -686,7 +686,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "table fields" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         result =
           run_schema_arithmatic_test(a, b, fn query ->
@@ -702,7 +702,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(
@@ -748,7 +748,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(f in fragment("SELECT (? = ?) as r", type(^a, PgRational), type(^b, PgRational)),
@@ -798,7 +798,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio using <> operator" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query = Query.from(f in fragment("SELECT (? <> ?) as r", type(^a, PgRational), type(^b, PgRational)), select: f.r)
         result = Repo.one!(query)
@@ -811,7 +811,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio using != operator" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(
@@ -850,7 +850,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(f in fragment("SELECT (? < ?) as r", type(^a, PgRational), type(^b, PgRational)),
@@ -888,7 +888,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(
@@ -927,7 +927,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(f in fragment("SELECT (? > ?) as r", type(^a, PgRational), type(^b, PgRational)),
@@ -991,7 +991,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
-              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0, 1))))
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         query =
           Query.from(

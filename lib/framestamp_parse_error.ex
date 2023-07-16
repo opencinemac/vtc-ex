@@ -34,10 +34,7 @@ defmodule Vtc.Framestamp.ParseError do
   def message(%{reason: :bad_drop_frames}),
     do: "frames value not allowed for drop-frame timecode. frame should have been dropped"
 
-  def message(%{reason: :partial_frame}),
-    do:
-      "`seconds` is not cleanly divisible by `rate.playback`." <>
-        " This check can be turned off by setting `:allow_partial_frames?` to `true`"
+  def message(%{reason: :partial_frame}), do: "`seconds` is not cleanly divisible by `rate.playback`"
 
   def message(%{reason: :drop_frame_maximum_exceeded}), do: "frame number exceeded 24 hours for drop-frame timecode"
 end
