@@ -368,14 +368,8 @@ iex> Repo.one!(query) |> Framestamp.load() |> inspect()
 #### SQL
 ```sql
 SELECT
-  (
-    (18018, 5)::rational,
-    ((24000, 1001), '{non_drop}')::framerate
-  )::framestamp
-  +@ (
-    (18018, 5)::rational,
-    ((48000, 1001), '{non_drop}')::framerate
-  )::framestamp;
+  (18018, 5, 24000, 1001, '{non_drop}')::framestamp
+  +@ (18018, 5, 48000, 1001, '{non_drop}')::framestamp;
 ```
 
 Output:
