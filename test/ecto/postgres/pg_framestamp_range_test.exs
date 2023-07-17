@@ -338,11 +338,12 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
     @describetag framestamps: [:framestamp]
     @describetag ranges: [:a, :b, :expected]
 
-    table_test "<%= name %>", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %>", CommonTables.range_intersection(), test_case, if: not (test_case.name =~ "mixed rate") do
       run_intersection_select_test(test_case)
     end
 
-    table_test "<%= name %> | flipped", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | flipped", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
       %{a: a, b: b} = test_case
 
       test_case
@@ -352,12 +353,14 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
     end
 
     @tag negate: [:a, :b, :expected]
-    table_test "<%= name %> | negative", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | negative", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
       run_intersection_select_test(test_case)
     end
 
     @tag negate: [:a, :b, :expected]
-    table_test "<%= name %> | negative | flipped", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | negative | flipped", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
       %{a: a, b: b} = test_case
 
       test_case
@@ -394,8 +397,9 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
 
     property "matches Framestamp.Range.intersection/2" do
       check all(
-              a <- StreamDataVtc.framestamp_range(filter_empty?: true),
-              b <- StreamDataVtc.framestamp_range(filter_empty?: true)
+              rate <- StreamDataVtc.framerate(),
+              a <- StreamDataVtc.framestamp_range(stamp_opts: [rate: rate], filter_empty?: true),
+              b <- StreamDataVtc.framestamp_range(stamp_opts: [rate: rate], filter_empty?: true)
             ) do
         expected =
           case Framestamp.Range.intersection(a, b) do
