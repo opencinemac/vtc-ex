@@ -583,47 +583,84 @@ defmodule Vtc.Framestamp.RangeTest do
 
     @describetag ranges: [:a, :b, :expected]
 
-    table_test "<%= name %> | :exclusive", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | :exclusive", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b) == expected
+    end
+
+    table_test "<%= name %> | :exclusive | inherit left rate", CommonTables.range_intersection(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b, inherit_rate: :left) == expected
+    end
+
+    table_test "<%= name %> | :exclusive | inherit right rate", CommonTables.range_intersection(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a, inherit_rate: :right) == expected
+    end
+
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | negative", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(a, b) == expected
     end
 
     @tag negate: [:a, :b, :expected]
-    table_test "<%= name %> | :exclusive | negative", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | :exclusive | negative | inherit left rate", CommonTables.range_intersection(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(a, b, inherit_rate: :left) == expected
+    end
+
+    @tag negate: [:a, :b, :expected]
+    table_test "<%= name %> | :exclusive | negative | inherit right rate", CommonTables.range_intersection(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a, inherit_rate: :right) == expected
+    end
+
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive", CommonTables.range_intersection(), test_case,
+      if: not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(a, b) == expected
     end
 
     @tag inclusive: [:a, :b, :expected]
-    table_test "<%= name %> | :inclusive", CommonTables.range_intersection(), test_case do
+    table_test "<%= name %> | :inclusive | inherit left rate", CommonTables.range_intersection(), test_case do
       %{a: a, b: b, expected: expected} = test_case
-      assert Range.intersection(a, b) == expected
+      assert Range.intersection(a, b, inherit_rate: :left) == expected
+    end
+
+    @tag inclusive: [:a, :b, :expected]
+    table_test "<%= name %> | :inclusive | inherit right rate", CommonTables.range_intersection(), test_case do
+      %{a: a, b: b, expected: expected} = test_case
+      assert Range.intersection(b, a, inherit_rate: :right) == expected
     end
 
     @tag inclusive: [:a, :b, :expected]
     @tag negate: [:a, :b, :expected]
     table_test "<%= name %> | :inclusive | negative", CommonTables.range_intersection(), test_case,
-      if: tuple_size(test_case.b) == 2 do
+      if: not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(a, b) == expected
     end
 
     table_test "<%= name %> | :exclusive | flipped", CommonTables.range_intersection(), test_case,
-      if: test_case.a != test_case.b and tuple_size(test_case.b) == 2 do
+      if: test_case.a != test_case.b and not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(b, a) == expected
     end
 
     @tag negate: [:a, :b, :expected]
     table_test "<%= name %> | :exclusive | negative | flipped", CommonTables.range_intersection(), test_case,
-      if: test_case.a != test_case.b and tuple_size(test_case.b) == 2 do
+      if: test_case.a != test_case.b and not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(b, a) == expected
     end
 
     @tag inclusive: [:a, :b, :expected]
     table_test "<%= name %> | :inclusive | flipped", CommonTables.range_intersection(), test_case,
-      if: test_case.a != test_case.b and tuple_size(test_case.b) == 2 do
+      if: test_case.a != test_case.b and not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(b, a) == expected
     end
@@ -631,36 +668,47 @@ defmodule Vtc.Framestamp.RangeTest do
     @tag inclusive: [:a, :b, :expected]
     @tag negate: [:a, :b, :expected]
     table_test "<%= name %> | :inclusive | negative | flipped", CommonTables.range_intersection(), test_case,
-      if: test_case.a != test_case.b and tuple_size(test_case.b) == 2 do
+      if: test_case.a != test_case.b and not (test_case.name =~ "mixed rate") do
       %{a: a, b: b, expected: expected} = test_case
       assert Range.intersection(b, a) == expected
     end
 
-    test "inherits a's rate in mixed rate operations" do
-      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
-      b = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
-      expected = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
-
-      assert {:ok, result} = Range.intersection(a, b)
-      assert result == expected
-    end
-
-    test "inherits a's out_type in mixed type operations" do
+    test "inherits out_type in mixed type operations | :left" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       expected = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      assert {:ok, result} = Range.intersection(a, b)
+      assert {:ok, result} = Range.intersection(a, b, inherit_rate: :left, inherit_out_type: :left)
       assert result == expected
     end
 
-    test "successfully returns mixed rate" do
-      a = TestCase.setup_range({"01:00:00:03", "01:59:59:47", Rates.f47_95()})
-      b = TestCase.setup_range({"01:00:00:01", "01:59:59:23", Rates.f23_98()})
-      expected = TestCase.setup_range({"01:00:00:03", "01:59:59:46", Rates.f47_95()})
+    test "inherits out_type in mixed type operations | :right" do
+      a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+      b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      expected = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
 
-      assert {:ok, result} = Range.intersection(a, b)
+      assert {:ok, result} = Range.intersection(a, b, inherit_rate: :left, inherit_out_type: :right)
       assert result == expected
+    end
+
+    test "errors on mixed rate" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = TestCase.setup_range({"01:00:00:00", "04:00:00:00", Rates.f47_95()})
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.intersection(a, b) end
+      assert error.func_name == :intersection
+      assert error.left_rate == Rates.f23_98()
+      assert error.right_rate == Rates.f47_95()
+    end
+
+    test "errors on mixed out type" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.intersection(a, b) end
+      assert error.func_name == :intersection
+      assert error.left_out_type == :exclusive
+      assert error.right_out_type == :inclusive
     end
   end
 
@@ -670,7 +718,7 @@ defmodule Vtc.Framestamp.RangeTest do
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
 
       expected = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
-      assert Range.intersection!(a, b) == expected
+      assert Range.intersection!(a, b, inherit_rate: :left, inherit_out_type: :left) == expected
     end
 
     test "returns zero-length range when no overlap" do
@@ -681,20 +729,56 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.intersection!(a, b) == expected
     end
 
-    test "zero-length inherits a's rate in mixed rate operations" do
+    test "zero-length inherits rate in mixed rate operations | :left" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f23_98()})
 
       expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00", Rates.f47_95()})
-      assert Range.intersection!(a, b) == expected
+      assert Range.intersection!(a, b, inherit_rate: :left, inherit_out_type: :left) == expected
     end
 
-    test "zero-length inherits a's out_type" do
+    test "zero-length inherits rate in mixed rate operations | :right" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f23_98()})
+
+      expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00", Rates.f23_98()})
+      assert Range.intersection!(a, b, inherit_rate: :right, inherit_out_type: :right) == expected
+    end
+
+    test "zero-length inherits out_type | :left" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
 
       expected = {"00:00:00:00", "00:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
-      assert Range.intersection!(a, b) == expected
+      assert Range.intersection!(a, b, inherit_rate: :left, inherit_out_type: :left) == expected
+    end
+
+    test "zero-length inherits out_type | :right" do
+      a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
+
+      expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00"})
+      assert Range.intersection!(a, b, inherit_rate: :right, inherit_out_type: :right) == expected
+    end
+
+    test "errors on mixed rate" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = TestCase.setup_range({"01:00:00:00", "04:00:00:00", Rates.f47_95()})
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.intersection!(a, b) end
+      assert error.func_name == :intersection
+      assert error.left_rate == Rates.f23_98()
+      assert error.right_rate == Rates.f47_95()
+    end
+
+    test "errors on mixed out type" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = {"01:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.intersection!(a, b) end
+      assert error.func_name == :intersection
+      assert error.left_out_type == :exclusive
+      assert error.right_out_type == :inclusive
     end
   end
 
@@ -771,31 +855,60 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.separation(b, a) == expected
     end
 
-    test "inherits a's rate in mixed rate operations" do
+    test "inherits rate in mixed rate operations | :left" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
       expected = TestCase.setup_range({"02:00:00:00", "03:00:00:00", Rates.f23_98()})
 
-      assert {:ok, result} = Range.separation(a, b)
+      assert {:ok, result} = Range.separation(a, b, inherit_rate: :left, inherit_out_type: :left)
       assert result == expected
     end
 
-    test "inherits a's out_type in mixed type operations" do
+    test "inherits rate in mixed rate operations | :right" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
+      expected = TestCase.setup_range({"02:00:00:00", "03:00:00:00", Rates.f47_95()})
+
+      assert {:ok, result} = Range.separation(a, b, inherit_rate: :right, inherit_out_type: :right)
+      assert result == expected
+    end
+
+    test "inherits out_type in mixed type operations | :left" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
       expected = {"02:00:00:00", "03:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      assert {:ok, result} = Range.separation(a, b)
+      assert {:ok, result} = Range.separation(a, b, inherit_rate: :left, inherit_out_type: :left)
       assert result == expected
     end
 
-    test "successfully returns mixed rate" do
-      a = TestCase.setup_range({"01:00:00:03", "01:59:59:47", Rates.f47_95()})
-      b = TestCase.setup_range({"03:00:00:23", "03:00:00:00", Rates.f23_98()})
-      expected = TestCase.setup_range({"01:59:59:47", "03:00:00:46", Rates.f47_95()})
+    test "inherits out_type in mixed type operations | :right" do
+      a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00"})
+      expected = TestCase.setup_range({"02:00:00:00", "03:00:00:00"})
 
-      assert {:ok, result} = Range.separation(a, b)
+      assert {:ok, result} = Range.separation(a, b, inherit_rate: :right, inherit_out_type: :right)
       assert result == expected
+    end
+
+    test "errors on mixed rate" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.separation(a, b) end
+      assert error.func_name == :separation
+      assert error.left_rate == Rates.f23_98()
+      assert error.right_rate == Rates.f47_95()
+    end
+
+    test "errors on mixed out type" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.separation(a, b) end
+      assert error.func_name == :separation
+      assert error.left_out_type == :exclusive
+      assert error.right_out_type == :inclusive
     end
   end
 
@@ -816,20 +929,56 @@ defmodule Vtc.Framestamp.RangeTest do
       assert Range.separation!(a, b) == expected
     end
 
-    test "zero-length inherits a's rate in mixed rate operations" do
+    test "zero-length inherits rate in mixed rate operations | :left" do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
 
       expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00", Rates.f47_95()})
-      assert Range.separation!(a, b) == expected
+      assert Range.separation!(a, b, inherit_rate: :left, inherit_out_type: :left) == expected
     end
 
-    test "zero-length inherits a's out_type" do
+    test "zero-length inherits rate in mixed rate operations | :right" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f47_95()})
+      b = TestCase.setup_range({"01:00:00:00", "02:00:00:00", Rates.f23_98()})
+
+      expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00", Rates.f23_98()})
+      assert Range.separation!(a, b, inherit_rate: :right, inherit_out_type: :right) == expected
+    end
+
+    test "zero-length inherits out_type | :left" do
       a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
       b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
 
       expected = {"00:00:00:00", "00:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
-      assert Range.separation!(a, b) == expected
+      assert Range.separation!(a, b, inherit_rate: :left, inherit_out_type: :left) == expected
+    end
+
+    test "zero-length inherits out_type | :right" do
+      a = {"01:00:00:00", "02:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+      b = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+
+      expected = TestCase.setup_range({"00:00:00:00", "00:00:00:00"})
+      assert Range.separation!(a, b, inherit_rate: :right, inherit_out_type: :right) == expected
+    end
+
+    test "errors on mixed rate" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
+
+      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.separation(a, b) end
+      assert error.func_name == :separation
+      assert error.left_rate == Rates.f23_98()
+      assert error.right_rate == Rates.f47_95()
+    end
+
+    test "errors on mixed out type" do
+      a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
+      b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
+
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.separation(a, b) end
+      assert error.func_name == :separation
+      assert error.left_out_type == :exclusive
+      assert error.right_out_type == :inclusive
     end
   end
 

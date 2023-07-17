@@ -24,6 +24,8 @@ defmodule Vtc.Framestamp.Range do
 
   alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Framestamp
+  alias Vtc.Framestamp.MixedRateArithmaticError
+  alias Vtc.Framestamp.Range.MixedOutTypeArithmaticError
   alias Vtc.Source.Frames
 
   @typedoc """
@@ -322,7 +324,7 @@ defmodule Vtc.Framestamp.Range do
   """
   @spec contains?(t(), Framestamp.t() | Frames.t()) :: boolean()
   def contains?(range, %Framestamp{} = framestamp) do
-    calc_with_exclusive([range], fn range ->
+    calc_with_exclusive([range], false, :contains?, fn range ->
       cond do
         Framestamp.lt?(framestamp, range.in) -> false
         Framestamp.gte?(framestamp, range.out) -> false
@@ -361,7 +363,7 @@ defmodule Vtc.Framestamp.Range do
   """
   @spec overlaps?(t(), t()) :: boolean()
   def overlaps?(a, b) do
-    calc_with_exclusive([a, b], fn a, b ->
+    calc_with_exclusive([a, b], :left, :overlaps?, fn a, b ->
       cond do
         Framestamp.compare(a.in, b.out) in [:gt, :eq] -> false
         Framestamp.compare(a.out, b.in) in [:lt, :eq] -> false
@@ -374,10 +376,17 @@ defmodule Vtc.Framestamp.Range do
   @doc """
   Returns the the range where `a` and `b` overlap/intersect.
 
-  Returns `nil` if the two ranges do not intersect.
+  Returns `{:error, :none}` if the two ranges do not intersect.
 
-  `a` and `b` do not have to have matching `:out_type` settings, but the result will
-  inherit `a`'s setting.
+  ## Options
+
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a`'s rate does not match `b`'s rate.
+    Default: `false`.
+
+  - `inherit_out_type`: Which side to inherit the out type from when `a.out_type`
+    does not match `b.out_type`. If `false`, this function will raise if `a`'s rate does
+    not match `b`'s rate. Default: `false`.
 
   ## Examples
 
@@ -403,15 +412,28 @@ defmodule Vtc.Framestamp.Range do
   {:error, :none}
   ```
   """
-  @spec intersection(t(), t()) :: {:ok, t()} | {:error, :none}
-  def intersection(a, b), do: calc_overlap(a, b, &overlaps?(&1, &2))
+  @spec intersection(
+          t(),
+          t(),
+          inherit_rate: Framestamp.inherit_opt(),
+          inherit_out_type: Framestamp.inherit_opt()
+        ) :: {:ok, t()} | {:error, :none}
+  def intersection(a, b, opts \\ []), do: calc_overlap(a, b, opts, :intersection, &overlaps?(&1, &2))
 
   @doc section: :compare
   @doc """
   As `intersection`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is no overlap.
 
-  This returned range inherits the framerate and `out_type` from `a`.
+  ## Options
+
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a`'s rate does not match `b`'s rate.
+    Default: `false`.
+
+  - `inherit_out_type`: Which side to inherit the out type from when `a.out_type`
+    does not match `b.out_type`. If `false`, this function will raise if `a`'s rate does
+    not match `b`'s rate. Default: `false`.
 
   ## Examples
 
@@ -427,11 +449,16 @@ defmodule Vtc.Framestamp.Range do
   "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC>>"
   ```
   """
-  @spec intersection!(t(), t()) :: t()
-  def intersection!(a, b) do
-    case intersection(a, b) do
+  @spec intersection!(
+          t(),
+          t(),
+          inherit_rate: Framestamp.inherit_opt(),
+          inherit_out_type: Framestamp.inherit_opt()
+        ) :: t()
+  def intersection!(a, b, opts \\ []) do
+    case intersection(a, b, opts) do
       {:ok, overlap} -> overlap
-      {:error, :none} -> create_zeroed_range(a)
+      {:error, :none} -> create_zeroed_range(a, b, :intersection, opts)
     end
   end
 
@@ -439,10 +466,17 @@ defmodule Vtc.Framestamp.Range do
   @doc """
   Returns the range between two, non-overlapping ranges.
 
-  Returns `nil` if the two ranges are not separated.
+  Returns `{:error, :none}` if the two ranges are not separated.
 
-  `a` and `b` do not have to have matching `:out_type` settings, but the result will
-  inherit `a`'s setting.
+  ## Options
+
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a`'s rate does not match `b`'s rate.
+    Default: `false`.
+
+  - `inherit_out_type`: Which side to inherit the out type from when `a.out_type`
+    does not match `b.out_type`. If `false`, this function will raise if `a`'s rate does
+    not match `b`'s rate. Default: `false`.
 
   ## Examples
 
@@ -468,15 +502,28 @@ defmodule Vtc.Framestamp.Range do
   {:error, :none}
   ```
   """
-  @spec separation(t(), t()) :: {:ok, t()} | {:error, :none}
-  def separation(a, b), do: calc_overlap(a, b, &(not overlaps?(&1, &2)))
+  @spec separation(
+          t(),
+          t(),
+          inherit_rate: Framestamp.inherit_opt(),
+          inherit_out_type: Framestamp.inherit_opt()
+        ) :: {:ok, t()} | {:error, :none}
+  def separation(a, b, opts \\ []), do: calc_overlap(a, b, opts, :separation, &(not overlaps?(&1, &2)))
 
   @doc section: :compare
   @doc """
   As `separation`, but returns a Range from `00:00:00:00` - `00:00:00:00` when there
   is overlap.
 
-  This returned range inherits the framerate and `out_type` from `a`.
+  ## Options
+
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `a`'s rate does not match `b`'s rate.
+    Default: `false`.
+
+  - `inherit_out_type`: Which side to inherit the out type from when `a.out_type`
+    does not match `b.out_type`. If `false`, this function will raise if `a`'s rate does
+    not match `b`'s rate. Default: `false`.
 
   ## Examples
 
@@ -492,45 +539,75 @@ defmodule Vtc.Framestamp.Range do
   "<00:00:00:00 - -00:00:00:01 :inclusive <23.98 NTSC>>"
   ```
   """
-  @spec separation!(t(), t()) :: t()
-  def separation!(a, b) do
-    case separation(a, b) do
+  @spec separation!(
+          t(),
+          t(),
+          inherit_rate: Framestamp.inherit_opt(),
+          inherit_out_type: Framestamp.inherit_opt()
+        ) :: t()
+  def separation!(a, b, opts \\ []) do
+    case separation(a, b, opts) do
       {:ok, overlap} -> overlap
-      {:error, :none} -> create_zeroed_range(a)
+      {:error, :none} -> create_zeroed_range(a, b, :sepration, opts)
     end
   end
 
   # Creates a zero-duraiton range using the framerate and `:out_type` of `reference`.
-  @spec create_zeroed_range(t()) :: t()
-  defp create_zeroed_range(reference) do
-    zero_framestamp = Framestamp.with_frames!(0, reference.in.rate)
-    zero_range = with_duration!(zero_framestamp, zero_framestamp)
+  @spec create_zeroed_range(
+          t(),
+          t(),
+          atom(),
+          inherit_rate: Framestamp.inherit_opt(),
+          inherit_out_type: Framestamp.inherit_opt()
+        ) :: t()
+  defp create_zeroed_range(a, b, func_name, opts) do
+    inherit_rate = Keyword.get(opts, :inherit_rate, false)
+    inherit_out_type = Keyword.get(opts, :inherit_out_type, false)
+    out_type = get_mixed_out_type([a, b], inherit_out_type, func_name)
 
-    case reference do
-      %{out_type: :inclusive} -> with_inclusive_out(zero_range)
-      _ -> zero_range
+    case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+      {:ok, framerate} ->
+        zero_framestamp = Framestamp.with_frames!(0, framerate)
+        zero_range = with_duration!(zero_framestamp, zero_framestamp)
+        if out_type == :inclusive, do: with_inclusive_out(zero_range), else: zero_range
+
+      {:error, error} ->
+        raise error
     end
   end
 
   # Returns the amount of intersection or separation between `a` and `b`, or `nil` if
   # `return_nil?` returns `true`.
-  @spec calc_overlap(t(), t(), return_nil? :: (t(), t() -> nil)) :: {:ok, t()} | {:error, :none}
-  defp calc_overlap(a, b, do_calc?) do
+  @spec calc_overlap(
+          t(),
+          t(),
+          [inherit_rate: Framestamp.inherit_opt(), inherit_out_type: Framestamp.inherit_opt()],
+          func_name :: atom(),
+          return_nil? :: (t(), t() -> nil)
+        ) :: {:ok, t()} | {:error, :none}
+  defp calc_overlap(a, b, opts, func_name, do_calc?) do
+    inherit_rate = Keyword.get(opts, :inherit_rate, false)
+    inherit_out_type = Keyword.get(opts, :inherit_out_type, false)
+
     result =
-      calc_with_exclusive([a, b], fn a, b ->
+      calc_with_exclusive([a, b], inherit_out_type, func_name, fn a, b ->
         if do_calc?.(a, b) do
-          result_rate = a.in.rate
+          case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+            {:ok, new_rate} ->
+              overlap_in = Enum.max([a.in, b.in], Framestamp)
+              overlap_in = Framestamp.with_seconds!(overlap_in.seconds, new_rate)
 
-          overlap_in = Enum.max([a.in, b.in], Framestamp)
-          overlap_in = Framestamp.with_seconds!(overlap_in.seconds, result_rate)
+              overlap_out = Enum.min([a.out, b.out], Framestamp)
+              overlap_out = Framestamp.with_seconds!(overlap_out.seconds, new_rate)
 
-          overlap_out = Enum.min([a.out, b.out], Framestamp)
-          overlap_out = Framestamp.with_seconds!(overlap_out.seconds, result_rate)
+              # These values will be flipped when calulcating separation range, so we need to
+              # sort them.
+              [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Framestamp)
+              %__MODULE__{a | in: overlap_in, out: overlap_out}
 
-          # These values will be flipped when calulcating separation range, so we need to
-          # sort them.
-          [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Framestamp)
-          %__MODULE__{a | in: overlap_in, out: overlap_out}
+            {:error, error} ->
+              raise error
+          end
         else
           {:error, :none}
         end
@@ -544,13 +621,9 @@ defmodule Vtc.Framestamp.Range do
   # Runs a calculation, converting any ranges in `args` to excusive out points then,
   # if the result is also a range, casting it's out point to the same type as the first
   # Range argument in `args`.
-  @spec calc_with_exclusive([t() | any()], (... -> result)) :: result when result: any()
-  defp calc_with_exclusive(args, calc) do
-    out_type =
-      Enum.find_value(args, :exclusive, fn
-        %__MODULE__{out_type: out_type} -> out_type
-        _ -> nil
-      end)
+  @spec calc_with_exclusive([t()], Framestamp.inherit_opt(), atom(), (... -> result)) :: result when result: any()
+  defp calc_with_exclusive(args, inherit_opt, func_name, calc) do
+    out_type = get_mixed_out_type(args, inherit_opt, func_name)
 
     args
     |> Enum.map(fn
@@ -562,6 +635,27 @@ defmodule Vtc.Framestamp.Range do
       %__MODULE__{} = range -> with_out_type(range, out_type)
       value -> value
     end)
+  end
+
+  # Get the target out type for mixed frame operatoations.
+  @spec get_mixed_out_type([t()], Framestamp.inherit_opt(), atom()) :: Framestamp.Range.out_type()
+  defp get_mixed_out_type(args, inherit_opt, func_name) do
+    case {args, inherit_opt} do
+      {[%{out_type: out_type}], _} ->
+        out_type
+
+      {[%{out_type: out_type}, _], :left} ->
+        out_type
+
+      {[_, %{out_type: out_type}], :right} ->
+        out_type
+
+      {[%{out_type: out_type}, %{out_type: out_type}], false} ->
+        out_type
+
+      {[%{out_type: left}, %{out_type: right}], _} ->
+        raise %MixedOutTypeArithmaticError{left_out_type: left, right_out_type: right, func_name: func_name}
+    end
   end
 
   when_pg_enabled do

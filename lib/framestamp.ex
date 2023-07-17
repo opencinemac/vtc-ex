@@ -287,7 +287,7 @@ defmodule Vtc.Framestamp do
   @typedoc """
   Describes which side to inherit the framerate from in mixed-rate arithmatic.
   """
-  @type inherit_rate_opt() :: :left | :right | false
+  @type inherit_opt() :: :left | :right | false
 
   @typedoc """
   Type returned by `with_seconds/3` and `with_frames/3`.
@@ -737,7 +737,7 @@ defmodule Vtc.Framestamp do
   @spec add(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inherit_rate: inherit_rate_opt(), round: round()]
+          opts :: [inherit_rate: inherit_opt(), round: round()]
         ) :: t()
   def add(a, b, opts \\ []), do: do_arithmatic(a, b, :add, opts, &Ratio.add(&1, &2))
 
@@ -821,7 +821,7 @@ defmodule Vtc.Framestamp do
   @spec sub(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inherit_rate: inherit_rate_opt(), round: round()]
+          opts :: [inherit_rate: inherit_opt(), round: round()]
         ) :: t()
   def sub(a, b, opts \\ []), do: do_arithmatic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
@@ -830,16 +830,15 @@ defmodule Vtc.Framestamp do
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
           func_name :: :add | :sub,
-          opts :: [inherit_rate: inherit_rate_opt(), round: round()],
+          opts :: [inherit_rate: inherit_opt(), round: round()],
           (Ratio.t(), Ratio.t() -> Ratio.t())
         ) :: t()
   defp do_arithmatic(a, b, func_name, opts, seconds_operation) do
     inherit_rate = Keyword.get(opts, :inherit_rate, false)
 
-    case do_arithmatic_validate_rates(a, b, inherit_rate, func_name) do
-      :ok ->
+    case MixedRateArithmaticError.get_rate(a, b, inherit_rate, func_name) do
+      {:ok, new_rate} ->
         {a, b} = cast_op_args(a, b)
-        new_rate = if inherit_rate == :left, do: a.rate, else: b.rate
 
         a.seconds
         |> seconds_operation.(b.seconds)
@@ -849,17 +848,6 @@ defmodule Vtc.Framestamp do
         raise error
     end
   end
-
-  @spec do_arithmatic_validate_rates(t() | Frames.t(), t() | Frames.t(), inherit_rate_opt(), :add | :sub) ::
-          :ok | {:error, MixedRateArithmaticError.t()}
-  defp do_arithmatic_validate_rates(%Framestamp{rate: rate}, %Framestamp{rate: rate}, _, _), do: :ok
-  defp do_arithmatic_validate_rates(_, _, :left, _), do: :ok
-  defp do_arithmatic_validate_rates(_, _, :right, _), do: :ok
-  defp do_arithmatic_validate_rates(_, b, _, _) when not is_struct(b, Framestamp), do: :ok
-  defp do_arithmatic_validate_rates(a, _, _, _) when not is_struct(a, Framestamp), do: :ok
-
-  defp do_arithmatic_validate_rates(a, b, _, func_name),
-    do: {:error, %MixedRateArithmaticError{func_name: func_name, left_rate: a.rate, right_rate: b.rate}}
 
   # Casts args for ops with two values as long as at least one argument is a
   # `Framestamp`. The non-`Framestamp` argument inherents the `Framerate` of the
