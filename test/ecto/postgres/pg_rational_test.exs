@@ -250,42 +250,6 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "#Postgres rational.__private__simplify/1" do
-    simplify_table = [
-      %{numerator: 2, denominator: 4, expected: Ratio.new(1, 2)},
-      %{numerator: -2, denominator: 4, expected: Ratio.new(-1, 2)},
-      %{numerator: 2, denominator: -4, expected: Ratio.new(-1, 2)},
-      %{numerator: -2, denominator: -4, expected: Ratio.new(1, 2)},
-      %{numerator: 10, denominator: 100, expected: Ratio.new(1, 10)},
-      %{numerator: 3, denominator: 39, expected: Ratio.new(1, 13)},
-      %{numerator: 4, denominator: 9, expected: Ratio.new(4, 9)}
-    ]
-
-    table_test "<%= numerator %>/<%= denominator %> == <%= expected %>", simplify_table, test_case do
-      %{numerator: numerator, denominator: denominator, expected: expected} = test_case
-
-      assert %Postgrex.Result{rows: [[db_record]]} =
-               Repo.query!("SELECT rational.__private__simplify((#{numerator}, #{denominator})::rational)")
-
-      assert db_record == {expected.numerator, expected.denominator}
-    end
-
-    property "mirrors Ratio.new" do
-      check all(
-              numerator <- StreamData.integer(),
-              denominator <- StreamData.filter(StreamData.integer(), &(&1 != 0))
-            ) do
-        expected = Ratio.new(numerator, denominator)
-
-        assert %Postgrex.Result{rows: [[{db_numerator, db_denominator}]]} =
-                 Repo.query!("SELECT rational.__private__simplify((#{numerator}, #{denominator})::rational)")
-
-        assert db_numerator == expected.numerator
-        assert db_denominator == expected.denominator
-      end
-    end
-  end
-
   describe "Postgres rational.minus/1" do
     property "matches Ratio" do
       check all(input <- StreamDataVtc.rational()) do

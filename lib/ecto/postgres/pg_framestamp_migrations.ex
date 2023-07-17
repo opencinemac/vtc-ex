@@ -7,6 +7,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   alias Ecto.Migration
   alias Vtc.Ecto.Postgres
+  alias Vtc.Ecto.Postgres.Fragments
   alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Ecto.Postgres.PgRational
 
@@ -539,7 +540,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       returns: :framestamp,
       body: """
       IF #{sql_check_rate_equal(:a, :b)} THEN
-        #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+        #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
         RETURN (
           numerator,
@@ -572,7 +573,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       declares: addition_declares(),
       returns: :framestamp,
       body: """
-      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
       IF (a).__rate_n = (b).__rate_n
          AND (a).__rate_d = (b).__rate_d
@@ -608,7 +609,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       declares: addition_declares(),
       returns: :framestamp,
       body: """
-      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
       IF (a).__rate_n = (b).__rate_n
          AND (a).__rate_d = (b).__rate_d
@@ -644,7 +645,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       returns: :framestamp,
       body: """
       IF #{sql_check_rate_equal(:a, :b)} THEN
-        #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+        #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
         RETURN (
           numerator,
@@ -677,7 +678,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
       IF (a).__rate_n = (b).__rate_n
          AND (a).__rate_d = (b).__rate_d
@@ -713,7 +714,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      #{sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
 
       IF (a).__rate_n = (b).__rate_n
          AND (a).__rate_d = (b).__rate_d
@@ -1342,17 +1343,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       ],
       " AND "
     )
-  end
-
-  # Inlines the logic to simplify a fraction. Calling a pl/pgSQL function has
-  # significant overhead, so if we can simplify ourselves we make big gains.
-  @spec sql_inline_simplify(atom(), atom(), atom()) :: raw_sql()
-  defp sql_inline_simplify(numerator_var, denominator_var, gcd_var) do
-    """
-    #{numerator_var} := #{numerator_var} / #{gcd_var};
-    #{numerator_var} := #{numerator_var} * SIGN(#{denominator_var});
-    #{denominator_var} := ABS(#{denominator_var} / #{gcd_var});
-    """
   end
 
   @doc """
