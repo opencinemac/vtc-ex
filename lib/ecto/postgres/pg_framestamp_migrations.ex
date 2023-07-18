@@ -235,7 +235,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       ],
       body: """
       numerator := numerator * SIGN(denominator_in);
-      RETURN  (numerator, denominator);
+      RETURN (numerator, denominator);
       """
     )
   end
