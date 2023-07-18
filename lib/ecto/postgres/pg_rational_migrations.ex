@@ -210,7 +210,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
         numerator: {:bigint, "input.numerator / greatest_denom"}
       ],
       body: """
-      numerator := numerator * sign((input).denominator);
+      numerator := numerator * SIGN((input).denominator);
       RETURN (numerator, denominator);
       """
     )
