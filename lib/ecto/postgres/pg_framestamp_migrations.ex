@@ -1315,7 +1315,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     ]
   end
 
-  # Returns SQL statement to rause mixed framerate arithmatic operator.
+  # Returns SQL statement to rause mixed framerate arithmetic operator.
   @spec sq_raise_mised_frame_arithmetic_error(atom(), atom()) :: raw_sql()
   defp sq_raise_mised_frame_arithmetic_error(type, operator) do
     hint =
@@ -1323,7 +1323,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         " in seconds before casting back to #{type} with the appropriate framerate"
 
     """
-    RAISE 'Mixed framerate arithmatic'
+    RAISE 'Mixed framerate arithmetic'
     USING
       ERRCODE = 'data_exception',
       HINT = '#{hint}';

@@ -58,7 +58,7 @@ defmodule Vtc.Framestamp do
   a computer cannot add "01:30:00:00" to "01:00:00:00" without converting it to some
   sort of numerical value.
 
-  Many programs convert timecode directly to an integer frame number for arithamtic and
+  Many programs convert timecode directly to an integer frame number for arithaetic and
   comparison operations where each frame on the clock is issued a continuous index,
   with `0` as `00:00:00:00`. Frame numbers, though, have the same issue with mixed-rate
   values as timecode; `26` at 48 frames-per-second represents the same real-world time
@@ -237,7 +237,7 @@ defmodule Vtc.Framestamp do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Eval
-  alias Vtc.Framestamp.MixedRateArithmaticError
+  alias Vtc.Framestamp.MixedRateArithmeticError
   alias Vtc.Framestamp.ParseError
   alias Vtc.SMPTETimecode.Sections
   alias Vtc.Source.Frames
@@ -281,7 +281,7 @@ defmodule Vtc.Framestamp do
   @type round() :: :closest | :floor | :ceil | :trunc | :off
 
   @typedoc """
-  Describes which side to inherit the framerate from in mixed-rate arithmatic.
+  Describes which side to inherit the framerate from in mixed-rate arithmetic.
   """
   @type inherit_opt() :: :left | :right | false
 
@@ -717,7 +717,7 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.add(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   Using a framestamps and a bare string:
@@ -735,7 +735,7 @@ defmodule Vtc.Framestamp do
           b :: t() | Frames.t(),
           opts :: [inherit_rate: inherit_opt(), round: round()]
         ) :: t()
-  def add(a, b, opts \\ []), do: do_arithmatic(a, b, :add, opts, &Ratio.add(&1, &2))
+  def add(a, b, opts \\ []), do: do_arithmetic(a, b, :add, opts, &Ratio.add(&1, &2))
 
   @doc section: :arithmetic
   @doc """
@@ -790,7 +790,7 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.sub(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmaticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
   ```
 
   When `b` is greater than `a`, the result is negative:
@@ -819,20 +819,20 @@ defmodule Vtc.Framestamp do
           b :: t() | Frames.t(),
           opts :: [inherit_rate: inherit_opt(), round: round()]
         ) :: t()
-  def sub(a, b, opts \\ []), do: do_arithmatic(a, b, :sub, opts, &Ratio.sub(&1, &2))
+  def sub(a, b, opts \\ []), do: do_arithmetic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
   # Runs a (Framestamp, Framestamp) arithamtic operation.
-  @spec do_arithmatic(
+  @spec do_arithmetic(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
           func_name :: :add | :sub,
           opts :: [inherit_rate: inherit_opt(), round: round()],
           (Ratio.t(), Ratio.t() -> Ratio.t())
         ) :: t()
-  defp do_arithmatic(a, b, func_name, opts, seconds_operation) do
+  defp do_arithmetic(a, b, func_name, opts, seconds_operation) do
     inherit_rate = Keyword.get(opts, :inherit_rate, false)
 
-    case MixedRateArithmaticError.get_rate(a, b, inherit_rate, func_name) do
+    case MixedRateArithmeticError.get_rate(a, b, inherit_rate, func_name) do
       {:ok, new_rate} ->
         {a, b} = cast_op_args(a, b)
 

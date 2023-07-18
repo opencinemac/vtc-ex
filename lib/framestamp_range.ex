@@ -24,8 +24,8 @@ defmodule Vtc.Framestamp.Range do
 
   alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Framestamp
-  alias Vtc.Framestamp.MixedRateArithmaticError
-  alias Vtc.Framestamp.Range.MixedOutTypeArithmaticError
+  alias Vtc.Framestamp.MixedRateArithmeticError
+  alias Vtc.Framestamp.Range.MixedOutTypeArithmeticError
   alias Vtc.Source.Frames
 
   @typedoc """
@@ -565,7 +565,7 @@ defmodule Vtc.Framestamp.Range do
     inherit_out_type = Keyword.get(opts, :inherit_out_type, false)
     out_type = get_mixed_out_type([a, b], inherit_out_type, func_name)
 
-    case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+    case MixedRateArithmeticError.get_rate(a.in, b.in, inherit_rate, func_name) do
       {:ok, framerate} ->
         zero_framestamp = Framestamp.with_frames!(0, framerate)
         zero_range = with_duration!(zero_framestamp, zero_framestamp)
@@ -592,7 +592,7 @@ defmodule Vtc.Framestamp.Range do
     result =
       calc_with_exclusive([a, b], inherit_out_type, func_name, fn a, b ->
         if do_calc?.(a, b) do
-          case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+          case MixedRateArithmeticError.get_rate(a.in, b.in, inherit_rate, func_name) do
             {:ok, new_rate} ->
               overlap_in = Enum.max([a.in, b.in], Framestamp)
               overlap_in = Framestamp.with_seconds!(overlap_in.seconds, new_rate)
@@ -654,7 +654,7 @@ defmodule Vtc.Framestamp.Range do
         out_type
 
       {[%{out_type: left}, %{out_type: right}], _} ->
-        raise %MixedOutTypeArithmaticError{left_out_type: left, right_out_type: right, func_name: func_name}
+        raise %MixedOutTypeArithmeticError{left_out_type: left, right_out_type: right, func_name: func_name}
     end
   end
 

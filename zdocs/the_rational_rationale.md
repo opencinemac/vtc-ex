@@ -69,7 +69,7 @@ recording at multiple framerates. For instance, `00:00:00:23 @ 23.98` and
 `00:00:00:46 @ 47.95` both represent the same real-world time, but would be represented
 as `23` and `46` respectively.
 
-**Seconds float**: Another common technique is to do all arithmatic in floating point,
+**Seconds float**: Another common technique is to do all arithmetic in floating point,
 and represent the timecode as a seconds value. So `00:00:02:00` would be represented
 as `48.0 frames / (24000.0/1001.0) fps = 2.002 seconds`. Most cameras calculate a their
 Timecode values this way, and the official NTSC specification uses floats to define 

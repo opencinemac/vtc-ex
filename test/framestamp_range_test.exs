@@ -695,7 +695,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = TestCase.setup_range({"01:00:00:00", "04:00:00:00", Rates.f47_95()})
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.intersection(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Range.intersection(a, b) end
       assert error.func_name == :intersection
       assert error.left_rate == Rates.f23_98()
       assert error.right_rate == Rates.f47_95()
@@ -705,7 +705,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.intersection(a, b) end
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmeticError, fn -> Range.intersection(a, b) end
       assert error.func_name == :intersection
       assert error.left_out_type == :exclusive
       assert error.right_out_type == :inclusive
@@ -765,7 +765,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = TestCase.setup_range({"01:00:00:00", "04:00:00:00", Rates.f47_95()})
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.intersection!(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Range.intersection!(a, b) end
       assert error.func_name == :intersection
       assert error.left_rate == Rates.f23_98()
       assert error.right_rate == Rates.f47_95()
@@ -775,7 +775,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = {"01:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.intersection!(a, b) end
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmeticError, fn -> Range.intersection!(a, b) end
       assert error.func_name == :intersection
       assert error.left_out_type == :exclusive
       assert error.right_out_type == :inclusive
@@ -895,7 +895,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.separation(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Range.separation(a, b) end
       assert error.func_name == :separation
       assert error.left_rate == Rates.f23_98()
       assert error.right_rate == Rates.f47_95()
@@ -905,7 +905,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.separation(a, b) end
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmeticError, fn -> Range.separation(a, b) end
       assert error.func_name == :separation
       assert error.left_out_type == :exclusive
       assert error.right_out_type == :inclusive
@@ -965,7 +965,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = TestCase.setup_range({"03:00:00:00", "04:00:00:00", Rates.f47_95()})
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Range.separation(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Range.separation(a, b) end
       assert error.func_name == :separation
       assert error.left_rate == Rates.f23_98()
       assert error.right_rate == Rates.f47_95()
@@ -975,7 +975,7 @@ defmodule Vtc.Framestamp.RangeTest do
       a = TestCase.setup_range({"01:00:00:00", "02:00:00:00"})
       b = {"03:00:00:00", "04:00:00:00"} |> TestCase.setup_range() |> Range.with_inclusive_out()
 
-      error = assert_raise Framestamp.Range.MixedOutTypeArithmaticError, fn -> Range.separation(a, b) end
+      error = assert_raise Framestamp.Range.MixedOutTypeArithmeticError, fn -> Range.separation(a, b) end
       assert error.func_name == :separation
       assert error.left_out_type == :exclusive
       assert error.right_out_type == :inclusive

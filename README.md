@@ -231,13 +231,13 @@ capabilities.
 - [X] Postgres Composite Types with Ecto and Postgrex:
     - Rational[X]
       - [X] Native comparison operators
-      - [X] Native arithmatic operators
+      - [X] Native arithmetic operators
       - [X] Native BTree index support
     - Framerate[X]
       - [X] Native comparison operators
     - Framestamp[X]
       - [X] Native comparison operators
-      - [X] Native arithmatic operators
+      - [X] Native arithmetic operators
       - [X] Native BTree index support
       - [X] Native inspection functions
     - Framestamp.Range

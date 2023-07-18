@@ -342,7 +342,7 @@ Output:
 | `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder, returns leftover frames from `DIV` |
 .
 
-### Mixed rate arithmatic
+### Mixed rate arithmetic
 
 {: .col-2}
 

@@ -960,7 +960,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
       %{postgres: error} = assert_raise Postgrex.Error, fn -> Repo.one!(query) end
       assert error.code == :data_exception
-      assert error.message == "Mixed framerate arithmatic"
+      assert error.message == "Mixed framerate arithmetic"
 
       assert error.hint ==
                "try using `@+` or `+@` instead. alternatively, do calculations in seconds" <>
@@ -989,7 +989,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], r.a + r.b)
           end)
 
@@ -1034,7 +1034,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp()
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], fragment("(? @+ ?)", r.a, r.b))
           end)
 
@@ -1079,7 +1079,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp()
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], fragment("(? +@ ?)", r.a, r.b))
           end)
 
@@ -1128,7 +1128,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
       %{postgres: error} = assert_raise Postgrex.Error, fn -> Repo.one!(query) end
       assert error.code == :data_exception
-      assert error.message == "Mixed framerate arithmatic"
+      assert error.message == "Mixed framerate arithmetic"
 
       assert error.hint ==
                "try using `@-` or `-@` instead. alternatively, do calculations in seconds" <>
@@ -1158,7 +1158,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp(rate: rate)
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], r.a - r.b)
           end)
 
@@ -1203,7 +1203,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp()
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], fragment("(? @- ?)", r.a, r.b))
           end)
 
@@ -1248,7 +1248,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
               b <- StreamDataVtc.framestamp()
             ) do
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], fragment("(? -@ ?)", r.a, r.b))
           end)
 
@@ -1280,7 +1280,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         b = Framestamp.with_frames!(0, a.rate)
 
         result =
-          run_schema_arithmatic_test(a, b, fn query ->
+          run_schema_arithmetic_test(a, b, fn query ->
             Query.select(query, [r], r.a * type(^multiplier, PgRational))
           end)
 
@@ -1312,7 +1312,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         b = Framestamp.with_frames!(0, dividend.rate)
 
         result =
-          run_schema_arithmatic_test(dividend, b, fn query ->
+          run_schema_arithmetic_test(dividend, b, fn query ->
             Query.select(query, [r], r.a / type(^divisor, PgRational))
           end)
 
@@ -1344,7 +1344,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         b = Framestamp.with_frames!(0, dividend.rate)
 
         result =
-          run_schema_arithmatic_test(dividend, b, fn query ->
+          run_schema_arithmetic_test(dividend, b, fn query ->
             Query.select(query, [r], fragment("DIV(?, ?)", r.a, type(^divisor, PgRational)))
           end)
 
@@ -1376,7 +1376,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
         b = Framestamp.with_frames!(0, dividend.rate)
 
         result =
-          run_schema_arithmatic_test(dividend, b, fn query ->
+          run_schema_arithmetic_test(dividend, b, fn query ->
             Query.select(query, [r], fragment("(? % ?)", r.a, type(^divisor, PgRational)))
           end)
 
@@ -1412,8 +1412,8 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
   # Runs a test that inserts a records and then queries for that record, returning
   # the result of `select`.
-  @spec run_schema_arithmatic_test(Framestamp.t(), Framestamp.t(), (Queryable.t() -> Query.t())) :: Framestamp.t()
-  defp run_schema_arithmatic_test(a, b, select) do
+  @spec run_schema_arithmetic_test(Framestamp.t(), Framestamp.t(), (Queryable.t() -> Query.t())) :: Framestamp.t()
+  defp run_schema_arithmetic_test(a, b, select) do
     assert {:ok, %{id: record_id}} =
              %FramestampSchema01{}
              |> FramestampSchema01.changeset(%{a: a, b: b})

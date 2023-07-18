@@ -461,9 +461,9 @@ defmodule Vtc.FramestampTest.Ops do
     table_test "<%= a %> + <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
       %{a: a, b: b} = test_case
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Framestamp.add(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Framestamp.add(a, b) end
 
-      assert Framestamp.MixedRateArithmaticError.message(error) ==
+      assert Framestamp.MixedRateArithmeticError.message(error) ==
                "attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`." <>
                  " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>
@@ -657,9 +657,9 @@ defmodule Vtc.FramestampTest.Ops do
     table_test "<%= a %> + <%= b %> raises on mixed rate", mixed_rate_error_table, test_case do
       %{a: a, b: b} = test_case
 
-      error = assert_raise Framestamp.MixedRateArithmaticError, fn -> Framestamp.sub(a, b) end
+      error = assert_raise Framestamp.MixedRateArithmeticError, fn -> Framestamp.sub(a, b) end
 
-      assert Framestamp.MixedRateArithmaticError.message(error) ==
+      assert Framestamp.MixedRateArithmeticError.message(error) ==
                "attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`." <>
                  " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>

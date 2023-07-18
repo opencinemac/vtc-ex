@@ -1,6 +1,6 @@
-defmodule Vtc.Framestamp.Range.MixedOutTypeArithmaticError do
+defmodule Vtc.Framestamp.Range.MixedOutTypeArithmeticError do
   @moduledoc """
-  Exception returned when mixed-out-type arithmatic was attempted without specifying
+  Exception returned when mixed-out-type arithmetic was attempted without specifying
   which side of the operation's out type should be inherited.
 
   ## Struct Fields
@@ -15,7 +15,7 @@ defmodule Vtc.Framestamp.Range.MixedOutTypeArithmaticError do
   defexception @enforce_keys
 
   @typedoc """
-  Type of `Framestamp.Range.MixedOutTypeArithmaticError`.
+  Type of `Framestamp.Range.MixedOutTypeArithmeticError`.
   """
   @type t() :: %__MODULE__{
           func_name: atom(),

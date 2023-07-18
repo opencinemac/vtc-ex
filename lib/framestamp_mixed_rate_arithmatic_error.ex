@@ -1,6 +1,6 @@
-defmodule Vtc.Framestamp.MixedRateArithmaticError do
+defmodule Vtc.Framestamp.MixedRateArithmeticError do
   @moduledoc """
-  Exception returned when mixed-rate arithmatic was attempted without specifying which
+  Exception returned when mixed-rate arithmetic was attempted without specifying which
   side of the operation's rate should be inherited.
 
   ## Struct Fields
