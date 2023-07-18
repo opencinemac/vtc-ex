@@ -467,7 +467,7 @@ defmodule Vtc.FramestampTest.Ops do
                "attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`." <>
                  " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>
-                 " the appropriate rate"
+                 " the appropriate framerate using `with_seconds/3`"
     end
   end
 
@@ -663,7 +663,7 @@ defmodule Vtc.FramestampTest.Ops do
                "attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`." <>
                  " try `:inherit_rate` option to `:left` or `:right`. alternatively," <>
                  " do your calculation in seconds, then cast back to `Framestamp` with" <>
-                 " the appropriate rate"
+                 " the appropriate framerate using `with_seconds/3`"
     end
   end
 

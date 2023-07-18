@@ -34,7 +34,7 @@ defmodule Vtc.Framestamp.MixedRateArithmeticError do
     "attempted `Framestamp.#{error.func_name}(a, b)` where `a.rate` does not match" <>
       " `b.rate`. try `:inherit_rate` option to `:left` or `:right`." <>
       " alternatively, do your calculation in seconds, then cast back to `Framestamp`" <>
-      " with the appropriate rate"
+      " with the appropriate framerate using `with_seconds/3`"
   end
 
   # Gets a the correct rate for a mixed rate operation.

@@ -1315,12 +1315,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     ]
   end
 
-  # Returns SQL statement to rause mixed framerate arithmetic operator.
+  # Returns SQL statement to raise mixed framerate arithmetic operator.
   @spec sq_raise_mixed_frame_arithmetic_error(atom(), atom()) :: raw_sql()
   defp sq_raise_mixed_frame_arithmetic_error(type, operator) do
     hint =
       "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
-        " in seconds before casting back to #{type} with the appropriate framerate"
+        " in seconds before casting back to #{type} with the appropriate framerate" <>
+        " using `with_seconds/2`"
 
     """
     RAISE 'Mixed framerate arithmetic'

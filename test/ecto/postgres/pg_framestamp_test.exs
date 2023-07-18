@@ -964,7 +964,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
       assert error.hint ==
                "try using `@+` or `+@` instead. alternatively, do calculations in seconds" <>
-                 " before casting back to framestamp with the appropriate framerate"
+                 " before casting back to framestamp with the appropriate framerate using `with_seconds/2`"
     end
 
     property "matches Framestamp.add/2" do
@@ -1132,7 +1132,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
       assert error.hint ==
                "try using `@-` or `-@` instead. alternatively, do calculations in seconds" <>
-                 " before casting back to framestamp with the appropriate framerate"
+                 " before casting back to framestamp with the appropriate framerate using `with_seconds/2`"
     end
 
     property "matches Framestamp.sub/2" do

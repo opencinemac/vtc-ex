@@ -717,7 +717,7 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.add(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.add(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate framerate using `with_seconds/3`
   ```
 
   Using a framestamps and a bare string:
@@ -790,7 +790,7 @@ defmodule Vtc.Framestamp do
   iex> a = Framestamp.with_frames!("01:00:00:02", Rates.f23_98())
   iex> b = Framestamp.with_frames!("00:00:00:02", Rates.f47_95())
   iex> Framestamp.sub(a, b)
-  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate rate
+  ** (Vtc.Framestamp.MixedRateArithmeticError) attempted `Framestamp.sub(a, b)` where `a.rate` does not match `b.rate`. try `:inherit_rate` option to `:left` or `:right`. alternatively, do your calculation in seconds, then cast back to `Framestamp` with the appropriate framerate using `with_seconds/3`
   ```
 
   When `b` is greater than `a`, the result is negative:
