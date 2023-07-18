@@ -5,7 +5,7 @@ Rational values are not oft used in computer science, and less efficient than fi
 way to represent your value as either a float or an integer scalar.
 
 Video media programs have employed a variety of strategies to numerically representing
-framerate and  timecode -- that is to say frame identifiers -- with varying success.
+framerate and timecode -- that is to say frame identifiers -- with varying success.
 
 In this document, we will lay out some of the historical approaches, and then examine 
 the reasoning behind Vtc's solution.

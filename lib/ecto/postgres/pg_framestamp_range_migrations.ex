@@ -221,8 +221,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       returns: :framestamp_fastrange,
       body: """
       RETURN framestamp_fastrange(
-        (lower_stamp).__seconds_n::double precision /  (lower_stamp).__seconds_d::double precision,
-        (upper_stamp).__seconds_n::double precision /  (upper_stamp).__seconds_d::double precision
+        (lower_stamp).__seconds_n::double precision / (lower_stamp).__seconds_d::double precision,
+        (upper_stamp).__seconds_n::double precision / (upper_stamp).__seconds_d::double precision
       );
       """
     )
@@ -245,8 +245,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       returns: :framestamp_fastrange,
       body: """
       RETURN framestamp_fastrange(
-        (lower_stamp).__seconds_n::double precision /  (lower_stamp).__seconds_d::double precision,
-        (upper_stamp).__seconds_n::double precision /  (upper_stamp).__seconds_d::double precision
+        (lower_stamp).__seconds_n::double precision / (lower_stamp).__seconds_d::double precision,
+        (upper_stamp).__seconds_n::double precision / (upper_stamp).__seconds_d::double precision
       );
       """
     )

@@ -141,7 +141,7 @@ defmodule Vtc.Framestamp.Range do
 
   `duration` may be a [Framestamp](`Vtc.Framestamp`) value for any value that implements the
   [Frames](`Vtc.Source.Frames`) protocol. Returns an error if `duration` is less than
-  `0` seconds or if `stamp_in` and `stamp_out` do not have  the same `rate`.
+  `0` seconds or if `stamp_in` and `stamp_out` do not have the same `rate`.
 
   ## Examples
 

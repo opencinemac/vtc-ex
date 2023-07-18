@@ -91,7 +91,7 @@ defmodule Vtc.Framestamp do
   `01:00:00:12`. What frame does that belong to?
 
   Without a framerate, you cannot know. If we are talking about `23.98 NTSC` media, it
-  belongs to frame `86,400`, but if we are talking about `59.94 NTSC NDF`,  frame then
+  belongs to frame `86,400`, but if we are talking about `59.94 NTSC NDF`, frame then
   it belongs to frame `216,000`, and if we are talking about `59.94 NTSC DF` media then
   it belongs to frame `215,784`.
 
