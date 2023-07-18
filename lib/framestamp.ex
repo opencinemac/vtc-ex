@@ -10,7 +10,7 @@ defmodule Vtc.Framestamp do
      [More here](Vtc.Framestamp.html#module-why-include-framerate).
 
   2. All frame identifiers commonly used in Video production boil down to either
-     the real-world seconds-since-midnight that frame occurred, OR a squential index
+     the real-world seconds-since-midnight that frame occurred, OR a sequential index
      number. [More here](Vtc.Framestamp.html#module-parsing-seconds-t-or-frames-t).
 
   ## What is a framestamp?
@@ -34,7 +34,7 @@ defmodule Vtc.Framestamp do
 
   SMPTE [timecode](history.html) is the canonical way frames are identified in
   professional video workflows. As a human-readable data type, timecode strings are
-  great. You can easily locate, compare, and add timecode strings at-a-glance.
+  great! You can easily locate, compare, and add timecode strings at-a-glance.
 
   Why then, does Vtc come up with a new representation?
 
