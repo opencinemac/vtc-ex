@@ -185,7 +185,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     as a rational value.
 
   - `__seconds_d`: `bigint`. Denominator of the real-world seconds this frame occurred
-    at,  as a rational value.
+    at, as a rational value.
 
   - `__rate_n`: `bigint`. Numerator of the real-world playback speed of this frame's
     media stream.
