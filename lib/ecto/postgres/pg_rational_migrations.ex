@@ -424,8 +424,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational.__private__div(a, b)` backing function for the `/` operator
-  between two rationals.
+  Creates `DIV(a, b)` function, which executed integer floor division on rational
+  values.
+
+  Just like `DIV(real, real)`, `DIV(rational, rational)` floors towards zero.
   """
   @spec create_func_floor_div() :: {raw_sql(), raw_sql()}
   def create_func_floor_div do
