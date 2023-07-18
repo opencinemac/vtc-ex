@@ -893,7 +893,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     "#{function_prefix}#{name}"
   end
 
-  # Returns declaration list for comparison operators,
+  # Returns declaration list for comparison operators.
   @spec compare_declarations() :: Postgres.Utils.function_declarations()
   defp compare_declarations do
     [
