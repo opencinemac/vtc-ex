@@ -265,7 +265,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       declares: [diff: {:framestamp, "a - b"}],
       returns: :"double precision",
       body: """
-      RETURN (diff).__seconds_n::double precision /  (diff).__seconds_d::double precision;
+      RETURN (diff).__seconds_n::double precision / (diff).__seconds_d::double precision;
       """
     )
   end
