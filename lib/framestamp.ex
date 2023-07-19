@@ -217,7 +217,7 @@ defmodule Vtc.Framestamp do
 
   > #### Production code {: .tip}
   >
-  > Autocasting exists to support quick scratch scripts and we suggest that it not be,
+  > Autocasting exists to support quick scratch scripts and we suggest that it not be
   > relied upon in production application code.
 
   If parsing the value fails during casting, the function raises a
@@ -310,7 +310,7 @@ defmodule Vtc.Framestamp do
 
   ## Examples
 
-  Accetps runtime strings...
+  Accepts runtime strings...
 
   ```elixir
   iex> result = Framestamp.with_seconds("01:00:00.5", Rates.f23_98())
@@ -334,7 +334,7 @@ defmodule Vtc.Framestamp do
   "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
 
-  ... integer Strings...
+  ... integer strings...
 
   ```elixir
   iex> result = Framestamp.with_seconds("3600", Rates.f23_98())

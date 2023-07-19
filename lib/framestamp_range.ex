@@ -279,7 +279,7 @@ defmodule Vtc.Framestamp.Range do
     %__MODULE__{range | out: new_out, out_type: :exclusive}
   end
 
-  # Asdjusts an out TC to be an exclusive out.
+  # Adjusts an out TC to be an exclusive out.
   @spec adjust_out_exclusive(Framestamp.t(), out_type()) :: Framestamp.t()
   defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
   defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1)
@@ -600,7 +600,7 @@ defmodule Vtc.Framestamp.Range do
               overlap_out = Enum.min([a.out, b.out], Framestamp)
               overlap_out = Framestamp.with_seconds!(overlap_out.seconds, new_rate)
 
-              # These values will be flipped when calulcating separation range, so we need to
+              # These values will be flipped when calculating separation range, so we need to
               # sort them.
               [overlap_in, overlap_out] = Enum.sort([overlap_in, overlap_out], Framestamp)
               %__MODULE__{a | in: overlap_in, out: overlap_out}
@@ -619,7 +619,7 @@ defmodule Vtc.Framestamp.Range do
   end
 
   # Runs a calculation, converting any ranges in `args` to excusive out points then,
-  # if the result is also a range, casting it's out point to the same type as the first
+  # if the result is also a range, casting its out point to the same type as the first
   # Range argument in `args`.
   @spec calc_with_exclusive([t()], Framestamp.inherit_opt(), atom(), (... -> result)) :: result when result: any()
   defp calc_with_exclusive(args, inherit_opt, func_name, calc) do
@@ -637,7 +637,7 @@ defmodule Vtc.Framestamp.Range do
     end)
   end
 
-  # Get the target out type for mixed frame operatoations.
+  # Get the target out type for mixed frame operations.
   @spec get_mixed_out_type([t()], Framestamp.inherit_opt(), atom()) :: Framestamp.Range.out_type()
   defp get_mixed_out_type(args, inherit_opt, func_name) do
     case {args, inherit_opt} do

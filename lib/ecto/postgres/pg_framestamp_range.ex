@@ -40,10 +40,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range do
   with `:out_type` set to `:exclusive`, and the `:out` field will be adjusted
   accordingly.
 
-  Further, when a Range operation, like a union, would result in an in and out point
+  Further, when a Range operation, like a union, would result in an in-and-out point
   with different framerates, the higher rate will always be selected.
 
-  This unlike the application behavior of `Vtc.Framestamp.Range`, which always inherits
+  This is unlike the application behavior of `Vtc.Framestamp.Range`, which always inherits
   the rate of the value that apears on the left side. This behavior may be updated to
   match Vtc's application behavior in the future.
 

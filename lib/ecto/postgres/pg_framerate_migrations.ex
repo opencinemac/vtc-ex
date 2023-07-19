@@ -11,7 +11,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   require Ecto.Migration
 
   @typedoc """
-  Indicates returned string is am SQL command.
+  Indicates returned string is an SQL command.
   """
   @type raw_sql() :: String.t()
 
@@ -35,7 +35,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   ## Options
 
-  - `include`: A list of migration functions to inclide. If not set, all sub-migrations
+  - `include`: A list of migration functions to include. If not set, all sub-migrations
     will be included.
 
   - `exclude`: A list of migration functions to exclude. If not set, no sub-migrations
@@ -92,7 +92,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   ## Private Functions
 
   Some custom function names are prefaced with `__private__`. These functions should
-  not be called by end-users, as they are not subject to *any* API staility guarantees.
+  not be called by end-users, as they are not subject to *any* API stability guarantees.
 
   ## Examples
 
@@ -158,7 +158,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @doc section: :migrations_functions
   @doc """
   Creates `framerate.is_ntsc(rat)` function that returns true if the framerate
-  is and NTSC drop or non-drop rate.
+  is NTSC drop or non-drop rate.
   """
   @spec create_func_is_ntsc() :: {raw_sql(), raw_sql()}
   def create_func_is_ntsc do

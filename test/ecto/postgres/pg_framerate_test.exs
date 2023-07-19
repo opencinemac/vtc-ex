@@ -201,13 +201,13 @@ defmodule Vtc.Ecto.Postgres.PgFramerateTest do
     property "succeeds on good framerate" do
       check all(framerate <- StreamDataVtc.framerate()) do
         assert {:ok, result} = Framerate.dump(framerate)
-        chack_dumped(result, framerate)
+        check_dumped(result, framerate)
       end
     end
   end
 
-  @spec chack_dumped(Framerate.db_record(), Framerate.t()) :: term()
-  defp chack_dumped(result, input) do
+  @spec check_dumped(Framerate.db_record(), Framerate.t()) :: term()
+  defp check_dumped(result, input) do
     assert {{numerator, denominator}, tags} = result
     assert numerator == input.playback.numerator
     assert denominator == input.playback.denominator

@@ -12,7 +12,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   require Ecto.Migration
 
   @typedoc """
-  Indicates returned string is am SQL command.
+  Indicates returned string is an SQL command.
   """
   @type raw_sql() :: String.t()
 
@@ -21,7 +21,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  This migration included all migraitons under the
+  This migration included all migrations under the
   [Pg Types](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#pg-types),
   [Pg Operator Classes](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#pg-operator-classes),
   [Pg Functions](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#pg-functions), and
@@ -36,7 +36,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   ## Options
 
-  - `include`: A list of migration functions to inclide. If not set, all sub-migrations
+  - `include`: A list of migration functions to include. If not set, all sub-migrations
     will be included.
 
   - `exclude`: A list of migration functions to exclude. If not set, no sub-migrations
@@ -50,9 +50,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   > table. In most databases, this will require elevated permissions. See the
   > `inject_canonical_function/0` for more information on why this is required.
   >
-  > You can choose to skip this step if you wish my setting the `inject_canonical?`
+  > You can choose to skip this step if you wish by setting the `inject_canonical?`
   > op to false, but operations that require discreet nudging of in and out points will
-  > not return correct results, and ranges with different upper/lowwer bound types will
+  > not return correct results, and ranges with different upper/lower bound types will
   > not be comparable.
 
   ## Types Created
@@ -159,7 +159,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   construction. Further, ALTER TYPE does not work on range functions out-of-the
   gate, so we cannot add it later... through the public API.
 
-  Instead this function edits the pg_catalog directly and supply the function
+  Instead this function edits the pg_catalog directly and we supply the function
   after-the-fact ourselves. Since this will all happen in a single transaction
   it should be functionally equivalent to creating it on the type as part of the
   initial call.

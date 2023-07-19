@@ -13,7 +13,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   require Ecto.Migration
 
   @typedoc """
-  Indicates returned string is am SQL command.
+  Indicates returned string is an SQL command.
   """
   @type raw_sql() :: String.t()
 
@@ -89,7 +89,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   ## Private Functions
 
   Some custom function names are prefaced with `__private__`. These functions should
-  not be called by end-users, as they are not subject to *any* API staility guarantees.
+  not be called by end-users, as they are not subject to *any* API stability guarantees.
 
   ## Functions Created
 
@@ -497,7 +497,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       ],
       returns: :integer,
       body: """
-      RETURN sign(a_cmp - b_cmp);
+      RETURN SIGN(a_cmp - b_cmp);
       """
     )
   end
