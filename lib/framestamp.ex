@@ -237,7 +237,6 @@ defmodule Vtc.Framestamp do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Eval
-  alias Vtc.Framestamp.MixedRateArithmeticError
   alias Vtc.Framestamp.ParseError
   alias Vtc.SMPTETimecode.Sections
   alias Vtc.Source.Frames
@@ -247,6 +246,7 @@ defmodule Vtc.Framestamp do
   alias Vtc.Source.Seconds.PremiereTicks
   alias Vtc.Source.Seconds.RuntimeStr
   alias Vtc.Utils.DropFrame
+  alias Vtc.Utils.MixedRateOps
   alias Vtc.Utils.Rational
 
   @enforce_keys [:seconds, :rate]
@@ -832,7 +832,7 @@ defmodule Vtc.Framestamp do
   defp do_arithmetic(a, b, func_name, opts, seconds_operation) do
     inherit_rate = Keyword.get(opts, :inherit_rate, false)
 
-    case MixedRateArithmeticError.get_rate(a, b, inherit_rate, func_name) do
+    case MixedRateOps.get_rate(a, b, inherit_rate, func_name) do
       {:ok, new_rate} ->
         {a, b} = cast_op_args(a, b)
 
