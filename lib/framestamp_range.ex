@@ -24,9 +24,9 @@ defmodule Vtc.Framestamp.Range do
 
   alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Framestamp
-  alias Vtc.Framestamp.MixedRateArithmaticError
-  alias Vtc.Framestamp.Range.MixedOutTypeArithmaticError
+  alias Vtc.Framestamp.Range.MixedOutTypeArithmeticError
   alias Vtc.Source.Frames
+  alias Vtc.Utils.MixedRateOps
 
   @typedoc """
   Whether the end point should be treated as the Range's boundary (:exclusive), or its
@@ -141,7 +141,7 @@ defmodule Vtc.Framestamp.Range do
 
   `duration` may be a [Framestamp](`Vtc.Framestamp`) value for any value that implements the
   [Frames](`Vtc.Source.Frames`) protocol. Returns an error if `duration` is less than
-  `0` seconds or if `stamp_in` and `stamp_out` do not have  the same `rate`.
+  `0` seconds or if `stamp_in` and `stamp_out` do not have the same `rate`.
 
   ## Examples
 
@@ -565,7 +565,7 @@ defmodule Vtc.Framestamp.Range do
     inherit_out_type = Keyword.get(opts, :inherit_out_type, false)
     out_type = get_mixed_out_type([a, b], inherit_out_type, func_name)
 
-    case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+    case MixedRateOps.get_rate(a.in, b.in, inherit_rate, func_name) do
       {:ok, framerate} ->
         zero_framestamp = Framestamp.with_frames!(0, framerate)
         zero_range = with_duration!(zero_framestamp, zero_framestamp)
@@ -592,7 +592,7 @@ defmodule Vtc.Framestamp.Range do
     result =
       calc_with_exclusive([a, b], inherit_out_type, func_name, fn a, b ->
         if do_calc?.(a, b) do
-          case MixedRateArithmaticError.get_rate(a.in, b.in, inherit_rate, func_name) do
+          case MixedRateOps.get_rate(a.in, b.in, inherit_rate, func_name) do
             {:ok, new_rate} ->
               overlap_in = Enum.max([a.in, b.in], Framestamp)
               overlap_in = Framestamp.with_seconds!(overlap_in.seconds, new_rate)
@@ -654,7 +654,7 @@ defmodule Vtc.Framestamp.Range do
         out_type
 
       {[%{out_type: left}, %{out_type: right}], _} ->
-        raise %MixedOutTypeArithmaticError{left_out_type: left, right_out_type: right, func_name: func_name}
+        raise %MixedOutTypeArithmeticError{left_out_type: left, right_out_type: right, func_name: func_name}
     end
   end
 

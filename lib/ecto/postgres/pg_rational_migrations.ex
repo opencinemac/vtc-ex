@@ -8,6 +8,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   alias Ecto.Migration
   alias Ecto.Migration.Constraint
   alias Vtc.Ecto.Postgres
+  alias Vtc.Ecto.Postgres.Fragments
 
   require Ecto.Migration
 
@@ -204,16 +205,13 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [input: :rational],
       returns: :rational,
       declares: [
-        greatest_denom: {:bigint, "gcd(input.numerator, input.denominator)"},
+        greatest_denom: {:bigint, "GCD(input.numerator, input.denominator)"},
         denominator: {:bigint, "ABS(input.denominator / greatest_denom)"},
         numerator: {:bigint, "input.numerator / greatest_denom"}
       ],
       body: """
-      IF (input).denominator < 0 THEN
-        RETURN  (numerator * -1, denominator);
-      ELSE
-        RETURN (numerator, denominator);
-      END IF;
+      numerator := numerator * SIGN((input).denominator);
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -340,11 +338,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [a: :rational, b: :rational],
       declares: [
         numerator: {:bigint, "((a).numerator * (b).denominator) + ((b).numerator * (a).denominator)"},
-        denominator: {:bigint, "(a).denominator * (b).denominator"}
+        denominator: {:bigint, "(a).denominator * (b).denominator"},
+        greatest_denom: {:bigint, "GCD(numerator, denominator)"}
       ],
       returns: :rational,
       body: """
-      RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -359,9 +360,16 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: [
+        numerator: {:bigint, "((a).numerator * (b).denominator) - ((b).numerator * (a).denominator)"},
+        denominator: {:bigint, "(a).denominator * (b).denominator"},
+        greatest_denom: {:bigint, "GCD(numerator, denominator)"}
+      ],
       returns: :rational,
       body: """
-      RETURN #{private_function(:add, Migration.repo())}(a, b * -1::bigint);
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -378,11 +386,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [a: :rational, b: :rational],
       declares: [
         numerator: {:bigint, "(a).numerator * (b).numerator"},
-        denominator: {:bigint, "(a).denominator * (b).denominator"}
+        denominator: {:bigint, "(a).denominator * (b).denominator"},
+        greatest_denom: {:bigint, "GCD(numerator, denominator)"}
       ],
       returns: :rational,
       body: """
-      RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -399,29 +410,37 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [a: :rational, b: :rational],
       declares: [
         numerator: {:bigint, "(a).numerator * (b).denominator"},
-        denominator: {:bigint, "(a).denominator * (b).numerator"}
+        denominator: {:bigint, "(a).denominator * (b).numerator"},
+        greatest_denom: {:bigint, "GCD(numerator, denominator)"}
       ],
       returns: :rational,
       body: """
-      RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      RETURN (numerator, denominator);
       """
     )
   end
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `rational.__private__div(a, b)` backing function for the `/` operator
-  between two rationals.
+  Creates `DIV(a, b)` function, which executed integer floor division on rational
+  values.
+
+  Just like `DIV(real, real)`, `DIV(rational, rational)` floors towards zero.
   """
   @spec create_func_floor_div() :: {raw_sql(), raw_sql()}
   def create_func_floor_div do
     Postgres.Utils.create_plpgsql_function(
       "DIV",
       args: [a: :rational, b: :rational],
-      declares: [result: {:rational, "a / b"}],
+      declares: [
+        numerator: {:bigint, "(a).numerator * (b).denominator"},
+        denominator: {:bigint, "(a).denominator * (b).numerator"}
+      ],
       returns: :bigint,
       body: """
-      RETURN FLOOR(result);
+      RETURN numerator / denominator;
       """
     )
   end
@@ -443,11 +462,14 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
            ((dividend).numerator * (divisor).denominator)
            % ((divisor).numerator * (dividend).denominator)
            """},
-        denominator: {:bigint, "(dividend).denominator * (divisor).denominator"}
+        denominator: {:bigint, "(dividend).denominator * (divisor).denominator"},
+        greatest_denom: {:bigint, "GCD(numerator, denominator)"}
       ],
       returns: :rational,
       body: """
-      RETURN #{private_function(:simplify, Migration.repo())}((numerator, denominator));
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      RETURN (numerator, denominator);
       """
     )
   end
@@ -489,9 +511,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 0;
+      RETURN cmp_sign = 0;
       """
     )
   end
@@ -505,9 +528,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) != 0;
+      RETURN cmp_sign != 0;
       """
     )
   end
@@ -521,9 +545,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = -1;
+      RETURN cmp_sign = -1;
       """
     )
   end
@@ -537,12 +562,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lte, Migration.repo()),
       args: [a: :rational, b: :rational],
-      declares: [
-        cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN cmp = -1 OR cmp = 0;
+      RETURN cmp_sign = -1 or cmp_sign = 0;
       """
     )
   end
@@ -556,9 +579,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
       args: [a: :rational, b: :rational],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN #{private_function(:cmp, Migration.repo())}(a, b) = 1;
+      RETURN cmp_sign = 1;
       """
     )
   end
@@ -572,12 +596,10 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gte, Migration.repo()),
       args: [a: :rational, b: :rational],
-      declares: [
-        cmp: {:integer, "#{private_function(:cmp, Migration.repo())}(a, b)"}
-      ],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN cmp = 1 OR cmp = 0;
+      RETURN cmp_sign = 1 or cmp_sign = 0;
       """
     )
   end
@@ -871,5 +893,15 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   def private_function(name, repo) do
     function_prefix = Postgres.Utils.type_private_function_prefix(repo, :rational)
     "#{function_prefix}#{name}"
+  end
+
+  # Returns declaration list for comparison operators.
+  @spec compare_declarations() :: Postgres.Utils.function_declarations()
+  defp compare_declarations do
+    [
+      a_cmp: {:bigint, "((a).numerator * (b).denominator)"},
+      b_cmp: {:bigint, "((b).numerator * (a).denominator)"},
+      cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+    ]
   end
 end

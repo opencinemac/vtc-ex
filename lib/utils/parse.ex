@@ -21,7 +21,7 @@ defmodule Vtc.Utils.Parse do
   be truncated at the head.
 
   The regex matches are expected to have a series of fields like "section_1",
-  "section_2", etc that denote present sections whose meaning depends on the  number
+  "section_2", etc that denote present sections whose meaning depends on the number
   of sections present.
   """
   @spec extract_time_sections(map(), non_neg_integer()) :: [String.t()]

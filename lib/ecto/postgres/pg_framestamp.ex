@@ -12,14 +12,26 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   The composite types is defined as follows:
 
   ```sql
-  CREATE TYPE framestamp as (
-    seconds rational,
-    rate framerate
-  )
+  CREATE TYPE framestamp AS (
+    __seconds_n bigint,
+    __seconds_d bigint,
+    __rate_n bigint,
+    __rate_d bigint,
+    __rate_tags framerate_tags[]
+  );
   ```
 
+  > #### `Field Access` {: .warning}
+  >
+  > framestamp's inner fields are considered semi-private to end-users. For working with
+  > the seconds / rate values, see
+  > [create_func_seconds/0](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_seconds/0`),
+  > [create_func_rate/0](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_seconds/0`),
+  > which create Postgres functions to act as getter functions for working with inner
+  > framestamp data.
+
   ```sql
-  SELECT ((18018, 5), ((24000, 1001), '{non_drop}'))::framestamp
+  SELECT (18018, 5, 24000, 1001, '{non_drop}')::framestamp
   ```
 
   ## Field migrations
@@ -108,7 +120,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   alias Ecto.Changeset
   alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Ecto.Postgres.PgFramestamp
-  alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Source.Frames.SMPTETimecodeStr
@@ -126,7 +137,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   @typedoc """
   Type of the raw composite value that will be sent to / received from the database.
   """
-  @type db_record() :: {PgRational.db_record(), PgFramerate.db_record()}
+  @type db_record() :: {non_neg_integer(), pos_integer(), non_neg_integer(), pos_integer(), [String.t()]}
 
   @doc """
   The database type for [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`).
@@ -163,9 +174,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   @doc false
   @impl Ecto.Type
   @spec load(db_record()) :: {:ok, Framestamp.t()} | :error
-  def load({seconds, rate}) do
-    with {:ok, seconds} <- PgRational.load(seconds),
-         {:ok, framerate} <- PgFramerate.load(rate),
+  def load({seconds_n, seconds_d, rate_n, rate_d, rate_tags}) do
+    seconds = Ratio.new(seconds_n, seconds_d)
+
+    with {:ok, framerate} <- PgFramerate.load({{rate_n, rate_d}, rate_tags}),
          {:ok, _} = result <- Framestamp.with_seconds(seconds, framerate, round: :off) do
       result
     else
@@ -180,9 +192,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   @impl Ecto.Type
   @spec dump(Framestamp.t()) :: {:ok, db_record()} | :error
   def dump(%Framestamp{} = framestamp) do
-    with {:ok, seconds} <- PgRational.dump(framestamp.seconds),
-         {:ok, framerate} <- PgFramerate.dump(framestamp.rate) do
-      {:ok, {seconds, framerate}}
+    with {:ok, {{rate_n, rate_d}, rate_tags}} <- PgFramerate.dump(framestamp.rate) do
+      {:ok, {framestamp.seconds.numerator, framestamp.seconds.denominator, rate_n, rate_d, rate_tags}}
     end
   end
 
@@ -193,6 +204,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   Adds all constraints created by
   [PgFramestamp.Migrations.create_constraints/3](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_constraints/3`)
   to changeset.
+
+  ## Arguments
+
+  - `changeset`: The changeset being validated.
+
+  - `field`: The field who's constraints are being checked.
 
   ## Options
 

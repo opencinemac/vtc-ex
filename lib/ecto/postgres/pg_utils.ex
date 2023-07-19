@@ -199,12 +199,17 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @typedoc """
+  Type for specifying the `DECLARES` block of a pl/pgsql function.
+  """
+  @type function_declarations() :: Keyword.t(atom() | {atom(), raw_sql()})
+
+  @typedoc """
   Options type for `plpgsql_add_function/2`
   """
   @type create_func_opts() :: [
           args: Keyword.t(atom()),
           returns: atom(),
-          declares: Keyword.t(atom() | {atom(), raw_sql()}),
+          declares: function_declarations(),
           body: raw_sql()
         ]
 

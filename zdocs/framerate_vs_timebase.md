@@ -39,7 +39,7 @@ takes this approach, and is a nightmare to work with outside the very specific u
 of measuring the length of an edit. 
 
 Thankfully, drop-frame conventions are out of favor these days, and only defined for 
-`29.97` and `59.94` framerates -- the  framerates that were used for anologue video and 
+`29.97` and `59.94` framerates -- the framerates that were used for anologue video and 
 older broadcast television.
 
 ## "Seconds" aren't Seconds

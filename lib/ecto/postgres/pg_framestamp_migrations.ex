@@ -7,6 +7,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   alias Ecto.Migration
   alias Vtc.Ecto.Postgres
+  alias Vtc.Ecto.Postgres.Fragments
   alias Vtc.Ecto.Postgres.PgFramerate
   alias Vtc.Ecto.Postgres.PgRational
 
@@ -55,10 +56,20 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   ```sql
   CREATE TYPE framestamp AS (
-    seconds rational,
-    rate framerate
+    __seconds_n bigint,
+    __seconds_d bigint,
+    __rate_n bigint,
+    __rate_d bigint,
+    __rate_tags framerate_tags[]
   );
   ```
+
+  > #### `Field Access` {: .warning}
+  >
+  > framestamp's inner fields are considered semi-private to end-users. For working with
+  > the seconds / rate values, see `create_func_seconds/0` and `create_func_rate/0`,
+  > which create Postgres functions to act as getter functions for working with inner
+  > framestamp data.
 
   ## Schemas Created
 
@@ -116,8 +127,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     migrations = [
       &create_type_framestamp/0,
       &create_function_schemas/0,
+      &create_func_simplify/0,
       &create_func_with_seconds/0,
       &create_func_with_frames/0,
+      &create_func_seconds/0,
+      &create_func_rate/0,
       &create_func_frames/0,
       &create_func_eq/0,
       &create_func_neq/0,
@@ -164,12 +178,32 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc section: :migrations_types
   @doc """
   Adds `framestamp` composite type.
+
+  ## Fields
+
+  - `__seconds_n`: `bigint`. Numerator of the real-world seconds this frame occurred at,
+    as a rational value.
+
+  - `__seconds_d`: `bigint`. Denominator of the real-world seconds this frame occurred
+    at, as a rational value.
+
+  - `__rate_n`: `bigint`. Numerator of the real-world playback speed of this frame's
+    media stream.
+
+  - `__rate_d`: `bigint`. Denominator of the real-world playback speed of this frame's
+    media stream.
+
+  - `__rate_tags[]`: Information about the format this framestamp was parsed from, to
+    support lossless round-trips.
   """
   @spec create_type_framestamp() :: {raw_sql(), raw_sql()}
   def create_type_framestamp do
     Postgres.Utils.create_type(:framestamp,
-      seconds: :rational,
-      rate: :framerate
+      __seconds_n: :bigint,
+      __seconds_d: :bigint,
+      __rate_n: :bigint,
+      __rate_d: :bigint,
+      __rate_tags: "framerate_tags[]"
     )
   end
 
@@ -182,41 +216,113 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_function_schemas() :: {raw_sql(), raw_sql()}
   def create_function_schemas, do: Postgres.Utils.create_type_schema(:framestamp)
 
-  @doc section: :migrations_functions
+  @doc section: :migrations_private_functions
   @doc """
-  `framestamp.with_seconds(seconds, rate)`
-
-  Rounds `seconds` to the nearest whole frame based on `rate` and returns a constructed
-  `framestamp`.
+  Creates `framestamp.__private__simplify(bigint. bigint)` function that simplifies a
+  rational value based on two ints. Used at the end of every rational operation to avoid
+  overflows.
   """
-  @spec create_func_with_seconds() :: {raw_sql(), raw_sql()}
-  def create_func_with_seconds do
+  @spec create_func_simplify() :: {raw_sql(), raw_sql()}
+  def create_func_simplify do
     Postgres.Utils.create_plpgsql_function(
-      function(:with_seconds, Migration.repo()),
-      args: [seconds: :rational, rate: :framerate],
-      declares: [rounded: :bigint],
-      returns: :framestamp,
+      private_function(:simplify, Migration.repo()),
+      args: [numerator_in: :bigint, denominator_in: :bigint],
+      returns: :rational,
+      declares: [
+        greatest_denom: {:bigint, "GCD(numerator_in, denominator_in)"},
+        denominator: {:bigint, "ABS(denominator_in / greatest_denom)"},
+        numerator: {:bigint, "numerator_in / greatest_denom"}
+      ],
       body: """
-      rounded := ROUND((rate).playback * seconds);
-      RETURN (((rounded, 1)::rational / (rate).playback), rate);
+      numerator := numerator * SIGN(denominator_in);
+      RETURN (numerator, denominator);
       """
     )
   end
 
   @doc section: :migrations_functions
   @doc """
-  Creates `framestamp.with_frames(frames, rate)` that creates a framestamp for the
-  given frame count.
+  Creates `framestamp.with_seconds(seconds, rate)`
+
+  Constructs a framestamp for the given real-world `seconds`, rounded to the nearest
+  whole-frame based on `rate`. When passed to `framestamp.seconds/1`, the returned value
+  will yield the rounded `seconds`.
+  """
+  @spec create_func_with_seconds() :: {raw_sql(), raw_sql()}
+  def create_func_with_seconds do
+    Postgres.Utils.create_plpgsql_function(
+      function(:with_seconds, Migration.repo()),
+      args: [seconds: :rational, rate: :framerate],
+      returns: :framestamp,
+      body: """
+      seconds := ROUND((rate).playback * seconds);
+      seconds := seconds / (rate).playback;
+
+      RETURN (
+        (seconds).numerator,
+        (seconds).denominator,
+        (rate).playback.numerator,
+        (rate).playback.denominator,
+        (rate).tags
+      );
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp.with_frames(frames, rate)`
+
+  Constructs a framestamp for the given frame count. When passed to
+  `framestamp.frames/1`, the returned value will yield `frames`.
   """
   @spec create_func_with_frames() :: {raw_sql(), raw_sql()}
   def create_func_with_frames do
     Postgres.Utils.create_plpgsql_function(
       function(:with_frames, Migration.repo()),
       args: [frames: :bigint, rate: :framerate],
-      declares: [seconds: {:rational, "(frames, 1)::rational / (rate).playback"}],
+      declares: [seconds: {:rational, "frames / (rate).playback"}],
       returns: :framestamp,
       body: """
-      RETURN (seconds, rate);
+      RETURN (
+        (seconds).numerator,
+        (seconds).denominator,
+        (rate).playback.numerator,
+        (rate).playback.denominator,
+        (rate).tags
+      );
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns the internal real-world `seconds` value as a rational.
+  """
+  @spec create_func_seconds() :: {raw_sql(), raw_sql()}
+  def create_func_seconds do
+    Postgres.Utils.create_plpgsql_function(
+      function(:seconds, Migration.repo()),
+      args: [value: :framestamp],
+      returns: :rational,
+      body: """
+      RETURN (value.__seconds_n, value.__seconds_d);
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns the internal `framerate` value.
+  """
+  @spec create_func_rate() :: {raw_sql(), raw_sql()}
+  def create_func_rate do
+    Postgres.Utils.create_plpgsql_function(
+      function(:rate, Migration.repo()),
+      args: [value: :framestamp],
+      returns: :framerate,
+      body: """
+      RETURN ((value.__rate_n, value.__rate_d), value.__rate_tags)::framerate;
       """
     )
   end
@@ -234,7 +340,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       function(:frames, Migration.repo()),
       args: [value: :framestamp],
-      declares: [frames_rational: {:rational, "(value).seconds * (value).rate.playback"}],
+      declares: [
+        frames_rational: {
+          :rational,
+          """
+          ((value).__seconds_n, (value).__seconds_d)::rational
+          * ((value).__rate_n, (value).__rate_d)::rational
+          """
+        }
+      ],
       returns: :bigint,
       body: """
       RETURN FLOOR(frames_rational);
@@ -255,9 +369,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:eq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds = (b).seconds;
+      RETURN cmp_sign = 0;
       """
     )
   end
@@ -265,16 +380,19 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc section: :migrations_private_functions
   @doc """
   Creates `framestamp.__private__strict_eq(a, b)` that backs the `===` operator.
+
+  Checks that both the seconds value AND the framerate are equivalent.
   """
   @spec create_func_strict_eq() :: {raw_sql(), raw_sql()}
   def create_func_strict_eq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_eq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds = (b).seconds
-        AND (a).rate === (b).rate;
+      RETURN cmp_sign = 0
+             AND #{sql_check_rate_equal(:a, :b)};
       """
     )
   end
@@ -288,9 +406,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:neq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds <> (b).seconds;
+      RETURN cmp_sign != 0;
       """
     )
   end
@@ -298,16 +417,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @doc section: :migrations_private_functions
   @doc """
   Creates `framestamp.__private__strict_neq(a, b)` that backs the `!===` operator.
+
+  Checks if either the seconds value OR the framerate are not equivalent.
   """
   @spec create_func_strict_neq() :: {raw_sql(), raw_sql()}
   def create_func_strict_neq do
     Postgres.Utils.create_plpgsql_function(
       private_function(:strict_neq, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds <> (b.seconds)
-        OR (a).rate !=== (b).rate;
+      RETURN cmp_sign != 0
+        OR (a).__rate_n != (b).__rate_n
+        OR (a).__rate_d != (b).__rate_d
+        OR NOT (a).__rate_tags = (b).__rate_tags;
       """
     )
   end
@@ -321,9 +445,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lt, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds < (b).seconds;
+      RETURN cmp_sign = -1;
       """
     )
   end
@@ -337,9 +462,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:lte, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds <= (b).seconds;
+      RETURN cmp_sign = -1 or cmp_sign = 0;
       """
     )
   end
@@ -353,9 +479,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gt, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds > (b).seconds;
+      RETURN cmp_sign = 1;
       """
     )
   end
@@ -369,9 +496,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:gte, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :boolean,
       body: """
-      RETURN (a).seconds >= (b).seconds;
+      RETURN cmp_sign = 1 or cmp_sign = 0;
       """
     )
   end
@@ -382,14 +510,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_cmp() :: {raw_sql(), raw_sql()}
   def create_func_cmp do
-    rational_cmp = PgRational.Migrations.private_function(:cmp, Migration.repo())
-
     Postgres.Utils.create_plpgsql_function(
       private_function(:cmp, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
+      declares: compare_declarations(),
       returns: :integer,
       body: """
-      RETURN #{rational_cmp}((a).seconds, (b).seconds);
+      RETURN SIGN(a_cmp - b_cmp);
       """
     )
   end
@@ -409,13 +536,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:add, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (a).rate)::framestamp;
+      IF #{sql_check_rate_equal(:a, :b)} THEN
+        #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+        RETURN (
+          numerator,
+          denominator,
+          (a).__rate_n,
+          (a).__rate_d,
+          (a).__rate_tags
+        )::framestamp;
       ELSE
-        #{sq_raise_mised_frame_arithmetic_error(:framestamp, :+)}
+        #{sql_raise_mixed_frame_arithmetic_error(:framestamp, :+)}
       END IF;
       """
     )
@@ -435,13 +570,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:add_inherit_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (a).rate)::framestamp;
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      IF (a).__rate_n = (b).__rate_n
+         AND (a).__rate_d = (b).__rate_d
+      THEN
+        RETURN (
+          numerator,
+          denominator,
+          (a).__rate_n,
+          (a).__rate_d,
+          (a).__rate_tags
+        )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (a).rate);
+        RETURN #{with_seconds}((numerator, denominator), (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
       END IF;
       """
     )
@@ -461,13 +606,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:add_inherit_right, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds + (b).seconds"}],
+      declares: addition_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (b).rate)::framestamp;
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      IF (a).__rate_n = (b).__rate_n
+         AND (a).__rate_d = (b).__rate_d
+      THEN
+        RETURN (
+          numerator,
+          denominator,
+          (b).__rate_n,
+          (b).__rate_d,
+          (b).__rate_tags
+        )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (b).rate);
+        RETURN #{with_seconds}((numerator, denominator), (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
       END IF;
       """
     )
@@ -486,13 +641,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (a).rate)::framestamp;
+      IF #{sql_check_rate_equal(:a, :b)} THEN
+        #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+        RETURN (
+          numerator,
+          denominator,
+          (a).__rate_n,
+          (a).__rate_d,
+          (a).__rate_tags
+        )::framestamp;
       ELSE
-        #{sq_raise_mised_frame_arithmetic_error(:framestamp, :-)}
+        #{sql_raise_mixed_frame_arithmetic_error(:framestamp, :-)}
       END IF;
       """
     )
@@ -512,13 +675,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub_inherit_left, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (a).rate)::framestamp;
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      IF (a).__rate_n = (b).__rate_n
+         AND (a).__rate_d = (b).__rate_d
+      THEN
+        RETURN (
+          numerator,
+          denominator,
+          (a).__rate_n,
+          (a).__rate_d,
+          (a).__rate_tags
+        )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (a).rate);
+        RETURN #{with_seconds}((numerator, denominator), (((a).__rate_n, (a).__rate_d), (a).__rate_tags));
       END IF;
       """
     )
@@ -538,31 +711,26 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:sub_inherit_right, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
-      declares: [seconds: {:rational, "(a).seconds - (b).seconds"}],
+      declares: subtraction_declares(),
       returns: :framestamp,
       body: """
-      IF (a).rate === (b).rate THEN
-        RETURN (seconds, (b).rate)::framestamp;
+      #{Fragments.sql_inline_simplify(:numerator, :denominator, :greatest_denom)}
+
+      IF (a).__rate_n = (b).__rate_n
+         AND (a).__rate_d = (b).__rate_d
+      THEN
+        RETURN (
+          numerator,
+          denominator,
+          (b).__rate_n,
+          (b).__rate_d,
+          (b).__rate_tags
+        )::framestamp;
       ELSE
-        RETURN #{with_seconds}(seconds, (b).rate);
+        RETURN #{with_seconds}((numerator, denominator), (((b).__rate_n, (b).__rate_d), (b).__rate_tags));
       END IF;
       """
     )
-  end
-
-  # Returns SQL statement to rause mixed framerate arithmatic operator.
-  @spec sq_raise_mised_frame_arithmetic_error(atom(), atom()) :: raw_sql()
-  defp sq_raise_mised_frame_arithmetic_error(type, operator) do
-    hint =
-      "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
-        " in seconds before casting back to #{type} with the appropriate framerate"
-
-    """
-    RAISE 'Mixed framerate arithmatic'
-    USING
-      ERRCODE = 'data_exception',
-      HINT = '#{hint}';
-    """
   end
 
   @doc section: :migrations_private_functions
@@ -579,10 +747,14 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:mult, Migration.repo()),
       args: [a: :framestamp, b: :rational],
-      declares: [seconds: {:rational, "(a).seconds * (b)"}],
+      declares: [
+        numerator: {:bigint, "(a).__seconds_n * (b).numerator"},
+        denominator: {:bigint, "(a).__seconds_d * (b).denominator"},
+        rate: {:framerate, "(((a).__rate_n, (a).__rate_d), (a).__rate_tags)"}
+      ],
       returns: :framestamp,
       body: """
-      RETURN #{with_seconds}(seconds, (a).rate);
+      RETURN #{with_seconds}((numerator, denominator), rate);
       """
     )
   end
@@ -604,10 +776,14 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     Postgres.Utils.create_plpgsql_function(
       private_function(:div, Migration.repo()),
       args: [a: :framestamp, b: :rational],
-      declares: [seconds: {:rational, "(a).seconds / (b)"}],
+      declares: [
+        numerator: {:bigint, "(a).__seconds_n * (b).denominator"},
+        denominator: {:bigint, "(a).__seconds_d * (b).numerator"},
+        rate: {:framerate, "(((a).__rate_n, (a).__rate_d), (a).__rate_tags)"}
+      ],
       returns: :framestamp,
       body: """
-      RETURN #{with_seconds}(seconds, (a).rate);
+      RETURN #{with_seconds}((numerator, denominator), rate);
       """
     )
   end
@@ -631,13 +807,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       args: [a: :framestamp, b: :rational],
       declares: [
         frames: {:bigint, "#{framestamp_frames}(a)"},
+        playback: {:rational, "((a).__rate_n, (a).__rate_d)"},
         seconds: :rational
       ],
       returns: :framestamp,
       body: """
       frames := DIV(frames, b);
-      seconds := #{simplify}(frames / (a).rate.playback);
-      RETURN (seconds, (a).rate);
+      seconds := #{simplify}(frames / playback);
+
+      RETURN (
+        (seconds).numerator,
+        (seconds).denominator,
+        (a).__rate_n,
+        (a).__rate_d,
+        (a).__rate_tags
+      );
       """
     )
   end
@@ -661,13 +845,21 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       args: [a: :framestamp, b: :rational],
       declares: [
         frames: {:bigint, "#{framestamp_frames}(a)"},
+        playback: {:rational, "((a).__rate_n, (a).__rate_d)"},
         seconds: :rational
       ],
       returns: :framestamp,
       body: """
       frames := ROUND(frames % b);
-      seconds := #{simplify}(frames / (a).rate.playback);
-      RETURN (seconds, (a).rate)::framestamp;
+      seconds := #{simplify}(frames / playback);
+
+      RETURN (
+        (seconds).numerator,
+        (seconds).denominator,
+        (a).__rate_n,
+        (a).__rate_d,
+        (a).__rate_tags
+      );
       """
     )
   end
@@ -1062,7 +1254,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     framerate_opts =
       opts
       |> Keyword.get(:framerate_opts, [])
-      |> Keyword.put(:check_value, "(#{sql_field}).rate")
+      |> Keyword.put(:check_value, """
+      (
+        ((#{sql_field}).__rate_n, (#{sql_field}).__rate_d),
+        (#{sql_field}).__rate_tags
+      )::framerate
+      """)
 
     framerate_list = PgFramerate.Migrations.build_constraint_list(table, field, framerate_opts)
 
@@ -1072,7 +1269,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
           table,
           "#{field}_seconds_divisible_by_rate",
           check: """
-          ((#{sql_field}).seconds * (#{sql_field}).rate.playback) % 1::bigint = 0::bigint
+          (
+            ((#{sql_field}).__seconds_n, (#{sql_field}).__seconds_d)::rational
+            * ((#{sql_field}).__rate_n, (#{sql_field}).__rate_d)::rational
+          )
+          % 1::bigint = 0::bigint
           """
         )
 
@@ -1080,6 +1281,69 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     else
       framerate_list
     end
+  end
+
+  ### SQL fragment builders
+
+  # Returns declaration list for comparison operators,
+  @spec compare_declarations() :: Postgres.Utils.function_declarations()
+  defp compare_declarations do
+    [
+      a_cmp: {:bigint, "((a).__seconds_n * (b).__seconds_d)"},
+      b_cmp: {:bigint, "((b).__seconds_n * (a).__seconds_d)"},
+      cmp_sign: {:bigint, "SIGN(a_cmp - b_cmp)"}
+    ]
+  end
+
+  # Returns subtraction declarations.
+  @spec addition_declares() :: Postgres.Utils.function_declarations()
+  defp addition_declares do
+    [
+      numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) + ((b).__seconds_n * (a).__seconds_d)"},
+      denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
+      greatest_denom: {:bigint, "GCD(numerator, denominator)"}
+    ]
+  end
+
+  # Returns subtraction declarations.
+  @spec subtraction_declares() :: Postgres.Utils.function_declarations()
+  defp subtraction_declares do
+    [
+      numerator: {:bigint, "((a).__seconds_n * (b).__seconds_d) - ((b).__seconds_n * (a).__seconds_d)"},
+      denominator: {:bigint, "(a).__seconds_d * (b).__seconds_d"},
+      greatest_denom: {:bigint, "GCD(numerator, denominator)"}
+    ]
+  end
+
+  # Returns SQL statement to raise mixed framerate arithmetic operator.
+  @spec sql_raise_mixed_frame_arithmetic_error(atom(), atom()) :: raw_sql()
+  defp sql_raise_mixed_frame_arithmetic_error(type, operator) do
+    hint =
+      "try using `@#{operator}` or `#{operator}@` instead. alternatively, do calculations" <>
+        " in seconds before casting back to #{type} with the appropriate framerate" <>
+        " using `with_seconds/2`"
+
+    """
+    RAISE 'Mixed framerate arithmetic'
+    USING
+      ERRCODE = 'data_exception',
+      HINT = '#{hint}';
+    """
+  end
+
+  # Checks if two framestamps' framerates are equal. Currently, a framestamp will never
+  # have more than one tag, so we can cheat a little and just check if the arrays are
+  # equal. If we ever add additional tags, this check will need to change.
+  @spec sql_check_rate_equal(atom(), atom()) :: raw_sql()
+  defp sql_check_rate_equal(a_stamp_name, b_stamp_name) do
+    Enum.join(
+      [
+        "(#{a_stamp_name}).__rate_n = (#{b_stamp_name}).__rate_n",
+        "(#{a_stamp_name}).__rate_d = (#{b_stamp_name}).__rate_d",
+        "(#{a_stamp_name}).__rate_tags = (#{b_stamp_name}).__rate_tags"
+      ],
+      " AND "
+    )
   end
 
   @doc """
