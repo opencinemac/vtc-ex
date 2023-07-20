@@ -128,19 +128,19 @@ defmodule Vtc.Test.Support.FramestampSchema01 do
 
   @type t() :: %__MODULE__{
           id: Ecto.UUID.t(),
-          a: Framestamp.t(),
-          b: Framestamp.t()
+          stamp_in: Framestamp.t(),
+          stamp_out: Framestamp.t()
         }
 
   @primary_key {:id, Ecto.UUID, autogenerate: true}
 
   schema "my_table" do
-    field(:a, Framestamp)
-    field(:b, Framestamp)
+    field(:start, Framestamp)
+    field(:end, Framestamp)
   end
 
   @spec changeset(%__MODULE__{}, %{atom() => any()}) :: Changeset.t(%__MODULE__{})
-  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:id, :a, :b])
+  def changeset(schema, attrs), do: Changeset.cast(schema, attrs, [:id, :stamp_in, :stamp_out])
 end
 ```
 
@@ -152,8 +152,8 @@ expect to:
 iex> one_hour = Framestamp.with_frames("01:00:00:00", Rates.f23_98())
 iex> 
 iex> EdlEvents
-iex> |> where([event], event.start > type(^one_hour, Framestamp))
-iex> |> select([event], {event, event.end - event.in_framestamp})
+iex> |> where([event], event.stamp_in > type(^one_hour, Framestamp))
+iex> |> select([event], {event, event.stamp_out - event.stamp_in})
 ```
 
 The above query finds all events with a start time greater than `01:00:00:00` and
