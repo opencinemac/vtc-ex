@@ -100,7 +100,7 @@ defmodule Vtc.FramestampTest.Properties.ParseRoundTripDrop do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Rates
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
 
   describe "parse round trip" do
     property "timecode | ntsc | drop" do
@@ -215,7 +215,7 @@ defmodule Vtc.FramestampTest.Properties.Rebase do
 
   alias Vtc.Framerate
   alias Vtc.Framestamp
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
 
   describe "#rebase/2" do
     property "round trip rebases do not lose accuracy" do
@@ -244,7 +244,7 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
   alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Rates
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
 
   property "add/sub symmetry" do
     check all(
@@ -371,7 +371,7 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
       end
     end
 
-    property "abs(div(-Bencheea, -b)) = abs(div(+a, +b))" do
+    property "abs(div(-a, -b)) = abs(div(+a, +b))" do
       check all(
               dividend <- StreamDataVtc.framestamp(non_negative?: true),
               divisor <- StreamDataVtc.rational(positive?: true)
@@ -629,7 +629,7 @@ defmodule Vtc.FramestampTest.Properties.Compare do
     end
   end
 
-  property "#gte?/2 always matches frame comparson" do
+  property "#gte?/2 always matches frame comparison" do
     check all([a_frames, b_frames] <- list_of(integer(), length: 2)) do
       a = Framestamp.with_frames!(a_frames, Rates.f23_98())
       b = Framestamp.with_frames!(b_frames, Rates.f23_98())

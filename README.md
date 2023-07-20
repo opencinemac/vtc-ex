@@ -163,7 +163,7 @@ returns the record AND its calculated duration.
 
 Check out the [Quickstart Guide](quickstart.html) for a walkthrough of what `Vtc` 
 offers for application-level code, and the [Ecto Quickstart Guide](ecto_quickstart.cheatmd)
-for a deep-dive on working with Vtc's Postgres offertings.
+for a deep-dive on working with Vtc's Postgres offerings.
 
 The [API Reference](api-reference.html) offers a complete technical accounting of Vtc's 
 capabilities.

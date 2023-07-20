@@ -41,5 +41,5 @@ frame, as defined by the SMPTE Timecode standard.
 
 For a technical deep-dive into the many flavors of timecode, check out
 [Frame.io's](frame.io)
-[excellent blogpost](https://blog.frame.io/2017/07/17/timecode-and-frame-rates) on
+[excellent blog post](https://blog.frame.io/2017/07/17/timecode-and-frame-rates) on
 the subject.

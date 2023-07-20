@@ -157,7 +157,7 @@ defmodule Vtc.Test.Support.TestCase do
   - A `@tag test_case: test_case` value is placed above the test to pass the test case
     into the context using `setup_test_case`.
 
-  - A `@tag test_id: {unique_id}` value is palces above the test to make running an
+  - A `@tag test_id: {unique_id}` value is places above the test to make running an
     individual test easier. This ID is static against runs so long as the test name and
     data do not change.
 
@@ -212,7 +212,7 @@ defmodule Vtc.Test.Support.TestCase do
   it is rendered to a string, so any value can be used, not just those that implement
   `String.Chars`.
 
-  The data must be fetchable from the test case using an `atom` key.
+  The data must be fetch-able from the test case using an `atom` key.
 
   ## Conditional tests
 
@@ -245,7 +245,7 @@ defmodule Vtc.Test.Support.TestCase do
   end
 
   # Runs a single test case for `table_test`.
-  @spec run_table_test_case(String.t(), Macto.t(), do: Macro.t()) :: Macro.t()
+  @spec run_table_test_case(String.t(), Macro.t(), do: Macro.t()) :: Macro.t()
   defmacro run_table_test_case(name, test_case, do: body) do
     case test_case do
       {name, _, nil} = var when is_atom(name) -> var

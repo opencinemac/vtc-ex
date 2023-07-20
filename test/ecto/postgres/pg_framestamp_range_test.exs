@@ -6,7 +6,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
   alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.Test.Support.CommonTables
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
 
   require Ecto.Query
 

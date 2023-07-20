@@ -99,10 +99,10 @@ iex> Framerate.smpte_timebase(framestamp.rate)
 
 ## Parsing
 
-Parsing is flexible, we can pass in partial or maformed timecode.
+Parsing is flexible, we can pass in partial or malformed timecode.
 
 In `Vtc`, there are only two ways to parse framestamps, either with 
-[Timecode.with_frames/2](`Vtc.Framestamp.with_frames/2`) for formats that represnet a 
+[Timecode.with_frames/2](`Vtc.Framestamp.with_frames/2`) for formats that represent a 
 discrete frame count, or [Timecode.with_seconds/2](`Vtc.Framestamp.with_seconds/2`) for 
 formats that represent a number of real-world, elapsed seconds were those frames to be 
 played back at the framestamp's rate.
@@ -293,7 +293,7 @@ iex> end
 
 ## Framerates
 
-We can make dropframe framestamps for 29.97 or 59.94 using one of the pre-set 
+We can make drop-frame framestamps for 29.97 or 59.94 using one of the pre-set 
 framerates.
 
 #### drop-frame
@@ -315,7 +315,7 @@ iex> Framestamp.with_frames!("01:00:00:00", Framerate.new!(240, nil))
 Using `:non_drop` indicates this framestamp represents an NTSC timecode, and will 
 convert whole-number timebases to the correct speed.
 
-#### non-drop coersion
+#### non-drop coercion
 
 ```elixir
 iex> Framestamp.with_frames!("01:00:00:00", Framerate.new!(48, :non_drop))
@@ -365,7 +365,7 @@ iex> Framestamp.compare(a, "00:59:00:00")
 :gt
 ```
 
-Sorting is suported through the [compare/2](`Vtc.Framestamp.compare/2`) function.
+Sorting is supported through the [compare/2](`Vtc.Framestamp.compare/2`) function.
 
 #### sort through [Framestamp](Vtc.Framestamp.html#module-sorting-support)
 
@@ -397,7 +397,7 @@ iex> a = Framestamp.Range.new!(a_in, a_out)
 
 By default, ranges are `exclusive`, meaning the `out` point represents the boundary 
 where the clip ends, not the final frame that is part of the video clip. This way
-will be familiar to Premiere and Final Cut editors. But fear not, our Avid bretheren,
+will be familiar to Premiere and Final Cut editors. But fear not, our Avid brethren,
 inclusive out points like you are used to are available as well!
 
 Just like addition, we can write a bare timecode string as the out value if we want.
@@ -458,4 +458,4 @@ config :vtc,
   include_postgres_types?: true
 ```
 
-See each posgres type for information on it's configuration.
+See each Postgres type for information on it's configuration.

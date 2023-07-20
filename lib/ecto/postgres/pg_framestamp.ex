@@ -3,7 +3,7 @@ use Vtc.Ecto.Postgres.Utils
 defpgmodule Vtc.Ecto.Postgres.PgFramestamp do
   @moduledoc """
   Defines a composite type for storing rational values as a
-  [PgRational](`Vtc.Ecto.Postgres.PgRational`) real-world playbck seconds,
+  [PgRational](`Vtc.Ecto.Postgres.PgRational`) real-world playback seconds,
   [PgFramerate](`Vtc.Ecto.Postgres.PgFramerate`) pair.
 
   These values are cast to

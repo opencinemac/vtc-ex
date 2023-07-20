@@ -14,7 +14,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   require Ecto.Migration
 
   @typedoc """
-  Indicates returned string is am SQL command.
+  Indicates returned string is an SQL command.
   """
   @type raw_sql() :: String.t()
 
@@ -28,7 +28,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  This migration included all migraitons under the
+  This migration includes all migrations under the
   [Pg Types](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#pg-types),
   [Pg Operators](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#pg-operators),
   [Pg Operator Classes](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#pg-operator-classes),
@@ -44,7 +44,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   ## Options
 
-  - `include`: A list of migration functions to inclide. If not set, all sub-migrations
+  - `include`: A list of migration functions to include. If not set, all sub-migrations
     will be included.
 
   - `exclude`: A list of migration functions to exclude. If not set, no sub-migrations
@@ -80,7 +80,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   ## Configuring Database Objects
 
   To change where supporting functions are created, add the following to your
-  Repo confiugration:
+  Repo configuration:
 
   ```elixir
   config :vtc, Vtc.Test.Support.Repo,
@@ -105,7 +105,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   ## Private Functions
 
   Some custom function names are prefaced with `__private__`. These functions should
-  not be called by end-users, as they are not subject to *any* API staility guarantees.
+  not be called by end-users, as they are not subject to *any* API stability guarantees.
 
   ## Examples
 
@@ -558,7 +558,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc section: :migrations_private_functions
   @doc """
-  Creates `framestamp.__private__add_inherit_lef(a, b)` that backs the `@+` operator.
+  Creates `framestamp.__private__add_inherit_left(a, b)` that backs the `@+` operator.
 
   Adds `a` to `b`. If `a` and `b` do not have the same framerate, result will inherit
   `a`'s rate and round seconds to the nearest whole-frame.
@@ -1285,7 +1285,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   ### SQL fragment builders
 
-  # Returns declaration list for comparison operators,
+  # Returns declaration list for comparison operators.
   @spec compare_declarations() :: Postgres.Utils.function_declarations()
   defp compare_declarations do
     [

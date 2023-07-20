@@ -45,9 +45,9 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
   > `PgFramestamp.Range.Migrations.inject_canonical_function/0` for more information on
   > why this is required.
   >
-  > You can choose to skip this step if you wish my setting the `inject_canonical?`
-  > op to false, but operations that require discreet nudging of in and out points will
-  > not return correct results, and ranges with different upper/lowwer bound types will
+  > You can choose to skip this step if you wish by setting the `inject_canonical?`
+  > op to false, but operations that require discreet nudging of in-and-out points will
+  > not return correct results, and ranges with different upper/lower bound types will
   > not be comparable.
   """
   @spec migrate(

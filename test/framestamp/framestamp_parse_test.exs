@@ -1013,8 +1013,8 @@ defmodule Vtc.FramestampTest.Parse do
         rate: Rates.f24()
       }
 
-      expexted = PremiereTicks.per_second() + 1
-      assert Framestamp.premiere_ticks(framestamp, round: :closest) == expexted
+      expected = PremiereTicks.per_second() + 1
+      assert Framestamp.premiere_ticks(framestamp, round: :closest) == expected
     end
 
     test "round | :closest | down" do

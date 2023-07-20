@@ -6,7 +6,7 @@ defmodule Vtc.Framestamp.Eval do
 
   @self_alias [:Vtc, :Framestamp, :Eval]
 
-  # Escapes variable that the default rate for the eval will be kept in,
+  # Escapes variable that the default rate for the eval will be kept in.
   @default_rate_var_ast Macro.var(:default_rate, :vtc_eval)
 
   @spec eval([at: Framerate.t() | number() | Ratio.t(), ntsc: Framerate.ntsc()], Macro.input()) :: Macro.t()

@@ -1,5 +1,5 @@
 if Application.get_env(:vtc, :env) in [:test, :dev] do
-  defmodule Vtc.TestUtls.StreamDataVtc do
+  defmodule Vtc.TestUtils.StreamDataVtc do
     @moduledoc """
     `StreamData` generators for use in tests that involve custom Ecto types. For use in
     property tests.
@@ -19,10 +19,10 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
 
     ## Options
 
-    - `numerator`: A static value to use for the numerator of all genrated rationals.
+    - `numerator`: A static value to use for the numerator of all generated rationals.
       Default: nil.
 
-    - `denominator`: A static value to use for the denominator of all genrated rationals.
+    - `denominator`: A static value to use for the denominator of all generated rationals.
       Default: nil.
 
     - `positive?`: If true, only positive values (greater than 0) are generated.
@@ -93,14 +93,14 @@ if Application.get_env(:vtc, :env) in [:test, :dev] do
     """
     @spec framerate(framerate_opts()) :: StreamData.t(Framerate.t())
     def framerate(opts \\ []) do
-      ntscs =
+      ntsc_list =
         case Keyword.get(opts, :type, [:whole, :fractional, :non_drop, :drop]) do
-          ntscs when is_list(ntscs) -> ntscs
+          ntsc_list when is_list(ntsc_list) -> ntsc_list
           ntsc -> [ntsc]
         end
 
       ntsc_gen =
-        ntscs
+        ntsc_list
         |> Enum.map(&StreamData.constant(&1))
         |> StreamData.one_of()
 
