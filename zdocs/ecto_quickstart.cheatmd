@@ -330,16 +330,19 @@ Output:
 | `<=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds             |
 | `>`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds              |
 | `>=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds             |
-| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, raises if framerates do not match    |
-| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from left          |
-| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from right         |
-| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, raises if framerates do not match |
-| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, inherit framerate from left       |
-| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, inherit framerate from right      |
-| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication, rounds to nearest whole-frame  |
-| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division, rounds to nearest frame              |
-| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division, rounds down to nearest frame   |
-| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder, returns leftover frames from `DIV`  |
+| `ABS` | function | `framestamp`               |  `framestamp` |  absolute value                                 |
+| `@`   | operator | `framestamp`               |  `framestamp` |  absolute value                                 |
+| `-`   | function | `framestamp`               |  `framestamp` |  negate. flips input's sign                     |
+| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. raises if framerates do not match    |
+| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from left          |
+| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from right         |
+| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. raises if framerates do not match |
+| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from left       |
+| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from right      |
+| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication. rounds to nearest whole-frame  |
+| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division. rounds to nearest frame              |
+| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division. rounds down to nearest frame   |
+| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder. returns leftover frames from `DIV`  |
 .
 
 ### Mixed rate arithmetic
