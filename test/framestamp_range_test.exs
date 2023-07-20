@@ -404,7 +404,7 @@ defmodule Vtc.Framestamp.RangeTest do
       in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
       out_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
 
-      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclsuive}
+      range = %Range{in: in_stamp, out: out_stamp, out_type: :inclusive}
       expected_out = Framestamp.with_frames!("01:00:00:01", Rates.f23_98())
 
       assert %{out: ^expected_out} = Range.with_exclusive_out(range)
@@ -1014,7 +1014,7 @@ defmodule Vtc.Framestamp.RangeTest do
     end
   end
 
-  # Males secified ranges built by setup_ranges out-inclusive.
+  # Males specified ranges built by setup_ranges out-inclusive.
   @spec setup_inclusives(%{optional(:inclusive) => [Map.key()]}) :: Keyword.t()
   defp setup_inclusives(%{inclusive: attrs} = test_case) do
     test_case

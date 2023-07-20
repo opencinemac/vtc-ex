@@ -22,7 +22,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational do
   ```
 
   See `Vtc.Ecto.Postgres.PgRational.Migrations` for more information on how to create
-  `rational` and it's supporting functions in your database.
+  `rational` and its supporting functions in your database.
 
   ## Field migrations
 

@@ -79,7 +79,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc """
-  Run migrations, allowing callers to specigy
+  Run migrations, allowing callers to specify.
   """
   @spec run_migrations([(() -> {raw_sql(), raw_sql()} | :skip)], include: Keyword.t(), exclude: Keyword.t()) :: :ok
   def run_migrations(functions, opts) do
@@ -113,7 +113,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @typedoc """
   Describes attributes that can go in the `AS` block for a type.
 
-  Compisute type: `field: type` keyword list.
+  Composure type: `field: type` keyword list.
 
   Enum type: `value` list.
 
@@ -215,7 +215,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
 
   @doc """
   Builds a [plpgsql](https://www.postgresql.org/docs/current/plpgsql.html) function,
-  taking care of all the biolerplate.
+  taking care of all the boilerplate.
 
   ## Args
 
@@ -560,7 +560,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
     """
   end
 
-  # Builds a comment string based on the calling function's docsting.
+  # Builds a comment string based on the calling function's docstring.
   @spec create_comment_string(Macro.Env.t(), :type | :function | :cast | :operator | :operator_class) :: String.t()
   defp create_comment_string(env, object_type) do
     {_, doc_string} = Module.get_attribute(env.module, :doc)
@@ -583,7 +583,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc """
-  Creates a public and private schema for a type based on the repo's confguration.
+  Creates a public and private schema for a type based on the repo's configuration.
   """
   @spec create_type_schema(atom()) :: {raw_sql(), raw_sql()} | :skip
   def create_type_schema(type_name) do

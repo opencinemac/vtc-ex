@@ -32,7 +32,7 @@ defmodule Vtc.Utils.Rational do
   def round(x, :trunc), do: Ratio.trunc(x)
   def round(x, :off), do: x
 
-  # Handles roundinf to the closest integer. Adapted loosly from Python's
+  # Handles rounding to the closest integer. Adapted loosely from Python's
   # implementation, only rounds up rather than down:
   # https://github.com/python/cpython/blob/3.11/Lib/fractions.py
   @spec round_closest(integer(), pos_integer()) :: integer()

@@ -44,7 +44,7 @@ defmodule Vtc.MixProject do
             Vtc.Ecto.Postgres.PgFramestamp.Range,
             Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations
           ],
-          "Test Utilities": [Vtc.TestUtls.StreamDataVtc]
+          "Test Utilities": [Vtc.TestUtils.StreamDataVtc]
         ],
         groups_for_docs: [
           Parse: &(&1[:section] == :parse),

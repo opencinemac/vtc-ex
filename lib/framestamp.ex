@@ -58,7 +58,7 @@ defmodule Vtc.Framestamp do
   a computer cannot add "01:30:00:00" to "01:00:00:00" without converting it to some
   sort of numerical value.
 
-  Many programs convert timecode directly to an integer frame number for arithaetic and
+  Many programs convert timecode directly to an integer frame number for arithmetic and
   comparison operations where each frame on the clock is issued a continuous index,
   with `0` as `00:00:00:00`. Frame numbers, though, have the same issue with mixed-rate
   values as timecode; `26` at 48 frames-per-second represents the same real-world time
@@ -128,8 +128,8 @@ defmodule Vtc.Framestamp do
 
   ## Parsing: Seconds.t() or Frames.t()
 
-  Parsing functions preappend `with_` to their name. When you give a value to a parsing
-  function, it is the same value that would be returned by the euivalent unit
+  Parsing functions pre-append `with_` to their name. When you give a value to a parsing
+  function, it is the same value that would be returned by the equivalent unit
   conversion. So a value passed to [with_frames](`Vtc.Framestamp.with_frames/2`) is the
   same value [frames](`Vtc.Framestamp.frames/1`) would return:
 
@@ -210,14 +210,14 @@ defmodule Vtc.Framestamp do
 
   ## Arithmetic Autocasting
 
-  For operators that take two `Framestamp` values, likt `add/3` or `compare/2`, as long
+  For operators that take two `Framestamp` values, like `add/3` or `compare/2`, as long
   as one argument is a [Framestamp](`Vtc.Framestamp`) value, `a` or `b` May be any value
   that implements the [Frames](`Vtc.Source.Frames`) protocol, such as a timecode string,
   and will be assumed to be the same framerate as the other.
 
   > #### Production code {: .tip}
   >
-  > Autocasting exists to support quick scratch scripts and we suggest that it not be,
+  > Autocasting exists to support quick scratch scripts and we suggest that it not be
   > relied upon in production application code.
 
   If parsing the value fails during casting, the function raises a
@@ -310,7 +310,7 @@ defmodule Vtc.Framestamp do
 
   ## Examples
 
-  Accetps runtime strings...
+  Accepts runtime strings...
 
   ```elixir
   iex> result = Framestamp.with_seconds("01:00:00.5", Rates.f23_98())
@@ -334,7 +334,7 @@ defmodule Vtc.Framestamp do
   "{:ok, <00:59:56:10 <23.98 NTSC>>}"
   ```
 
-  ... integer Strings...
+  ... integer strings...
 
   ```elixir
   iex> result = Framestamp.with_seconds("3600", Rates.f23_98())
@@ -548,12 +548,12 @@ defmodule Vtc.Framestamp do
 
   @doc section: :compare
   @doc """
-  Comapare the values of `a` and `b`.
+  Compare the values of `a` and `b`.
 
   Compatible with `Enum.sort/2`. For more on sorting non-builtin values, see
-  [the Elixir ducumentation](https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs).
+  [the Elixir documentation](https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs).
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
   See `eq?/2` for more information on how equality is determined.
 
   ## Examples
@@ -582,9 +582,9 @@ defmodule Vtc.Framestamp do
 
   @doc section: :compare
   @doc """
-  Returns `true` if `a` is eqaul to `b`.
+  Returns `true` if `a` is equal to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Examples
 
@@ -594,7 +594,7 @@ defmodule Vtc.Framestamp do
   iex> true = Framestamp.eq?(a, b)
   ```
 
-  Framestamps with the *same* string timecofe representation, but *different* real-world
+  Framestamps with the *same* string timecode representation, but *different* real-world
   seconds values, are *not* equal:
 
   ```elixir
@@ -619,7 +619,7 @@ defmodule Vtc.Framestamp do
   @doc """
   Returns `true` if `a` is less than `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
   See `eq?/2` for more information on how equality is determined.
 
   ## Examples
@@ -638,7 +638,7 @@ defmodule Vtc.Framestamp do
   @doc """
   Returns `true` if `a` is less than or equal to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
   See `eq?/2` for more information on how equality is determined.
   """
   @spec lte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
@@ -648,7 +648,7 @@ defmodule Vtc.Framestamp do
   @doc """
   Returns `true` if `a` is greater than `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
   See `eq?/2` for more information on how equality is determined.
   """
   @spec gt?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
@@ -656,9 +656,9 @@ defmodule Vtc.Framestamp do
 
   @doc section: :compare
   @doc """
-  Returns `true` if `a` is greater than or eqaul to `b`.
+  Returns `true` if `a` is greater than or equal to `b`.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
   See `eq?/2` for more information on how equality is determined.
   """
   @spec gte?(a :: t() | Frames.t(), b :: t() | Frames.t()) :: boolean()
@@ -672,7 +672,7 @@ defmodule Vtc.Framestamp do
   equal, the result will inherit the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
@@ -745,7 +745,7 @@ defmodule Vtc.Framestamp do
   equal, the result will inherit the framerate of `a` and be rounded to the seconds
   representation of the nearest whole-frame at that rate.
 
-  [auto-casts](#module-artithmatic-autocasting) [Frames](`Vtc.Source.Frames`) values.
+  [auto-casts](#module-arithmetic-autocasting) [Frames](`Vtc.Source.Frames`) values.
 
   ## Options
 
@@ -821,7 +821,7 @@ defmodule Vtc.Framestamp do
         ) :: t()
   def sub(a, b, opts \\ []), do: do_arithmetic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
-  # Runs a (Framestamp, Framestamp) arithamtic operation.
+  # Runs a (Framestamp, Framestamp) arithmetic operation.
   @spec do_arithmetic(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
@@ -846,7 +846,7 @@ defmodule Vtc.Framestamp do
   end
 
   # Casts args for ops with two values as long as at least one argument is a
-  # `Framestamp`. The non-`Framestamp` argument inherents the `Framerate` of the
+  # `Framestamp`. The non-`Framestamp` argument inherits the `Framerate` of the
   # `Framestamp` argument.
   @spec cast_op_args(t() | Frames.t(), t() | Frames.t()) :: {t(), t()}
   defp cast_op_args(%__MODULE__{} = a, %__MODULE__{} = b), do: {a, b}
@@ -976,7 +976,7 @@ defmodule Vtc.Framestamp do
 
   @doc section: :arithmetic
   @doc """
-  Devides the total frame count of `dividend` by `devisor`, and returns the remainder.
+  Divides the total frame count of `dividend` by `devisor`, and returns the remainder.
 
   The quotient is truncated before the remainder is calculated.
 
@@ -1082,7 +1082,7 @@ defmodule Vtc.Framestamp do
 
   @doc section: :arithmetic
   @doc """
-  Evalutes [Framestamp](`Vtc.Framestamp`) mathematical expressions in a `do` block.
+  Evaluates [Framestamp](`Vtc.Framestamp`) mathematical expressions in a `do` block.
 
   Any code captured within this macro can use Kernel operators to work with
   [Framestamp](`Vtc.Framestamp`) values instead of module functions like `add/2`.
@@ -1263,7 +1263,7 @@ defmodule Vtc.Framestamp do
   @doc """
   Returns the the formatted SMPTE timecode for a [Framestamp](`Vtc.Framestamp`).
 
-  Ex: `01:00:00:00`. Drop frame timecode will be rendered with a ';' sperator before the
+  Ex: `01:00:00:00`. Drop frame timecode will be rendered with a ';' separator before the
   frames field.
 
   ## Options
@@ -1405,7 +1405,7 @@ defmodule Vtc.Framestamp do
 
   - `round`: How to round the internal frame count before conversion. Default: `:closest`.
 
-  - `fiim_format`: The film format to use when doing the calculation. For more on film
+  - `film_format`: The film format to use when doing the calculation. For more on film
     formats, see `Vtc.FilmFormat`. Default: `:ff35mm_4perf`, by far the most common
     format used to shoot Hollywood movies.
 
@@ -1465,7 +1465,7 @@ defmodule Vtc.Framestamp do
   "<4320+00 :ff16mm>"
   ```
   """
-  @spec feet_and_frames(t(), opts :: [fiim_format: FilmFormat.t(), round: round()]) :: FeetAndFrames.t()
+  @spec feet_and_frames(t(), opts :: [film_format: FilmFormat.t(), round: round()]) :: FeetAndFrames.t()
   def feet_and_frames(framestamp, opts \\ []) do
     with :ok <- ensure_round_enabled(opts) do
       FeetAndFrames.from_framestamp(framestamp, opts)

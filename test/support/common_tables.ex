@@ -147,7 +147,14 @@ defmodule Vtc.Test.Support.CommonTables do
   Data for running tests on addition operators.
   """
   @spec framestamp_add() ::
-          [%{a: TestCase.framestamp_input(), b: TestCase.framestamp_input(), expected: TestCase.framestamp_input()}]
+          [
+            %{
+              a: TestCase.framestamp_input(),
+              b: TestCase.framestamp_input(),
+              opts: Keyword.t(),
+              expected: TestCase.framestamp_input()
+            }
+          ]
   def framestamp_add do
     [
       %{
@@ -211,7 +218,14 @@ defmodule Vtc.Test.Support.CommonTables do
   Data for running tests on subtraction operators.
   """
   @spec framestamp_subtract() ::
-          [%{a: TestCase.framestamp_input(), b: TestCase.framestamp_input(), expected: TestCase.framestamp_input()}]
+          [
+            %{
+              a: TestCase.framestamp_input(),
+              b: TestCase.framestamp_input(),
+              opts: Keyword.t(),
+              expected: TestCase.framestamp_input()
+            }
+          ]
   def framestamp_subtract do
     [
       %{
@@ -272,7 +286,7 @@ defmodule Vtc.Test.Support.CommonTables do
   end
 
   @doc """
-  Test data for checking that a timecode range inclu
+  Test data for checking that a timecode range contains a framestamp.
   """
   @spec range_contains() ::
           [

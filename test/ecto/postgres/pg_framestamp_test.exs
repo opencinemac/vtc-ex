@@ -12,7 +12,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
   alias Vtc.Test.Support.CommonTables
   alias Vtc.Test.Support.FramestampSchema01
   alias Vtc.Test.Support.TestCase
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
 
   require Query
 

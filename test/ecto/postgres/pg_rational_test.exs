@@ -7,7 +7,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   alias Vtc.Ecto.Postgres.PgRational
   alias Vtc.Test.Support.RationalsSchema01
   alias Vtc.Test.Support.RationalsSchema02
-  alias Vtc.TestUtls.StreamDataVtc
+  alias Vtc.TestUtils.StreamDataVtc
   alias Vtc.Utils.Rational
 
   require Ecto.Query

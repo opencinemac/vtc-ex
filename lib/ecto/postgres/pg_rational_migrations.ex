@@ -13,7 +13,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   require Ecto.Migration
 
   @typedoc """
-  Indicates returned string is am SQL command.
+  Indicates returned string is an SQL command.
   """
   @type raw_sql() :: String.t()
 
@@ -22,7 +22,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   Adds raw SQL queries to a migration for creating the database types, associated
   functions, casts, operators, and operator families.
 
-  This migration included all migraitons under the
+  This migration includes all migrations under the
   [Pg Types](Vtc.Ecto.Postgres.PgRational.Migrations.html#pg-types),
   [Pg Operators](Vtc.Ecto.Postgres.PgRational.Migrations.html#pg-operators),
   [Pg Operator Classes](Vtc.Ecto.Postgres.PgRational.Migrations.html#pg-operator-classes),
@@ -39,7 +39,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   ## Options
 
-  - `include`: A list of migration functions to inclide. If not set, all sub-migrations
+  - `include`: A list of migration functions to include. If not set, all sub-migrations
     will be included.
 
   - `exclude`: A list of migration functions to exclude. If not set, no sub-migrations
@@ -65,7 +65,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   ## Configuring Database Objects
 
   To change where supporting functions are created, add the following to your
-  Repo confiugration:
+  Repo configuration:
 
   ```elixir
   config :vtc, Vtc.Test.Support.Repo,
@@ -89,7 +89,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   ## Private Functions
 
   Some custom function names are prefaced with `__private__`. These functions should
-  not be called by end-users, as they are not subject to *any* API staility guarantees.
+  not be called by end-users, as they are not subject to *any* API stability guarantees.
 
   ## Functions Created
 
@@ -159,7 +159,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       &create_op_gt/0,
       &create_op_gte/0,
       &create_op_class_btree/0,
-      &create_func_cast_to_double_precison/0,
+      &create_func_cast_to_double_precision/0,
       &create_func_cast_bigint_to_rational/0,
       &create_cast_double_precision/0,
       &create_cast_bigint_to_rational/0
@@ -296,8 +296,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   @doc """
   Creates a native CAST from `rational` to `double precision`.
   """
-  @spec create_func_cast_to_double_precison() :: {raw_sql(), raw_sql()}
-  def create_func_cast_to_double_precison do
+  @spec create_func_cast_to_double_precision() :: {raw_sql(), raw_sql()}
+  def create_func_cast_to_double_precision do
     Postgres.Utils.create_plpgsql_function(
       private_function(:cast_to_double, Migration.repo()),
       args: [value: :rational],
@@ -324,7 +324,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     )
   end
 
-  ## ARITHMATIC BACKING FUNCS
+  ## ARITHMETIC BACKING FUNCS
 
   @doc section: :migrations_private_functions
   @doc """
@@ -497,7 +497,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       ],
       returns: :integer,
       body: """
-      RETURN sign(a_cmp - b_cmp);
+      RETURN SIGN(a_cmp - b_cmp);
       """
     )
   end
@@ -604,7 +604,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     )
   end
 
-  ## ARITHMATIC OPS
+  ## ARITHMETIC OPS
 
   @doc section: :migrations_operators
   @doc """

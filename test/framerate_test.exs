@@ -157,7 +157,7 @@ defmodule Vtc.FramerateTest do
         err_msg: "drop-frame rates must be divisible by 30000/1001"
       },
       %{
-        name: "error - uknown format",
+        name: "error - unknown format",
         inputs: [
           "notarate"
         ],
@@ -345,11 +345,11 @@ defmodule Vtc.FramerateTest do
       assert String.Chars.to_string(Rates.f29_97_ndf()) == "<29.97 NTSC NDF>"
     end
 
-    test "tags `DF` for drop_frame" do
+    test "tags `DF` for `:drop_frame`" do
       assert String.Chars.to_string(Rates.f29_97_df()) == "<29.97 NTSC DF>"
     end
 
-    test "doesnt tag non-valid drop_frame rates" do
+    test "does not tag `:non_drop` rates" do
       assert String.Chars.to_string(Rates.f23_98()) == "<23.98 NTSC>"
     end
 
@@ -368,7 +368,7 @@ defmodule Vtc.FramerateTest do
       assert Inspect.inspect(Rates.f29_97_df(), Inspect.Opts.new([])) == "<29.97 NTSC DF>"
     end
 
-    test "doesnt tag non-valid drop_frame rates" do
+    test "doesn't tag `:non_drop` rates" do
       assert Inspect.inspect(Rates.f23_98(), Inspect.Opts.new([])) == "<23.98 NTSC>"
     end
 

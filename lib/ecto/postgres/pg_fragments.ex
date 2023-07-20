@@ -4,7 +4,7 @@ defmodule Vtc.Ecto.Postgres.Fragments do
   # Calling sub-functions inside of a pl/pgsql function is expensive, and can add up
   # to 20% overhead in a call, the compiler does a bad job of optimizing it away.
   #
-  # This module offers some commmon fragments for logic shared between our postgres
+  # This module offers some common fragments for logic shared between our postgres
   # types that can be inlined into the function definitions.
 
   @typedoc """

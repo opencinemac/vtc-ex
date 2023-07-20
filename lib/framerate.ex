@@ -38,7 +38,7 @@ defmodule Vtc.Framerate do
 
   For more information on NTSC standards and framerate conventions, see
   [Frame.io's](frame.io)
-  [blogpost](https://blog.frame.io/2017/07/17/timecode-and-frame-rates) on the subject.
+  [blog post](https://blog.frame.io/2017/07/17/timecode-and-frame-rates) on the subject.
   """
   @type ntsc() :: :non_drop | :drop | nil
 
@@ -95,7 +95,7 @@ defmodule Vtc.Framerate do
     Default: `:non-drop`.
 
   - `invert?`: If `true`, the resulting rational `rate` value will be flipped so that
-    `1/24`  becomes `24/1`. This can be helpeful when you are parsing a rate given in
+    `1/24`  becomes `24/1`. This can be helpful when you are parsing a rate given in
     seconds-per-frame rather than frames-per-second. Default: `false`.
 
   - `coerce_ntsc?`: If true -- and `ntsc` is non-nil -- values will be coerced to the

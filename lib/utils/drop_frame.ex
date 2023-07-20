@@ -70,7 +70,7 @@ defmodule Vtc.Utils.DropFrame do
 
   def frame_num_adjustment(_, _), do: 0
 
-  # Get the number of frames that need to be dropped per minute (minus the 10th miute).
+  # Get the number of frames that need to be dropped per minute (minus the 10th minute).
   @spec frames_dropped_per_minute(Framerate.t()) :: integer()
   defp frames_dropped_per_minute(rate) do
     time_base = rate |> Framerate.smpte_timebase() |> Rational.round()
@@ -78,7 +78,7 @@ defmodule Vtc.Utils.DropFrame do
   end
 
   @doc """
-  Checks if the Framerate described by `rate` could be used as a drop-frame candidata,
+  Checks if the Framerate described by `rate` could be used as a drop-frame candidate,
   as only rates cleanly divisible by `30_000/1_001` are mathematically compatible with
   drop-frame math.
   """

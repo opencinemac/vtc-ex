@@ -22,10 +22,10 @@ First, a brief distillation of Vtc's goals:
 
 ## NTSC and Digital Computing
 
-`23.98 NTSC` timecode is specifified as running at `24000/1001` frames per second, with 
-timecode caculated AS IF it were running at `24fps`.
+`23.98 NTSC` timecode is specified as running at `24000/1001` frames per second, with 
+timecode calculated AS IF it were running at `24fps`.
 
-`24000/1001` has the unfortunate propery of being an irrational number. It's digits
+`24000/1001` has the unfortunate property of being an irrational number. It's digits
 ride off into the sunset, never terminating:
 
 ```elixir
@@ -48,7 +48,7 @@ and ALWAYS in the context of a uniform frame rate, we can essentially ignore the
 amount of real-world jitter that a video stream contains, and there will never be enough
 precision loss that rounding to the nearest frame will be wrong.
 
-But when trying to do theoretical calculation between in and out points, like when 
+But when trying to do theoretical calculation between in-and-out points, like when 
 manipulating and EDL that *dense* data becomes *sparse* data, and we need to make sure 
 we are doing our math in a way that does not lose a frame to precision issues, that 
 can't misplace a frame when doing *math* between frames as *points*.
@@ -76,7 +76,7 @@ Timecode values this way, and the official NTSC specification uses floats to def
 `24000.0/1001.0` as the `23.98 NTSC` framerate.
 
 This works great when you are calculating each timecode frame-by-frame. You take each
-frame numebr and after `23.976023976023978` seconds, you record the frame buffer and
+frame number and after `23.976023976023978` seconds, you record the frame buffer and
 generate a new Timecode for that frame's index. No frames are skipped. Likewise, when
 casting in and out of timecode strings, there isn't enough precision loss for errors
 to occur.
@@ -123,9 +123,9 @@ iex> 10_031_160 / (120_000 / 1001)
 ```
 
 Although these values SHOULD be equivalent, they are not. For applications that require
-frame-accurate timeode comparisons, this appriach will not work, something video editors
+frame-accurate timecode comparisons, this approach will not work, something video editors
 have historically struggled with. Avid, for instance, disallowed mixed-rate timelines 
-for years, focing users to transcode their media to a uniform rate before they could edit
+for years, forcing users to transcode their media to a uniform rate before they could edit
 it together.
 
 **Quantized time**
@@ -137,21 +137,21 @@ a second. Video clip in, out, and duration values are all converted to a `tick` 
 value.
 
 This approach can cause rounding issues when generating EDLs, FCP7 XMLs, AAFs and 
-others. Although in recent times the program has gotten much bettern, Premiere 
+others. Although in recent times the program has gotten much better, Premiere 
 originally had a number of off-by-one errors when it first started supporting
 professional video workflows via interchange formats, ESPECIALLY when the framerate
 of the media did not match the framerate of the edit sequence.
 
 Again, 1 frame in `23.98` is equal to `0.04170833333333333` seconds. The digits value is
-not easily representable as a discreet time value, and choosing an arbitraty quanta for
-time means that the true frame time of a video clip of an arbitrary framearate may not
-always neatly line up with the boundaries of your unit, cuasing gradual drift when you
+not easily representable as a discreet time value, and choosing an arbitrary quanta for
+time means that the true frame time of a video clip of an arbitrary framerate may not
+always neatly line up with the boundaries of your unit, causing gradual drift when you
 start doing math.
 
 ## On Efficiency
 
 Lastly, it is important to note that Vtc does NOT strive to be as efficient as possible.
-Timecode manipulation -- when needed -- is not an operation that most programe needs to 
+Timecode manipulation -- when needed -- is not an operation that most programs needs to 
 be done on the scale of millions of times per second, and will certainly not account for 
 the majority of calculations that a program will be doing at any given step.
 
@@ -166,5 +166,5 @@ fraction.
 Vtc chose rational representation of timecode as a frame-accurate way to deal with
 timecode values in mixed rate contexts. In short, we PUT OFF the step of casting to a
 discreet value like a float, tick, millisecond, etc until AFTER we are done making 
-calculations, convserving -- as accurately as possible -- a true, frame-accurate
+calculations, conserving -- as accurately as possible -- a true, frame-accurate
 time.

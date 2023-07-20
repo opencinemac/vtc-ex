@@ -56,22 +56,22 @@ defmodule Vtc.FilmFormat do
 
   ### Where you see it
 
-  16mm telecines, 16mm edge codes.
+  16mm telecine, 16mm edge codes.
   """
   @type t() :: :ff35mm_4perf | :ff35mm_2perf | :ff16mm
 
   @doc section: :perfs
   @doc """
-  Perferations are the holes that run along the sides of a strip of film, and are used
+  Perforations are the holes that run along the sides of a strip of film, and are used
   by the camera's sprocket to physically pull the film in place to be exposed. For
-  more information, see [this Wikipedia atricle](https://en.wikipedia.org/wiki/Film_perforations#:~:text=Film%20perforations%2C%20also%20known%20as,film%20format%2C%20and%20intended%20usage).
+  more information, see [this Wikipedia article](https://en.wikipedia.org/wiki/Film_perforations#:~:text=Film%20perforations%2C%20also%20known%20as,film%20format%2C%20and%20intended%20usage).
 
   By default, returns the count in a 'logical' foot.
 
   > ### Logical feet and 16mm {: .warning}
   >
-  > 'Logicial foot' means each time `XX` rolls over when annotated in the `XX+YY`
-  > format. Threre are 40 perfs in a foot of 16mm film, but when annotated as `XX+YY`,
+  > 'Logical foot' means each time `XX` rolls over when annotated in the `XX+YY`
+  > format. There are 40 perfs in a foot of 16mm film, but when annotated as `XX+YY`,
   > `XX` rolls over every 6 inches rather than every foot.
 
   ## Options
@@ -85,7 +85,7 @@ defmodule Vtc.FilmFormat do
 
   @doc section: :perfs
   @doc """
-  Perferation count in a single frame of film.
+  Perforation count in a single frame of film.
   """
   @spec perfs_per_frame(t()) :: pos_integer()
   def perfs_per_frame(film_format)

@@ -1040,7 +1040,7 @@ defmodule Vtc.FramestampTest.Ops do
       a: %Framestamp{seconds: Ratio.new(47, 48), rate: Rates.f24()},
       b: -1,
       opts: [round_frames: :floor],
-      description: "dvisor negative",
+      description: "divisor negative",
       expected_q: %Framestamp{seconds: Ratio.new(-23, 24), rate: Rates.f24()},
       expected_r: %Framestamp{seconds: Ratio.new(0), rate: Rates.f24()}
     },

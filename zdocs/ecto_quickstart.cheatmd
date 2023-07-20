@@ -1,6 +1,6 @@
 # Ecto Quickstart
 
-[Vtc](https://hexdocs.pm/vtc) ships with a numer of 
+[Vtc](https://hexdocs.pm/vtc) ships with a number of 
 [Ecto custom types](https://hexdocs.pm/ecto/Ecto.Type.html) designed to work with 
 Postgres databases connected by [Postgrex](https://hexdocs.pm/postgrex/readme.html).
 
@@ -66,7 +66,7 @@ config :vtc,
 Each type can be configured to store it's support functions on a schema of your choice
 as well as have a custom, per-type function name prefix. 
 
-By default, all funcitons are added to the `public` schema, and are prefaced by their
+By default, all functions are added to the `public` schema, and are prefaced by their
 type name. For example, the [PgFramestamp](`Vtc.Ecto.Postgres.PgFramestamp`) 
 [frames](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_frames/0`) function
 is created in the `public` schema, and named `framestamp_frames`.
@@ -236,7 +236,7 @@ Output:
 ```
 
 Notice that just like [Framestamp.with_seconds/3](`Vtc.Framestamp.with_seconds/3`),
-the seconds value is rounded to the neareset whole-frame on construction.
+the seconds value is rounded to the nearest whole-frame on construction.
 
 ### [with_frames/2](`Vtc.Ecto.Postgres.PgFramestamp.Migrations.create_func_with_frames/0`) 
 
@@ -323,23 +323,23 @@ Output:
 ## Framestamp Postgres operators
 
 #### Available operators
-| name  | type     | args                       | result        | description                                    |
-| ----- | -------- | -------------------------- | ------------- | ---------------------------------------------- |
-| `=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds == `b` seconds            |
-| `<`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds < `b` seconds             |
-| `<=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds            |
-| `>`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds             |
-| `>=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds            |
-| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, raises if framerates do not match   |
-| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from left         |
-| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from right        |
-| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, raises if framerates do not match |
-| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, inherit framerate from left       |
-| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtration, inherit framerate from right      |
-| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication, rounds to nearest whole-frame |
-| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division, rounds to nearest frame             |
-| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division, rounds down to nearest frame  |
-| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder, returns leftover frames from `DIV` |
+| name  | type     | args                       | result        | description                                     |
+| ----- | -------- | -------------------------- | ------------- | ----------------------------------------------- |
+| `=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds == `b` seconds             |
+| `<`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds < `b` seconds              |
+| `<=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds             |
+| `>`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds              |
+| `>=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds             |
+| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, raises if framerates do not match    |
+| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from left          |
+| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition, inherit framerate from right         |
+| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, raises if framerates do not match |
+| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, inherit framerate from left       |
+| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction, inherit framerate from right      |
+| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication, rounds to nearest whole-frame  |
+| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division, rounds to nearest frame              |
+| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division, rounds down to nearest frame   |
+| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder, returns leftover frames from `DIV`  |
 .
 
 ### Mixed rate arithmetic
