@@ -619,7 +619,7 @@ defmodule Vtc.Framestamp.Range do
   end
 
   # Runs a calculation, converting any ranges in `args` to exclusive out points then,
-  # if the result is also a range, casting it's out point to the same type as the first
+  # if the result is also a range, casting its out point to the same type as the first
   # Range argument in `args`.
   @spec calc_with_exclusive([t()], Framestamp.inherit_opt(), atom(), (... -> result)) :: result when result: any()
   defp calc_with_exclusive(args, inherit_opt, func_name, calc) do

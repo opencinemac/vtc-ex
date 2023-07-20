@@ -560,6 +560,144 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
+  describe "#Postgres ABS/1" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    abs_table = [
+      %{input: "01:00:00:00", expected: "01:00:00:00"},
+      %{input: "-01:00:00:00", expected: "01:00:00:00"}
+    ]
+
+    @tag framestamps: [:input, :expected]
+    table_test "<%= input %>", abs_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query =
+        Query.from(
+          f in fragment("SELECT ABS(?) as r", type(^input, Framestamp)),
+          select: f.r
+        )
+
+      result = Repo.one!(query)
+      check_result(result, expected)
+    end
+
+    @tag framestamps: [:input, :expected]
+    table_test "<%= input %> | @ operator", abs_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query =
+        Query.from(
+          f in fragment("SELECT @? as r", type(^input, Framestamp)),
+          select: f.r
+        )
+
+      result = Repo.one!(query)
+      check_result(result, expected)
+    end
+
+    property "matches Framestamp.abs/1" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        query =
+          Query.from(
+            f in fragment("SELECT ABS(?) as r", type(^framestamp, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        expected = Framestamp.abs(framestamp)
+
+        check_result(result, expected)
+      end
+    end
+
+    property "matches Framestamp.abs/1 | @ operator" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        query =
+          Query.from(
+            f in fragment("SELECT @? as r", type(^framestamp, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        expected = Framestamp.abs(framestamp)
+
+        check_result(result, expected)
+      end
+    end
+
+    property "table fields" do
+      check all(a <- StreamDataVtc.framestamp()) do
+        result =
+          run_schema_arithmetic_test(a, nil, fn query ->
+            Query.select(query, [r], fragment("ABS(?)", r.a))
+          end)
+
+        check_result(result, Framestamp.abs(a))
+      end
+    end
+
+    property "table fields | @ operator" do
+      check all(a <- StreamDataVtc.framestamp()) do
+        result =
+          run_schema_arithmetic_test(a, nil, fn query ->
+            Query.select(query, [r], fragment("@?", r.a))
+          end)
+
+        check_result(result, Framestamp.abs(a))
+      end
+    end
+  end
+
+  describe "#Postgres -/1 (negate)" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    abs_table = [
+      %{input: "01:00:00:00", expected: "-01:00:00:00"},
+      %{input: "-01:00:00:00", expected: "01:00:00:00"}
+    ]
+
+    @tag framestamps: [:input, :expected]
+    table_test "<%= input %>", abs_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query =
+        Query.from(
+          f in fragment("SELECT -? as r", type(^input, Framestamp)),
+          select: f.r
+        )
+
+      result = Repo.one!(query)
+      check_result(result, expected)
+    end
+
+    property "matches Framestamp.abs/1" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        query =
+          Query.from(
+            f in fragment("SELECT -? as r", type(^framestamp, Framestamp)),
+            select: f.r
+          )
+
+        result = Repo.one!(query)
+        expected = Framestamp.minus(framestamp)
+
+        check_result(result, expected)
+      end
+    end
+
+    property "table fields" do
+      check all(a <- StreamDataVtc.framestamp()) do
+        result =
+          run_schema_arithmetic_test(a, nil, fn query ->
+            Query.select(query, [r], fragment("-?", r.a))
+          end)
+
+        check_result(result, Framestamp.minus(a))
+      end
+    end
+  end
+
   describe "Postgres = (equals)" do
     setup context, do: TestCase.setup_framestamps(context)
 
@@ -1412,7 +1550,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
 
   # Runs a test that inserts a records and then queries for that record, returning
   # the result of `select`.
-  @spec run_schema_arithmetic_test(Framestamp.t(), Framestamp.t(), (Queryable.t() -> Query.t())) :: Framestamp.t()
+  @spec run_schema_arithmetic_test(Framestamp.t(), Framestamp.t() | nil, (Queryable.t() -> Query.t())) :: Framestamp.t()
   defp run_schema_arithmetic_test(a, b, select) do
     assert {:ok, %{id: record_id}} =
              %FramestampSchema01{}

@@ -346,7 +346,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @doc """
   Builds an SQL query for creating a new native operator.
   """
-  @spec create_operator(Macro.t(), Macro.t(), Macro.t(), Macro.t(), Macro.t()) :: Macro.t()
+  @spec create_operator(Macro.t(), Macro.t() | nil, Macro.t(), Macro.t(), Macro.t()) :: Macro.t()
   defmacro create_operator(name, left_type, right_type, func_name, opts \\ []) do
     comment = create_comment_string(__CALLER__, :operator)
 
@@ -364,7 +364,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   @doc false
-  @spec create_operator_raw_sql(atom(), atom(), atom(), String.t(), commutator: atom(), negator: atom()) ::
+  @spec create_operator_raw_sql(atom(), atom() | nil, atom(), String.t(), commutator: atom(), negator: atom()) ::
           {raw_sql(), raw_sql()}
   def create_operator_raw_sql(name, left_type, right_type, func_name, opts) do
     {
@@ -382,13 +382,15 @@ defmodule Vtc.Ecto.Postgres.Utils do
     negator = Keyword.get(opts, :negator)
     comment = Keyword.get(opts, :comment)
 
+    left_arg_sql = if is_nil(left_type), do: "NONE", else: "LEFTARG = #{left_type}"
+    left_type_sql = if is_nil(left_type), do: "NONE", else: "#{left_type}"
     commutator_sql = if is_nil(commutator), do: "", else: "COMMUTATOR = #{commutator},"
     negator_sql = if is_nil(negator), do: "", else: "NEGATOR = #{negator},"
 
     """
     DO $wrapper$ BEGIN
       CREATE OPERATOR #{name} (
-        LEFTARG = #{left_type},
+        #{left_arg_sql},
         RIGHTARG = #{right_type},
         #{commutator_sql}
         #{negator_sql}
@@ -396,7 +398,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
       );
 
       COMMENT ON
-      OPERATOR #{name} (#{left_type}, #{right_type})
+      OPERATOR #{name} (#{left_type_sql}, #{right_type})
       IS '#{comment}';
 
     EXCEPTION WHEN duplicate_function
@@ -409,7 +411,13 @@ defmodule Vtc.Ecto.Postgres.Utils do
   # Drops a custom operator.
   #
   # Postgres docs: https://www.postgresql.org/docs/current/sql-dropoperator.html
-  @spec create_operator_raw_sql_down(atom(), atom(), atom()) :: raw_sql()
+  @spec create_operator_raw_sql_down(atom(), atom() | nil, atom()) :: raw_sql()
+  defp create_operator_raw_sql_down(name, nil, right_type) do
+    """
+    DROP OPERATOR #{name} #{right_type});
+    """
+  end
+
   defp create_operator_raw_sql_down(name, left_type, right_type) do
     """
     DROP OPERATOR #{name} (#{left_type}, #{right_type});

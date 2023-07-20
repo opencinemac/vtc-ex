@@ -133,6 +133,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_func_seconds/0,
       &create_func_rate/0,
       &create_func_frames/0,
+      &create_func_abs/0,
       &create_func_eq/0,
       &create_func_neq/0,
       &create_func_strict_eq/0,
@@ -142,6 +143,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_func_gt/0,
       &create_func_gte/0,
       &create_func_cmp/0,
+      &create_func_minus/0,
       &create_func_add/0,
       &create_func_add_inherit_left/0,
       &create_func_add_inherit_right/0,
@@ -160,6 +162,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_op_lte/0,
       &create_op_gt/0,
       &create_op_gte/0,
+      &create_op_abs/0,
+      &create_op_minus/0,
       &create_op_add/0,
       &create_op_add_inherit_left/0,
       &create_op_add_inherit_right/0,
@@ -351,7 +355,29 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       ],
       returns: :bigint,
       body: """
-      RETURN FLOOR(frames_rational);
+      RETURN (frames_rational).numerator / (frames_rational).denominator;
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns the absolute value of the framestamp.
+  """
+  @spec create_func_abs() :: {raw_sql(), raw_sql()}
+  def create_func_abs do
+    Postgres.Utils.create_plpgsql_function(
+      "ABS",
+      args: [value: :framestamp],
+      returns: :framestamp,
+      body: """
+      RETURN (
+        ABS((value).__seconds_n),
+        ABS((value).__seconds_d),
+        (value).__rate_n,
+        (value).__rate_d,
+        (value).__rate_tags
+      );
       """
     )
   end
@@ -522,6 +548,30 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   end
 
   ## ARITHMETIC FUNCTIONS
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `framestamp.__private__minus(value)` that backs unary `-` operator.
+
+  Flips the sign of `value`. Equivalent to `value * -1`.
+  """
+  @spec create_func_minus() :: {raw_sql(), raw_sql()}
+  def create_func_minus do
+    Postgres.Utils.create_plpgsql_function(
+      private_function(:minus, Migration.repo()),
+      args: [value: :framestamp],
+      returns: :framestamp,
+      body: """
+      RETURN (
+        -(value).__seconds_n,
+        (value).__seconds_d,
+        (value).__rate_n,
+        (value).__rate_d,
+        (value).__rate_tags
+      );
+      """
+    )
+  end
 
   @doc section: :migrations_private_functions
   @doc """
@@ -999,6 +1049,38 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   end
 
   ## ARITHMETIC OPERATORS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom unary :framestamp `@` operator.
+
+  Returns the absolute value of the framestamp.
+  """
+  @spec create_op_abs() :: {raw_sql(), raw_sql()}
+  def create_op_abs do
+    Postgres.Utils.create_operator(
+      :@,
+      nil,
+      :framestamp,
+      "ABS"
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom unary :framestamp `-` operator.
+
+  Flips the sign of `value`. Equivalent to `value * -1`.
+  """
+  @spec create_op_minus() :: {raw_sql(), raw_sql()}
+  def create_op_minus do
+    Postgres.Utils.create_operator(
+      :-,
+      nil,
+      :framestamp,
+      private_function(:minus, Migration.repo())
+    )
+  end
 
   @doc section: :migrations_operators
   @doc """
