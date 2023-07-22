@@ -25,8 +25,10 @@ defmodule Vtc.FramerateTest do
           "24/1",
           "24000/1001"
         ],
-        ntsc: :non_drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :non_drop,
+          coerce_ntsc?: true
+        ],
         playback: Ratio.new(24_000, 1001),
         timebase: Ratio.new(24)
       },
@@ -44,8 +46,10 @@ defmodule Vtc.FramerateTest do
           "30/1",
           "30000/1001"
         ],
-        ntsc: :drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: true
+        ],
         playback: Ratio.new(30_000, 1001),
         timebase: Ratio.new(30)
       },
@@ -63,8 +67,10 @@ defmodule Vtc.FramerateTest do
           "60/1",
           "60000/1001"
         ],
-        ntsc: :drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: true
+        ],
         playback: Ratio.new(60_000, 1001),
         timebase: Ratio.new(60)
       },
@@ -74,10 +80,25 @@ defmodule Vtc.FramerateTest do
           Ratio.new(11_000, 1001),
           "11000/1001"
         ],
-        ntsc: :non_drop,
-        coerce_ntsc?: false,
+        opts: [
+          ntsc: :non_drop,
+          coerce_ntsc?: false
+        ],
         playback: Ratio.new(11_000, 1001),
         timebase: Ratio.new(11)
+      },
+      %{
+        name: "24 fps | ntsc not set",
+        inputs: [
+          Ratio.new(24),
+          24,
+          24.0,
+          "24/1",
+          "24.0"
+        ],
+        opts: [],
+        playback: Ratio.new(24),
+        timebase: Ratio.new(24)
       },
       %{
         name: "24 fps",
@@ -88,10 +109,44 @@ defmodule Vtc.FramerateTest do
           "24/1",
           "24.0"
         ],
-        ntsc: nil,
-        coerce_ntsc?: false,
+        opts: [
+          ntsc: nil,
+          coerce_ntsc?: false
+        ],
         playback: Ratio.new(24),
         timebase: Ratio.new(24)
+      },
+      %{
+        name: "23.98 NDF",
+        inputs: [
+          Ratio.new(24_000, 1001),
+          "24000/1001",
+          23.98,
+          23.976,
+          "23.98",
+          "23.976"
+        ],
+        opts: [
+          ntsc: :non_drop,
+          coerce_ntsc?: :if_close
+        ],
+        playback: Ratio.new(24_000, 1001),
+        timebase: Ratio.new(24)
+      },
+      %{
+        name: "29.97 DF",
+        inputs: [
+          Ratio.new(30_000, 1001),
+          "30000/1001",
+          29.97,
+          "29.97"
+        ],
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: :if_close
+        ],
+        playback: Ratio.new(30_000, 1001),
+        timebase: Ratio.new(30)
       },
       %{
         name: "error - non-positive | true",
@@ -104,8 +159,10 @@ defmodule Vtc.FramerateTest do
           "-24/1",
           0.0
         ],
-        ntsc: :non_drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :non_drop,
+          coerce_ntsc?: true
+        ],
         err: %Framerate.ParseError{reason: :non_positive},
         err_msg: "must be positive"
       },
@@ -121,8 +178,10 @@ defmodule Vtc.FramerateTest do
           0.0,
           -23.98
         ],
-        ntsc: :non_drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :non_drop,
+          coerce_ntsc?: true
+        ],
         err: %Framerate.ParseError{reason: :non_positive},
         err_msg: "must be positive"
       },
@@ -138,8 +197,10 @@ defmodule Vtc.FramerateTest do
           0.0,
           -29.97
         ],
-        ntsc: :drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: true
+        ],
         err: %Framerate.ParseError{reason: :non_positive},
         err_msg: "must be positive"
       },
@@ -151,8 +212,10 @@ defmodule Vtc.FramerateTest do
           "24/1",
           "29"
         ],
-        ntsc: :drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: true
+        ],
         err: %Framerate.ParseError{reason: :bad_drop_rate},
         err_msg: "drop-frame rates must be divisible by 30000/1001"
       },
@@ -161,8 +224,10 @@ defmodule Vtc.FramerateTest do
         inputs: [
           "notarate"
         ],
-        ntsc: :drop,
-        coerce_ntsc?: true,
+        opts: [
+          ntsc: :drop,
+          coerce_ntsc?: true
+        ],
         err: %Framerate.ParseError{reason: :unrecognized_format},
         err_msg: "framerate string format not recognized"
       },
@@ -171,8 +236,10 @@ defmodule Vtc.FramerateTest do
         inputs: [
           24
         ],
-        ntsc: :NotAnNtsc,
-        coerce_ntsc?: false,
+        opts: [
+          ntsc: :NotAnNtsc,
+          coerce_ntsc?: false
+        ],
         err: %Framerate.ParseError{reason: :invalid_ntsc},
         err_msg: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
       },
@@ -182,10 +249,38 @@ defmodule Vtc.FramerateTest do
           23.98,
           "23.98"
         ],
-        ntsc: nil,
-        coerce_ntsc?: false,
+        opts: [
+          ntsc: nil,
+          coerce_ntsc?: false
+        ],
         err: %Framerate.ParseError{reason: :imprecise},
         err_msg: "non-whole floats are not precise enough to create a non-NTSC Framerate"
+      },
+      %{
+        name: "error - coerce_requires_ntsc",
+        inputs: [
+          23.98,
+          "23.98"
+        ],
+        opts: [
+          ntsc: nil,
+          coerce_ntsc?: true
+        ],
+        err: %Framerate.ParseError{reason: :coerce_requires_ntsc},
+        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_close`, `:ntsc` must be non-nil`"
+      },
+      %{
+        name: "error - coerce_requires_ntsc",
+        inputs: [
+          23.98,
+          "23.98"
+        ],
+        opts: [
+          ntsc: nil,
+          coerce_ntsc?: :if_close
+        ],
+        err: %Framerate.ParseError{reason: :coerce_requires_ntsc},
+        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_close`, `:ntsc` must be non-nil`"
       }
     ]
 
@@ -196,10 +291,10 @@ defmodule Vtc.FramerateTest do
         end
       end)
 
-    table_test "new/1 | <%= name %>", new_table, test_case do
-      %{input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
+    table_test "new/1 | <%= name %> | input: <%= input %> | opts: <%= opts %>", new_table, test_case do
+      %{input: input, opts: opts} = test_case
 
-      case Framerate.new(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) do
+      case Framerate.new(input, opts) do
         {:ok, rate} ->
           check_parsed(test_case, rate)
 
@@ -217,26 +312,64 @@ defmodule Vtc.FramerateTest do
       end
     end
 
-    table_test "new!/1 | <%= name %>", new_table, test_case do
-      %{test_case: test_case, input: input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?} = test_case
+    table_test "new!/1 | <%= name %> | input: <%= input %> | opts: <%= opts %>", new_table, test_case do
+      %{test_case: test_case, input: input, opts: opts} = test_case
 
       if is_map_key(test_case, :err) do
-        function = fn -> Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?) end
+        function = fn -> Framerate.new!(input, opts) end
         assert_raise Framerate.ParseError, function
       else
-        rate = Framerate.new!(input, ntsc: ntsc, coerce_ntsc?: coerce_ntsc?)
+        rate = Framerate.new!(input, opts)
         check_parsed(test_case, rate)
       end
     end
 
-    coerce_ntsc_table = [
+    coerce_if_close_table = [
+      %{input: Ratio.new(24_000, 1001), expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: "24000/1001", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: 24_000 / 1001, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: "#{24_000 / 1001}", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: 23.976, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: "23.976", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: 23.98, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: "23.98", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
+      %{input: Ratio.new(23_999, 1001), expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}},
+      %{input: "23999/1001", expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}},
+      %{input: Ratio.new(24_001, 1001), expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}},
+      %{input: "24001/1001", expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}},
+      %{input: 23.977, expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
+      %{input: "23.977", expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
+      %{input: 23.975, expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
+      %{input: "23.975", expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
+      %{input: 23.99, expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
+      %{input: "23.99", expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
+      %{input: 23.97, expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
+      %{input: "23.97", expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
+      %{input: 23.9, expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
+      %{input: "23.9", expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
+      %{input: 23, expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
+      %{input: "23", expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
+      %{input: 24, expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
+      %{input: "24", expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
+      %{input: 24.0, expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}},
+      %{input: "24.0", expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}}
+    ]
+
+    table_test "<%= input %> | coerce_ntsc? | :if_close", coerce_if_close_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      assert {:ok, framerate} = Framerate.new(input, ntsc: :non_drop, coerce_ntsc?: :if_close)
+      assert framerate == expected
+    end
+
+    coerce_ntsc_true_table = [
       %{input: Ratio.new(24_000, 1002)},
       %{input: 24},
       %{input: 24_000 / 1002},
       %{input: 24_000 / 1001}
     ]
 
-    table_test "coerce_ntsc?: error on <%= input %>", coerce_ntsc_table, test_case do
+    table_test "coerce_ntsc? | true | error on <%= input %>", coerce_ntsc_true_table, test_case do
       %{input: input} = test_case
       expected_message = "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
@@ -247,9 +380,9 @@ defmodule Vtc.FramerateTest do
 
     @spec check_parsed(map(), Framerate.t()) :: nil
     defp check_parsed(test_case, parsed) do
-      assert test_case.playback == parsed.playback
-      assert test_case.timebase == Framerate.smpte_timebase(parsed)
-      assert test_case.ntsc == parsed.ntsc
+      assert parsed.playback == test_case.playback
+      assert Framerate.smpte_timebase(parsed) == test_case.timebase
+      assert parsed.ntsc == Keyword.get(test_case.opts, :ntsc, nil)
     end
 
     property "parse NTSC, non-drop rates" do

@@ -113,7 +113,13 @@ defmodule Vtc.Framestamp.Eval do
   def setup_rate(%Framerate{} = rate, _), do: rate
 
   def setup_rate(rate, opts) do
-    opts = if is_float(rate), do: Keyword.put_new(opts, :coerce_ntsc?, true), else: opts
+    opts =
+      if is_float(rate) do
+        opts |> Keyword.put_new(:coerce_ntsc?, true) |> Keyword.put_new(:ntsc, :non_drop)
+      else
+        opts
+      end
+
     Framerate.new!(rate, opts)
   end
 
