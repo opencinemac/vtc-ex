@@ -128,7 +128,7 @@ defmodule Vtc.FramerateTest do
         ],
         opts: [
           ntsc: :non_drop,
-          coerce_ntsc?: :if_close
+          coerce_ntsc?: :if_trunc
         ],
         playback: Ratio.new(24_000, 1001),
         timebase: Ratio.new(24)
@@ -143,7 +143,7 @@ defmodule Vtc.FramerateTest do
         ],
         opts: [
           ntsc: :drop,
-          coerce_ntsc?: :if_close
+          coerce_ntsc?: :if_trunc
         ],
         playback: Ratio.new(30_000, 1001),
         timebase: Ratio.new(30)
@@ -267,7 +267,7 @@ defmodule Vtc.FramerateTest do
           coerce_ntsc?: true
         ],
         err: %Framerate.ParseError{reason: :coerce_requires_ntsc},
-        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_close`, `:ntsc` must be non-nil`"
+        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_trunc`, `:ntsc` must be non-nil`"
       },
       %{
         name: "error - coerce_requires_ntsc",
@@ -277,10 +277,10 @@ defmodule Vtc.FramerateTest do
         ],
         opts: [
           ntsc: nil,
-          coerce_ntsc?: :if_close
+          coerce_ntsc?: :if_trunc
         ],
         err: %Framerate.ParseError{reason: :coerce_requires_ntsc},
-        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_close`, `:ntsc` must be non-nil`"
+        err_msg: "when `:coerce_ntsc?` is set to `true` or `:if_trunc`, `:ntsc` must be non-nil`"
       }
     ]
 
@@ -324,41 +324,80 @@ defmodule Vtc.FramerateTest do
       end
     end
 
-    coerce_if_close_table = [
-      %{input: Ratio.new(24_000, 1001), expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: "24000/1001", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: 24_000 / 1001, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: "#{24_000 / 1001}", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: 23.976, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: "23.976", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: 23.98, expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: "23.98", expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}},
-      %{input: Ratio.new(23_999, 1001), expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}},
-      %{input: "23999/1001", expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}},
-      %{input: Ratio.new(24_001, 1001), expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}},
-      %{input: "24001/1001", expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}},
-      %{input: 23.977, expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
-      %{input: "23.977", expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
-      %{input: 23.975, expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
-      %{input: "23.975", expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
-      %{input: 23.99, expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
-      %{input: "23.99", expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
-      %{input: 23.97, expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
-      %{input: "23.97", expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
-      %{input: 23.9, expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
-      %{input: "23.9", expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
-      %{input: 23, expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
-      %{input: "23", expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
-      %{input: 24, expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
-      %{input: "24", expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
-      %{input: 24.0, expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}},
-      %{input: "24.0", expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}}
-    ]
+    coerce_if_close_non_drop_table =
+      Enum.flat_map(
+        [
+          %{
+            ntsc: :non_drop,
+            inputs: [
+              Ratio.new(24_000, 1001),
+              24_000 / 1001,
+              "#{24_000 / 1001}",
+              23.976,
+              "23.976",
+              23.98,
+              "23.98"
+            ],
+            expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}
+          },
+          %{
+            ntsc: :non_drop,
+            inputs: [Ratio.new(23_999, 1001)],
+            expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}
+          },
+          %{
+            ntsc: :non_drop,
+            inputs: [Ratio.new(24_001, 1001)],
+            expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}
+          },
+          %{ntsc: :non_drop, inputs: [23.977, "23.977"], expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [23.975, "23.975"], expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [23.99, "23.99"], expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [23.97, "23.97"], expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [23.9, "23.9"], expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [23, "23", "23/1"], expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [24, "24", "24/1"], expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
+          %{ntsc: :non_drop, inputs: [24.0, "24.0"], expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}},
+          %{
+            ntsc: :drop,
+            inputs: [
+              Ratio.new(30_000, 1001),
+              30_000 / 1001,
+              "#{30_000 / 1001}",
+              29.97,
+              "29.97"
+            ],
+            expected: %Framerate{playback: Ratio.new(30_000, 1001), ntsc: :drop}
+          },
+          %{ntsc: :drop, inputs: [29.98, "29.98"], expected: %Framerate{playback: Ratio.new(29.98), ntsc: nil}},
+          %{ntsc: :drop, inputs: [29.96, "29.96"], expected: %Framerate{playback: Ratio.new(29.96), ntsc: nil}},
+          %{ntsc: :drop, inputs: [29.9, "29.9"], expected: %Framerate{playback: Ratio.new(29.9), ntsc: nil}}
+        ],
+        fn test_case ->
+          Enum.flat_map(test_case.inputs, fn
+            input when is_float(input) ->
+              ratio = Ratio.new(input)
+              ratio_str = then(ratio, &"#{&1.numerator}/#{&1.denominator}")
 
-    table_test "<%= input %> | coerce_ntsc? | :if_close", coerce_if_close_table, test_case do
-      %{input: input, expected: expected} = test_case
+              for input <- [input, ratio, ratio_str] do
+                Map.put(test_case, :input, input)
+              end
 
-      assert {:ok, framerate} = Framerate.new(input, ntsc: :non_drop, coerce_ntsc?: :if_close)
+            %Ratio{} = input ->
+              for input <- [input, "#{input.numerator}/#{input.denominator}"] do
+                Map.put(test_case, :input, input)
+              end
+
+            input ->
+              [Map.put(test_case, :input, input)]
+          end)
+        end
+      )
+
+    table_test "<%= input %> | coerce_ntsc? | :if_trunc, :non_drop", coerce_if_close_non_drop_table, test_case do
+      %{ntsc: ntsc, input: input, expected: expected} = test_case
+
+      assert {:ok, framerate} = Framerate.new(input, ntsc: ntsc, coerce_ntsc?: :if_trunc)
       assert framerate == expected
     end
 

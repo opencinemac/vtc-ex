@@ -47,7 +47,7 @@ defmodule Vtc.Framerate.ParseError do
   def message(%{reason: :invalid_ntsc}), do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
 
   def message(%{reason: :coerce_requires_ntsc}),
-    do: "when `:coerce_ntsc?` is set to `true` or `:if_close`, `:ntsc` must be non-nil`"
+    do: "when `:coerce_ntsc?` is set to `true` or `:if_trunc`, `:ntsc` must be non-nil`"
 
   def message(%{reason: :unrecognized_format}), do: "framerate string format not recognized"
   def message(%{reason: :imprecise}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"

@@ -81,7 +81,7 @@ defmodule Vtc.Framerate do
   @typedoc """
   Type for `new/2` `coerce_ntsc?` option.
   """
-  @type new_opt_coerce_ntsc?() :: boolean() | :if_close
+  @type new_opt_coerce_ntsc?() :: boolean() | :if_trunc
 
   @typedoc """
   Options for `new/2` and `new!/2`.
@@ -118,7 +118,7 @@ defmodule Vtc.Framerate do
     - `false`: Do not coerce value. Passed value must conform exactly to a valid NTSC
       framerate.
 
-    - `:if_close`: Will coerce value to a valid NTSC rate using the `ntsc` opt value
+    - `:if_trunc`: Will coerce value to a valid NTSC rate using the `ntsc` opt value
       *if* the below criteria are met. If the criteria are not met, the value will be
       parsed *as-is* with `ntsc` set to `nil`:
 
@@ -129,9 +129,14 @@ defmodule Vtc.Framerate do
       - The incoming value is a Rational, and precisely represents a valid NTSC
         framerate.
 
+      - The incoming value is a Rational, that when cast to float, matches the above
+        criteria.
+
+      - The incoming value is a string representation of any of the above.
+
     - `allow_fractional_float?`: If `true`, will allow non-integer float values to be
       converted to Rational values when parsing framerates. Can be combined with
-      `:if_close` to parse floating point values, coercing to NTSC if it appears to be
+      `:if_trunc` to parse floating point values, coercing to NTSC if it appears to be
       an abbreviated NTSC value.
 
   - `invert?`: If `true`, the resulting rational `rate` value will be flipped so that
@@ -221,7 +226,7 @@ defmodule Vtc.Framerate do
   @spec validate_coerce_ntsc_opts(ntsc(), new_opt_coerce_ntsc?()) :: :ok | {:error, ParseError.t()}
   defp validate_coerce_ntsc_opts(_, false), do: :ok
 
-  defp validate_coerce_ntsc_opts(ntsc, coerce_ntsc?) when ntsc in @valid_ntsc and coerce_ntsc? in [:if_close, true],
+  defp validate_coerce_ntsc_opts(ntsc, coerce_ntsc?) when ntsc in @valid_ntsc and coerce_ntsc? in [:if_trunc, true],
     do: :ok
 
   defp validate_coerce_ntsc_opts(_, _), do: {:error, %ParseError{reason: :coerce_requires_ntsc}}
@@ -231,7 +236,7 @@ defmodule Vtc.Framerate do
   @spec validate_float(Ratio.t() | number(), ntsc(), new_opt_coerce_ntsc?()) :: :ok | {:error, ParseError.t()}
   defp validate_float(value, ntsc, _) when not is_float(value) or ntsc in @valid_ntsc, do: :ok
   defp validate_float(value, nil, _) when floor(value) == value, do: :ok
-  defp validate_float(_, _, coerce_ntsc?) when coerce_ntsc? in [true, :if_close], do: :ok
+  defp validate_float(_, _, coerce_ntsc?) when coerce_ntsc? in [true, :if_trunc], do: :ok
   defp validate_float(_, _, _), do: {:error, %ParseError{reason: :imprecise}}
 
   # Validates that the rate is positive.
@@ -258,20 +263,20 @@ defmodule Vtc.Framerate do
         ) :: {:ok, Ratio.t(), ntsc() | nil} | {:error, ParseError.t()}
   defp coerce_ntsc_rate(rate, _, nil, false), do: {:ok, rate, nil}
 
-  defp coerce_ntsc_rate(rate, input, ntsc, coerce?) when coerce? in [true, :if_close] do
+  defp coerce_ntsc_rate(rate, input, ntsc, coerce?) when coerce? in [true, :if_trunc] do
     rate_coerced = rate |> Rational.round() |> Ratio.new() |> Ratio.mult(Ratio.new(1000, 1001))
 
     return_coerced? =
       cond do
         coerce? == true -> true
-        is_struct(input, Ratio) -> input == rate_coerced
+        is_struct(input, Ratio) -> input == rate_coerced or coerce_close_float?(Ratio.to_float(input), rate_coerced)
         is_integer(input) -> false
         is_float(input) -> coerce_close_float?(input, rate_coerced)
       end
 
     cond do
       return_coerced? -> {:ok, rate_coerced, ntsc}
-      coerce? == :if_close -> {:ok, rate, nil}
+      coerce? == :if_trunc -> {:ok, rate, nil}
       true -> {:error, %ParseError{reason: :invalid_ntsc_rate}}
     end
   end
@@ -287,7 +292,7 @@ defmodule Vtc.Framerate do
   end
 
   # Checks if a float is close enough to a valid NTSC representation to be coerced when
-  # `:coerce_ntsc?` is set to `:if_close`.
+  # `:coerce_ntsc?` is set to `:if_trunc`.
   @spec coerce_close_float?(float(), Ratio.t()) :: boolean()
   defp coerce_close_float?(input, rate_coerced) do
     float_str = Float.to_string(input)
