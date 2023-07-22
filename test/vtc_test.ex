@@ -1,4 +1,5 @@
 defmodule VtcTest do
+  @moduledoc false
   use Vtc.Test.Support.TestCase
 
   alias Vtc.Framerate
