@@ -237,7 +237,7 @@ defmodule Vtc.Framerate do
   defp validate_float(value, ntsc, _) when not is_float(value) or ntsc in @valid_ntsc, do: :ok
   defp validate_float(value, nil, _) when floor(value) == value, do: :ok
   defp validate_float(_, _, coerce_ntsc?) when coerce_ntsc? in [true, :if_trunc], do: :ok
-  defp validate_float(_, _, _), do: {:error, %ParseError{reason: :imprecise}}
+  defp validate_float(_, _, _), do: {:error, %ParseError{reason: :imprecise_float}}
 
   # Validates that the rate is positive.
   @spec validate_positive(Ratio.t()) :: :ok | {:error, ParseError.t()}
