@@ -325,74 +325,77 @@ defmodule Vtc.FramerateTest do
     end
 
     coerce_if_close_non_drop_table =
-      Enum.flat_map(
-        [
-          %{
-            ntsc: :non_drop,
-            inputs: [
-              Ratio.new(24_000, 1001),
-              24_000 / 1001,
-              "#{24_000 / 1001}",
-              23.976,
-              "23.976",
-              23.98,
-              "23.98"
-            ],
-            expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}
-          },
-          %{
-            ntsc: :non_drop,
-            inputs: [Ratio.new(23_999, 1001)],
-            expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}
-          },
-          %{
-            ntsc: :non_drop,
-            inputs: [Ratio.new(24_001, 1001)],
-            expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}
-          },
-          %{ntsc: :non_drop, inputs: [23.977, "23.977"], expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [23.975, "23.975"], expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [23.99, "23.99"], expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [23.97, "23.97"], expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [23.9, "23.9"], expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [23, "23", "23/1"], expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [24, "24", "24/1"], expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
-          %{ntsc: :non_drop, inputs: [24.0, "24.0"], expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}},
-          %{
-            ntsc: :drop,
-            inputs: [
-              Ratio.new(30_000, 1001),
-              30_000 / 1001,
-              "#{30_000 / 1001}",
-              29.97,
-              "29.97"
-            ],
-            expected: %Framerate{playback: Ratio.new(30_000, 1001), ntsc: :drop}
-          },
-          %{ntsc: :drop, inputs: [29.98, "29.98"], expected: %Framerate{playback: Ratio.new(29.98), ntsc: nil}},
-          %{ntsc: :drop, inputs: [29.96, "29.96"], expected: %Framerate{playback: Ratio.new(29.96), ntsc: nil}},
-          %{ntsc: :drop, inputs: [29.9, "29.9"], expected: %Framerate{playback: Ratio.new(29.9), ntsc: nil}}
-        ],
-        fn test_case ->
-          Enum.flat_map(test_case.inputs, fn
-            input when is_float(input) ->
+      [
+        %{
+          ntsc: :non_drop,
+          inputs: [
+            Ratio.new(24_000, 1001),
+            24_000 / 1001,
+            "#{24_000 / 1001}",
+            23.976,
+            "23.976",
+            23.98,
+            "23.98"
+          ],
+          expected: %Framerate{playback: Ratio.new(24_000, 1001), ntsc: :non_drop}
+        },
+        %{
+          ntsc: :non_drop,
+          inputs: [Ratio.new(23_999, 1001)],
+          expected: %Framerate{playback: Ratio.new(23_999, 1001), ntsc: nil}
+        },
+        %{
+          ntsc: :non_drop,
+          inputs: [Ratio.new(24_001, 1001)],
+          expected: %Framerate{playback: Ratio.new(24_001, 1001), ntsc: nil}
+        },
+        %{ntsc: :non_drop, inputs: [23.977, "23.977"], expected: %Framerate{playback: Ratio.new(23.977), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [23.975, "23.975"], expected: %Framerate{playback: Ratio.new(23.975), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [23.99, "23.99"], expected: %Framerate{playback: Ratio.new(23.99), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [23.97, "23.97"], expected: %Framerate{playback: Ratio.new(23.97), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [23.9, "23.9"], expected: %Framerate{playback: Ratio.new(23.9), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [23, "23", "23/1"], expected: %Framerate{playback: Ratio.new(23), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [24, "24", "24/1"], expected: %Framerate{playback: Ratio.new(24), ntsc: nil}},
+        %{ntsc: :non_drop, inputs: [24.0, "24.0"], expected: %Framerate{playback: Ratio.new(24.0), ntsc: nil}},
+        %{
+          ntsc: :drop,
+          inputs: [
+            Ratio.new(30_000, 1001),
+            30_000 / 1001,
+            "#{30_000 / 1001}",
+            29.97,
+            "29.97"
+          ],
+          expected: %Framerate{playback: Ratio.new(30_000, 1001), ntsc: :drop}
+        },
+        %{ntsc: :drop, inputs: [29.98, "29.98"], expected: %Framerate{playback: Ratio.new(29.98), ntsc: nil}},
+        %{ntsc: :drop, inputs: [29.96, "29.96"], expected: %Framerate{playback: Ratio.new(29.96), ntsc: nil}},
+        %{ntsc: :drop, inputs: [29.9, "29.9"], expected: %Framerate{playback: Ratio.new(29.9), ntsc: nil}}
+      ]
+      |> Enum.flat_map(fn test_case ->
+        for input <- test_case.inputs do
+          Map.put(test_case, :input, input)
+        end
+      end)
+      |> Enum.flat_map(fn test_case ->
+        inputs =
+          case test_case do
+            %{input: input} when is_float(input) ->
               ratio = Ratio.new(input)
               ratio_str = then(ratio, &"#{&1.numerator}/#{&1.denominator}")
+              [input, ratio, ratio_str]
 
-              for input <- [input, ratio, ratio_str] do
-                Map.put(test_case, :input, input)
-              end
+            %{input: %Ratio{} = input} ->
+              [input, "#{input.numerator}/#{input.denominator}"]
 
-            %Ratio{} = input ->
-              for input <- [input, "#{input.numerator}/#{input.denominator}"] do
-                Map.put(test_case, :input, input)
-              end
+            %{input: input} ->
+              [input]
+          end
 
-            input ->
-              [Map.put(test_case, :input, input)]
-          end)
+        for input <- inputs do
+          Map.put(test_case, :input, input)
         end
-      )
+      end)
 
     table_test "<%= input %> | coerce_ntsc? | :if_trunc, :non_drop", coerce_if_close_non_drop_table, test_case do
       %{ntsc: ntsc, input: input, expected: expected} = test_case
