@@ -382,7 +382,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
     negator = Keyword.get(opts, :negator)
     comment = Keyword.get(opts, :comment)
 
-    left_arg_sql = if is_nil(left_type), do: "", else: "LEFTARG = #{left_type},"
+    left_arg_sql = if is_nil(left_type), do: "NONE", else: "LEFTARG = #{left_type}"
     left_type_sql = if is_nil(left_type), do: "NONE", else: "#{left_type}"
     commutator_sql = if is_nil(commutator), do: "", else: "COMMUTATOR = #{commutator},"
     negator_sql = if is_nil(negator), do: "", else: "NEGATOR = #{negator},"
@@ -390,7 +390,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
     """
     DO $wrapper$ BEGIN
       CREATE OPERATOR #{name} (
-        #{left_arg_sql}
+        #{left_arg_sql},
         RIGHTARG = #{right_type},
         #{commutator_sql}
         #{negator_sql}
@@ -414,7 +414,7 @@ defmodule Vtc.Ecto.Postgres.Utils do
   @spec create_operator_raw_sql_down(atom(), atom() | nil, atom()) :: raw_sql()
   defp create_operator_raw_sql_down(name, nil, right_type) do
     """
-    DROP OPERATOR #{name} (NONE, #{right_type});
+    DROP OPERATOR #{name} #{right_type});
     """
   end
 
