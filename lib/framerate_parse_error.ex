@@ -31,25 +31,31 @@ defmodule Vtc.Framerate.ParseError do
   """
   @type t() :: %__MODULE__{
           reason:
-            :non_positive
-            | :bad_drop_rate
-            | :invalid_ntsc
-            | :invalid_ntsc_rate
+            :invalid_ntsc
+            | :coerce_requires_ntsc
             | :unrecognized_format
             | :imprecise
+            | :non_positive
+            | :invalid_ntsc_rate
+            | :bad_drop_rate
         }
 
   @doc """
   Returns a message for the error reason.
   """
   @spec message(t()) :: String.t()
-  def message(%{reason: :non_positive}), do: "must be positive"
-  def message(%{reason: :bad_drop_rate}), do: "drop-frame rates must be divisible by 30000/1001"
   def message(%{reason: :invalid_ntsc}), do: "ntsc is not a valid atom. must be :non_drop, :drop, or nil"
+
+  def message(%{reason: :coerce_requires_ntsc}),
+    do: "when `:coerce_ntsc?` is set to `true` or `:if_trunc`, `:ntsc` must be non-nil`"
+
+  def message(%{reason: :unrecognized_format}), do: "framerate string format not recognized"
+  def message(%{reason: :imprecise}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
+
+  def message(%{reason: :non_positive}), do: "must be positive"
 
   def message(%{reason: :invalid_ntsc_rate}),
     do: "NTSC rates must be equivalent to `(timebase * 1000)/1001` when :coerce_ntsc? is false"
 
-  def message(%{reason: :unrecognized_format}), do: "framerate string format not recognized"
-  def message(%{reason: :imprecise}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
+  def message(%{reason: :bad_drop_rate}), do: "drop-frame rates must be divisible by 30000/1001"
 end
