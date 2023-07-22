@@ -253,7 +253,7 @@ defmodule Vtc.FramerateTest do
           ntsc: nil,
           coerce_ntsc?: false
         ],
-        err: %Framerate.ParseError{reason: :imprecise},
+        err: %Framerate.ParseError{reason: :imprecise_float},
         err_msg: "non-whole floats are not precise enough to create a non-NTSC Framerate"
       },
       %{

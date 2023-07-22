@@ -20,7 +20,7 @@ defmodule Vtc.Framerate.ParseError do
 
   - `:unrecognized_format`: Returned when a string value is not a recognized format.
 
-  - `:imprecise` - Returned when a float was passed with an NTSC value of nil.
+  - `:imprecise_float` - Returned when a float was passed with an NTSC value of nil.
     Without the ability to round to the nearest valid NTSC value, floats are not
     precise enough to build an arbitrary framerate.
   """
@@ -34,7 +34,7 @@ defmodule Vtc.Framerate.ParseError do
             :invalid_ntsc
             | :coerce_requires_ntsc
             | :unrecognized_format
-            | :imprecise
+            | :imprecise_float
             | :non_positive
             | :invalid_ntsc_rate
             | :bad_drop_rate
@@ -50,7 +50,7 @@ defmodule Vtc.Framerate.ParseError do
     do: "when `:coerce_ntsc?` is set to `true` or `:if_trunc`, `:ntsc` must be non-nil`"
 
   def message(%{reason: :unrecognized_format}), do: "framerate string format not recognized"
-  def message(%{reason: :imprecise}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
+  def message(%{reason: :imprecise_float}), do: "non-whole floats are not precise enough to create a non-NTSC Framerate"
 
   def message(%{reason: :non_positive}), do: "must be positive"
 
