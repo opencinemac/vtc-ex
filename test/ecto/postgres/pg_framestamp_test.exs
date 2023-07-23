@@ -649,6 +649,73 @@ defmodule Vtc.Ecto.Postgres.PgFramestampTest do
     end
   end
 
+  describe "#Postgres SIGN/1" do
+    setup context, do: TestCase.setup_framestamps(context)
+
+    @describetag framestamps: [:input]
+
+    abs_table = [
+      %{input: "-01:00:00:00", expected: -1},
+      %{input: "00:00:00:00", expected: 0},
+      %{input: "01:00:00:00", expected: 1}
+    ]
+
+    table_test "<%= input %>", abs_table, test_case do
+      %{input: input, expected: expected} = test_case
+
+      query =
+        Query.from(
+          f in fragment("SELECT SIGN(?) as r", type(^input, Framestamp)),
+          select: f.r
+        )
+
+      assert Repo.one!(query) == expected
+    end
+
+    property "matches expected" do
+      check all(framestamp <- StreamDataVtc.framestamp()) do
+        expected =
+          case Ratio.compare(framestamp.seconds, Ratio.new(0)) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
+
+        query =
+          Query.from(
+            f in fragment("SELECT SIGN(?) as r", type(^framestamp, Framestamp)),
+            select: f.r
+          )
+
+        assert Repo.one!(query) == expected
+      end
+    end
+
+    property "table fields" do
+      check all(a <- StreamDataVtc.framestamp()) do
+        expected =
+          case Ratio.compare(a.seconds, Ratio.new(0)) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
+
+        assert {:ok, %{id: record_id}} =
+                 %FramestampSchema01{}
+                 |> FramestampSchema01.changeset(%{a: a, b: nil})
+                 |> Repo.insert()
+
+        result =
+          FramestampSchema01
+          |> Query.select([r], fragment("SIGN(?)", r.a))
+          |> Query.where([r], r.id == ^record_id)
+          |> Repo.one!()
+
+        assert result == expected
+      end
+    end
+  end
+
   describe "#Postgres -/1 (negate)" do
     setup context, do: TestCase.setup_framestamps(context)
 
