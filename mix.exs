@@ -28,7 +28,7 @@ defmodule Vtc.MixProject do
           "CONTRIBUTING.md"
         ],
         groups_for_modules: [
-          "Core API": [Vtc.Framestamp, Vtc.Framerate, Vtc.Framestamp.Range],
+          "Core API": [Vtc.Framestamp, Vtc.Framerate, Vtc.Framestamp.Range, Vtc],
           Data: [Vtc.SMPTETimecode.Sections, Vtc.Rates, Vtc.FilmFormat],
           "Frames Formats": [Frames.FeetAndFrames, Frames.SMPTETimecodeStr],
           "Seconds Formats": [Seconds.PremiereTicks, Seconds.RuntimeStr],
