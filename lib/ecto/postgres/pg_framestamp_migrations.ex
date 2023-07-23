@@ -134,6 +134,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       &create_func_rate/0,
       &create_func_frames/0,
       &create_func_abs/0,
+      &create_func_sign/0,
       &create_func_eq/0,
       &create_func_neq/0,
       &create_func_strict_eq/0,
@@ -378,6 +379,26 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         (value).__rate_d,
         (value).__rate_tags
       );
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Returns:
+
+    - `-1` if the framestamp's seconds value is less than`0/1`.
+    - `0` if the framestamp's seconds value is `0/1`.
+    - `1` if the framestamp's seconds value is greater than`0/1`.
+  """
+  @spec create_func_sign() :: {raw_sql(), raw_sql()}
+  def create_func_sign do
+    Postgres.Utils.create_plpgsql_function(
+      "SIGN",
+      args: [input: :framestamp],
+      returns: :integer,
+      body: """
+      RETURN SIGN((input).__seconds_n * (input).__seconds_d);
       """
     )
   end
