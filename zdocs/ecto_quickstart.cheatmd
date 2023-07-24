@@ -323,26 +323,27 @@ Output:
 ## Framestamp Postgres operators
 
 #### Available operators
-| name  | type     | args                       | result        | description                                     |
-| ----- | -------- | -------------------------- | ------------- | ----------------------------------------------- |
-| `=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds == `b` seconds             |
-| `<`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds < `b` seconds              |
-| `<=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds             |
-| `>`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds              |
-| `>=`  | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds             |
-| `ABS` | function | `framestamp`               |  `framestamp` |  absolute value                                 |
-| `@`   | operator | `framestamp`               |  `framestamp` |  absolute value                                 |
-| `-`   | function | `framestamp`               |  `framestamp` |  negate. flips input's sign                     |
-| `+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. raises if framerates do not match    |
-| `@+`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from left          |
-| `+@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from right         |
-| `-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. raises if framerates do not match |
-| `@-`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from left       |
-| `-@`  | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from right      |
-| `*`   | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication. rounds to nearest whole-frame  |
-| `/`   | operator | `framestamp`, `rational`   |  `framestamp` |  division. rounds to nearest frame              |
-| `DIV` | function | `framestamp`, `rational`   |  `framestamp` |  floor-division. rounds down to nearest frame   |
-| `%`   | operator | `framestamp`, `rational`   |  `framestamp` |  remainder. returns leftover frames from `DIV`  |
+| name   | type     | args                       | result        | description                                     |
+| ------ | -------- | -------------------------- | ------------- | ----------------------------------------------- |
+| `=`    | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds == `b` seconds             |
+| `<`    | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds < `b` seconds              |
+| `<=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds <= `b` seconds             |
+| `>`    | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds > `b` seconds              |
+| `>=`   | operator | `framestamp`, `framestamp` |  `boolean`    |  true if `a` seconds >= `b` seconds             |
+| `ABS`  | function | `framestamp`               |  `framestamp` |  absolute value                                 |
+| `SIGN` | function | `framestamp`               |  `integer`    |  returns -1, 0, or 1 based on comparison to `0` |
+| `@`    | operator | `framestamp`               |  `framestamp` |  absolute value                                 |
+| `-`    | function | `framestamp`               |  `framestamp` |  negate. flips input's sign                     |
+| `+`    | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. raises if framerates do not match    |
+| `@+`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from left          |
+| `+@`   | operator | `framestamp`, `framestamp` |  `framestamp` |  addition. inherit framerate from right         |
+| `-`    | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. raises if framerates do not match |
+| `@-`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from left       |
+| `-@`   | operator | `framestamp`, `framestamp` |  `framestamp` |  subtraction. inherit framerate from right      |
+| `*`    | operator | `framestamp`, `rational`   |  `framestamp` |  multiplication. rounds to nearest whole-frame  |
+| `/`    | operator | `framestamp`, `rational`   |  `framestamp` |  division. rounds to nearest frame              |
+| `DIV`  | function | `framestamp`, `rational`   |  `framestamp` |  floor-division. rounds down to nearest frame   |
+| `%`    | operator | `framestamp`, `rational`   |  `framestamp` |  remainder. returns leftover frames from `DIV`  |
 .
 
 ### Mixed rate arithmetic
@@ -383,3 +384,24 @@ Output:
  ("(36036,5)","(""(48000,1001)"",{non_drop})")
 (1 row)
 ```
+
+## Rational Postgres operators
+
+#### Available operators
+| name   | type     | args                   | result      | description                                           |
+| ------ | -------- | ---------------------- | ----------- | ----------------------------------------------------- |
+| `=`    | operator | `rational`, `rational` |  `boolean`  |  true if `a` == `b`                                   |
+| `<`    | operator | `rational`, `rational` |  `boolean`  |  true if `a` < `b`                                    |
+| `<=`   | operator | `rational`, `rational` |  `boolean`  |  true if `a` <= `b`                                   |
+| `>`    | operator | `rational`, `rational` |  `boolean`  |  true if `a` > `b`                                    |
+| `>=`   | operator | `rational`, `rational` |  `boolean`  |  true if `a` >= `b`                                   |
+| `ABS`  | function | `rational`             |  `rational` |  absolute value                                       |
+| `SIGN` | function | `rational`             |  `integer`  |  returns `-1`, `0`, or `1` based on comparison to `0` |
+| `@`    | operator | `rational`             |  `rational` |  absolute value                                       |
+| `-`    | function | `rational`             |  `rational` |  negate. flips input's sign                           |
+| `+`    | operator | `rational`, `rational` |  `rational` |  addition                                             |
+| `-`    | operator | `rational`, `rational` |  `rational` |  subtraction                                          |
+| `*`    | operator | `rational`, `rational` |  `rational` |  multiplication                                       |
+| `/`    | operator | `rational`, `rational` |  `rational` |  division. rounds to the nearest integer              |
+| `DIV`  | function | `rational`, `rational` |  `rational` |  floor-division. rounds down to nearest integer       |
+| `%`    | operator | `rational`, `rational` |  `rational` |  remainder based on `DIV`                             |
