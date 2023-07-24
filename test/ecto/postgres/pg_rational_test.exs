@@ -13,6 +13,18 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   require Ecto.Query
   require PgRational
 
+  @spec run_select_test(String.t(), [Macro.t()], Macro.t()) :: Macro.t()
+  defmacrop run_select_test(sql_query, arguments, expected) do
+    sql_query = "SELECT #{sql_query} as result"
+    arguments = with arguments when not is_list(arguments) <- arguments, do: [arguments]
+
+    quote do
+      Query.from(f in fragment(unquote(sql_query), unquote_splicing(arguments)), select: f.result)
+      |> Repo.one!()
+      |> check_result(unquote(expected))
+    end
+  end
+
   describe "#cast/1" do
     cast_table = [
       %{input: Ratio.new(3, 4), expected: Ratio.new(3, 4)},
@@ -164,10 +176,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        assert {:ok, record} =
-                 %RationalsSchema01{}
-                 |> RationalsSchema01.changeset(%{a: a, b: b})
-                 |> Repo.insert()
+        assert {:ok, record} = insert_record(a, b)
 
         assert %RationalsSchema01{} = record
         assert record.a == a
@@ -184,10 +193,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        assert {:ok, record} =
-                 %RationalsSchema02{}
-                 |> RationalsSchema02.changeset(%{a: a, b: b})
-                 |> Repo.insert()
+        assert {:ok, record} = insert_record(a, b, RationalsSchema02)
 
         assert %RationalsSchema02{} = record
         assert record.a == a
@@ -250,79 +256,86 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
     end
   end
 
-  describe "Postgres rational.minus/1" do
+  describe "Postgres unary - (negate)" do
     property "matches Ratio" do
       check all(input <- StreamDataVtc.rational()) do
-        query =
-          Query.from(f in fragment("SELECT rational.minus(?) as r", type(^input, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.minus(input)
+        expected = Ratio.minus(input)
+        run_select_test("-?", type(^input, PgRational), expected)
       end
     end
 
     test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
-               |> Repo.insert()
+      expected = Ratio.new(-3, 4)
 
-      assert {:ok, result} =
-               RationalsSchema01
-               |> Query.select([r], fragment("rational.minus(?)", r.a))
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(-3, 4)
+      run_schema_test(Ratio.new(3, 4), Ratio.new(1), expected, fn query ->
+        Query.select(query, [r], fragment("-?", r.a))
+      end)
     end
   end
 
   describe "Postgres ABS/1" do
     property "matches Ratio" do
       check all(input <- StreamDataVtc.rational()) do
-        query =
-          Query.from(f in fragment("SELECT ABS(?) as r", type(^input, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.abs(input)
+        expected = Ratio.abs(input)
+        run_select_test("ABS(?)", type(^input, PgRational), expected)
       end
     end
 
-    test "can be used on table fields | negative" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(-3, 4), b: Ratio.new(1)})
-               |> Repo.insert()
-
-      assert {:ok, result} =
-               RationalsSchema01
-               |> Query.select([r], fragment("ABS(?)", r.a))
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
-
-      assert result == Ratio.new(3, 4)
+    property "matches Ratio | @ operator" do
+      check all(input <- StreamDataVtc.rational()) do
+        expected = Ratio.abs(input)
+        run_select_test("@?", type(^input, PgRational), expected)
+      end
     end
 
-    test "can be used on table fields | positive" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
-               |> Repo.insert()
+    abs_table = [
+      %{a: Ratio.new(-3, 4), expected: Ratio.new(3, 4)},
+      %{a: Ratio.new(3, 4), expected: Ratio.new(3, 4)}
+    ]
 
-      assert {:ok, result} =
-               RationalsSchema01
-               |> Query.select([r], fragment("ABS(?)", r.a))
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-               |> PgRational.load()
+    table_test "can be used on table fields | <%= a %>", abs_table, test_case do
+      %{a: a, expected: expected} = test_case
 
-      assert result == Ratio.new(3, 4)
+      run_schema_test(a, Ratio.new(1), expected, fn query ->
+        Query.select(query, [r], fragment("ABS(?)", r.a))
+      end)
+    end
+
+    table_test "can be used on table fields | <%= a %> | @ operator", abs_table, test_case do
+      %{a: a, expected: expected} = test_case
+
+      run_schema_test(a, Ratio.new(1), expected, fn query ->
+        Query.select(query, [r], fragment("@?", r.a))
+      end)
+    end
+  end
+
+  describe "Postgres SIGN/1" do
+    property "can be selected" do
+      check all(input <- StreamDataVtc.rational()) do
+        expected =
+          case Ratio.compare(input, Ratio.new(0)) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
+
+        run_select_test("SIGN(?)", type(^input, PgRational), expected)
+      end
+    end
+
+    sign_table = [
+      %{a: Ratio.new(-3, 4), expected: -1},
+      %{a: Ratio.new(0), expected: 0},
+      %{a: Ratio.new(3, 4), expected: 1}
+    ]
+
+    table_test "can be used on table fields | <%= a %>", sign_table, test_case do
+      %{a: a, expected: expected} = test_case
+
+      run_schema_test(a, Ratio.new(1), expected, fn query ->
+        Query.select(query, [r], fragment("SIGN(?)", r.a))
+      end)
     end
   end
 
@@ -340,43 +353,24 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
     table_test "<%= input %> = <%= expected %>", round_table, test_case do
       %{input: input, expected: expected} = test_case
-
-      query =
-        Query.from(f in fragment("SELECT ROUND(?) as r", type(^input, PgRational)),
-          select: f.r
-        )
-
-      result = Repo.one!(query)
-      assert is_integer(result)
-      assert result == expected
+      run_select_test("ROUND(?)", type(^input, PgRational), expected)
     end
 
     property "matches Ratio" do
       check all(input <- StreamDataVtc.rational()) do
-        query =
-          Query.from(f in fragment("SELECT ROUND(?) as r", type(^input, PgRational)),
-            select: f.r
-          )
-
-        result = Repo.one!(query)
-        assert is_integer(result)
-        assert result == Rational.round(input)
+        expected = Rational.round(input)
+        run_select_test("ROUND(?)", type(^input, PgRational), expected)
       end
     end
 
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
-               |> Repo.insert()
+    property "can be used on table fields" do
+      check all(a <- StreamDataVtc.rational()) do
+        expected = Rational.round(a)
 
-      result =
-        RationalsSchema01
-        |> Query.select([r], fragment("ROUND(?)", r.a))
-        |> Query.where([r], r.id == ^record_id)
-        |> Repo.one!()
-
-      assert result == 1
+        run_schema_test(a, Ratio.new(1), expected, fn query ->
+          Query.select(query, [r], fragment("ROUND(?)", r.a))
+        end)
+      end
     end
   end
 
@@ -394,43 +388,24 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
 
     table_test "<%= input %> = <%= expected %>", round_table, test_case do
       %{input: input, expected: expected} = test_case
-
-      query =
-        Query.from(f in fragment("SELECT FLOOR(?) as r", type(^input, PgRational)),
-          select: f.r
-        )
-
-      result = Repo.one!(query)
-      assert is_integer(result)
-      assert result == expected
+      run_select_test("FLOOR(?)", type(^input, PgRational), expected)
     end
 
     property "matches Ratio.trunc/1" do
       check all(input <- StreamDataVtc.rational()) do
-        query =
-          Query.from(f in fragment("SELECT FLOOR(?) as r", type(^input, PgRational)),
-            select: f.r
-          )
-
-        result = Repo.one!(query)
-        assert is_integer(result)
-        assert result == Ratio.trunc(input)
+        expected = Ratio.trunc(input)
+        run_select_test("FLOOR(?)", type(^input, PgRational), expected)
       end
     end
 
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema01{}
-               |> RationalsSchema01.changeset(%{a: Ratio.new(3, 4), b: Ratio.new(1)})
-               |> Repo.insert()
+    property "can be used on table fields" do
+      check all(a <- StreamDataVtc.rational()) do
+        expected = Ratio.trunc(a)
 
-      result =
-        RationalsSchema01
-        |> Query.select([r], fragment("FLOOR(?)", r.a))
-        |> Query.where([r], r.id == ^record_id)
-        |> Repo.one!()
-
-      assert result == 0
+        run_schema_test(a, Ratio.new(1), expected, fn query ->
+          Query.select(query, [r], fragment("FLOOR(?)", r.a))
+        end)
+      end
     end
   end
 
@@ -440,23 +415,22 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        query =
-          Query.from(f in fragment("SELECT ? + ? as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.add(a, b)
+        expected = Ratio.add(a, b)
+        run_select_test("? + ?", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
-    test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(3, 4), Ratio.new(1, 2), fn query ->
+    property "can be used on table fields" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamDataVtc.rational()
+            ) do
+        expected = Ratio.add(a, b)
+
+        run_schema_test(a, b, expected, fn query ->
           Query.select(query, [r], r.a + r.b)
         end)
-
-      assert result == Ratio.new(5, 4)
+      end
     end
   end
 
@@ -466,36 +440,21 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        query =
-          Query.from(f in fragment("SELECT ? - ? as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.sub(a, b)
+        expected = Ratio.sub(a, b)
+        run_select_test("? - ?", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
-    test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(3, 4), Ratio.new(1, 2), fn query ->
-          Query.select(query, [r], r.a - r.b)
-        end)
-
-      assert result == Ratio.new(1, 4)
-    end
-
-    property "table fields" do
+    property "can be used on table fields" do
       check all(
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        result =
-          run_schema_arithmetic_test(a, b, fn query ->
-            Query.select(query, [r], r.a - r.b)
-          end)
+        expected = Ratio.sub(a, b)
 
-        assert result == Ratio.sub(a, b)
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], r.a - r.b)
+        end)
       end
     end
   end
@@ -506,75 +465,54 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        query =
-          Query.from(f in fragment("SELECT ? * ? as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.mult(a, b)
+        expected = Ratio.mult(a, b)
+        run_select_test("? * ?", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
-    test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(23, 8), Ratio.new(4, 5), fn query ->
-          Query.select(query, [r], r.a * r.b)
-        end)
-
-      assert result == Ratio.new(23, 10)
-    end
-
-    property "table fields" do
+    property "can be used on table fields" do
       check all(
               a <- StreamDataVtc.rational(),
               b <- StreamDataVtc.rational()
             ) do
-        result =
-          run_schema_arithmetic_test(a, b, fn query ->
-            Query.select(query, [r], r.a * r.b)
-          end)
+        expected = Ratio.mult(a, b)
 
-        assert result == Ratio.mult(a, b)
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], r.a * r.b)
+        end)
       end
     end
   end
 
   describe "Postgres DIV/1 (floor divide)" do
+    test "expected result" do
+      expected = 3
+
+      run_schema_test(Ratio.new(23, 8), Ratio.new(4, 5), expected, fn query ->
+        Query.select(query, [r], fragment("DIV(?, ?)", r.a, r.b))
+      end)
+    end
+
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        query =
-          Query.from(f in fragment("SELECT DIV(?, ?) as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert Repo.one!(query) == a |> Ratio.div(b) |> Ratio.trunc()
+        expected = a |> Ratio.div(b) |> Ratio.trunc()
+        run_select_test("DIV(?, ?)", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
-    test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(23, 8), Ratio.new(4, 5), fn query ->
-          Query.select(query, [r], fragment("DIV(?, ?)", r.a, r.b))
-        end)
-
-      assert result == 3
-    end
-
-    property "table fields" do
+    property "can be used on table fields" do
       check all(
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        result =
-          run_schema_arithmetic_test(a, b, fn query ->
-            Query.select(query, [r], fragment("DIV(?, ?)", r.a, r.b))
-          end)
+        expected = a |> Ratio.div(b) |> Ratio.trunc()
 
-        assert result == a |> Ratio.div(b) |> Ratio.trunc()
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], fragment("DIV(?, ?)", r.a, r.b))
+        end)
       end
     end
   end
@@ -585,23 +523,17 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        query =
-          Query.from(f in fragment("SELECT ? / ? as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == Ratio.div(a, b)
+        expected = Ratio.div(a, b)
+        run_select_test("? / ?", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
     test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(23, 8), Ratio.new(4, 5), fn query ->
-          Query.select(query, [r], r.a / r.b)
-        end)
+      expected = Ratio.new(115, 32)
 
-      assert result == Ratio.new(115, 32)
+      run_schema_test(Ratio.new(23, 8), Ratio.new(4, 5), expected, fn query ->
+        Query.select(query, [r], r.a / r.b)
+      end)
     end
 
     property "table fields" do
@@ -609,12 +541,11 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        result =
-          run_schema_arithmetic_test(a, b, fn query ->
-            Query.select(query, [r], r.a / r.b)
-          end)
+        expected = Ratio.div(a, b)
 
-        assert result == Ratio.div(a, b)
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], r.a / r.b)
+        end)
       end
     end
   end
@@ -1039,10 +970,7 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   defp run_table_comparison_test(test_case, where_filter) do
     %{a: a, b: b, expected: expected} = test_case
 
-    assert {:ok, %{id: record_id}} =
-             %RationalsSchema02{}
-             |> RationalsSchema02.changeset(%{a: a, b: b})
-             |> Repo.insert()
+    assert {:ok, %{id: record_id}} = insert_record(a, b, RationalsSchema02)
 
     result =
       RationalsSchema02
@@ -1077,6 +1005,78 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
              end)
 
     refute is_nil(result)
+
+    result
+  end
+
+  @typep insert_attr() :: Ratio.t() | nil
+
+  @spec insert_record(insert_attr(), insert_attr(), RationalsSchema01) :: {:ok, RationalsSchema01.t()}
+  @spec insert_record(insert_attr(), insert_attr(), RationalsSchema02) :: {:ok, RationalsSchema02.t()}
+  defp insert_record(a, b, schema \\ RationalsSchema01) do
+    case insert_records([{a, b}], schema) do
+      {:ok, [record]} -> {:ok, record}
+      {:error, _} = result -> result
+    end
+  end
+
+  @spec insert_records([{insert_attr(), insert_attr()}], RationalsSchema01) :: {:ok, [RationalsSchema01.t()]}
+  @spec insert_records([{insert_attr(), insert_attr()}], RationalsSchema02) :: {:ok, [RationalsSchema02.t()]}
+  defp insert_records(attrs_list, schema) do
+    attrs_list
+    |> Enum.map(fn {a, b} -> %{a: a, b: b} end)
+    |> Enum.map(fn attrs ->
+      attrs
+      |> Map.put_new(:a, nil)
+      |> Map.put_new(:b, nil)
+      |> then(&schema.changeset(struct(schema), &1))
+      |> Repo.insert()
+    end)
+    |> Enum.reverse()
+    |> Enum.reduce_while({:ok, []}, fn result, {:ok, records} ->
+      case result do
+        {:ok, record} -> {:cont, {:ok, [record | records]}}
+        {:error, _} = result -> {:halt, result}
+      end
+    end)
+  end
+
+  # Runs a test where a value is extracted from a schema.
+  @spec run_schema_test(
+          insert_attr(),
+          insert_attr(),
+          expected,
+          RationalsSchema01 | RationalsSchema02,
+          (Queryable.t() -> Query.t())
+        ) :: expected
+        when expected: any()
+  defp run_schema_test(a, b, expected, schema \\ RationalsSchema01, select_query) do
+    assert {:ok, %{id: record_id}} = insert_record(a, b, schema)
+
+    schema
+    |> select_query.()
+    |> Query.where([r], r.id == ^record_id)
+    |> Repo.one!()
+    |> check_result(expected)
+  end
+
+  # Checks the results of a query. Loads rational value AND checks raw record results
+  # if rational is expected to be returned.
+  @spec check_result(any(), expected_type) :: expected_type when expected_type: any()
+  defp check_result(result, %Ratio{} = expected) do
+    assert {numerator, denominator} = result
+
+    assert {:ok, loaded} = PgRational.load(result)
+    assert loaded == expected
+
+    assert numerator == expected.numerator
+    assert denominator == expected.denominator
+
+    loaded
+  end
+
+  defp check_result(result, expected) do
+    assert result == expected
 
     result
   end

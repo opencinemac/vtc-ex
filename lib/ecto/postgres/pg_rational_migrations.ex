@@ -132,6 +132,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       &create_func_simplify/0,
       &create_func_minus/0,
       &create_func_abs/0,
+      &create_func_sign/0,
       &create_func_round/0,
       &create_func_floor/0,
       &create_func_add/0,
@@ -140,6 +141,8 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       &create_func_div/0,
       &create_func_floor_div/0,
       &create_func_modulo/0,
+      &create_op_abs/0,
+      &create_op_minus/0,
       &create_op_add/0,
       &create_op_sub/0,
       &create_op_mult/0,
@@ -218,17 +221,17 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
 
   @doc section: :migrations_functions
   @doc """
-  Creates `rational.minus(rat)` function that flips the sign of the input value --
-  makes a positive value negative and a negative value positive.
+  Creates `rational.__private__minus(rat)` function that flips the sign of the input
+  value -- makes a positive value negative and a negative value positive.
   """
   @spec create_func_minus() :: {raw_sql(), raw_sql()}
   def create_func_minus do
     Postgres.Utils.create_plpgsql_function(
-      function(:minus, Migration.repo()),
+      private_function(:minus, Migration.repo()),
       args: [input: :rational],
       returns: :rational,
       body: """
-      RETURN ((input).numerator * -1, (input).denominator)::rational;
+      RETURN ((input).numerator * -1, (input).denominator);
       """
     )
   end
@@ -245,7 +248,24 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       args: [input: :rational],
       returns: :rational,
       body: """
-      RETURN (ABS((input).numerator), ABS((input).denominator))::rational;
+      RETURN (ABS((input).numerator), ABS((input).denominator));
+      """
+    )
+  end
+
+  @doc section: :migrations_functions
+  @doc """
+  Creates `ABS(rational)` function that returns the absolute value of the rational
+  value.
+  """
+  @spec create_func_sign() :: {raw_sql(), raw_sql()}
+  def create_func_sign do
+    Postgres.Utils.create_plpgsql_function(
+      "SIGN",
+      args: [input: :rational],
+      returns: :integer,
+      body: """
+      RETURN SIGN((input).numerator * (input).denominator);
       """
     )
   end
@@ -264,7 +284,7 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
       body: """
       CASE
         WHEN (input).numerator < 0 THEN
-          input := #{function(:minus, Migration.repo())}(input);
+          input := -input;
           RETURN ROUND(input) * -1;
         WHEN (((input).numerator % (input).denominator) * 2) < (input).denominator THEN
           RETURN (input).numerator / (input).denominator;
@@ -605,6 +625,38 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
   end
 
   ## ARITHMETIC OPS
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom unary :rational `@` unary operator.
+
+  Returns the absolute value of the input.
+  """
+  @spec create_op_abs() :: {raw_sql(), raw_sql()}
+  def create_op_abs do
+    Postgres.Utils.create_operator(
+      :@,
+      nil,
+      :rational,
+      "ABS"
+    )
+  end
+
+  @doc section: :migrations_operators
+  @doc """
+  Creates a custom unary :rational `-` operator.
+
+  Flips the sign of `value`. Equivalent to `value * -1`.
+  """
+  @spec create_op_minus() :: {raw_sql(), raw_sql()}
+  def create_op_minus do
+    Postgres.Utils.create_operator(
+      :-,
+      nil,
+      :rational,
+      private_function(:minus, Migration.repo())
+    )
+  end
 
   @doc section: :migrations_operators
   @doc """
