@@ -168,15 +168,6 @@ defpgmodule Vtc.Ecto.Postgres.PgRational.Migrations do
     )
   end
 
-  @doc section: :migrations_types
-  @doc """
-  Creates function schema as described by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
-  section above.
-  """
-  @spec create_function_schemas() :: migration_info()
-  def create_function_schemas, do: PgTypeMigration.create_type_schema(:rational)
-
   @doc section: :migrations_private_functions
   @doc """
   Creates `rational.__private__simplify(rat)` function that simplifies a rational. Used at
