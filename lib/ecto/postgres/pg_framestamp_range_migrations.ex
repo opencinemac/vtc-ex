@@ -5,16 +5,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Migrations for adding framestamp range types, functions and constraints to a
   Postgres database.
   """
+  use Vtc.Ecto.Postgres.PgTypeMigration
+
   alias Ecto.Migration
-  alias Vtc.Ecto.Postgres
   alias Vtc.Ecto.Postgres.PgFramestamp
+  alias Vtc.Ecto.Postgres.PgTypeMigration
 
   require Ecto.Migration
-
-  @typedoc """
-  Indicates returned string is an SQL command.
-  """
-  @type raw_sql() :: String.t()
 
   @doc section: :migrations_full
   @doc """
@@ -116,14 +113,22 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
     require PgFramestamp.Migrations
 
     def change do
-      PgFramestamp.Range.Migrations.create_all()
+      PgFramestamp.Range.Migrations.run()
     end
   end
   ```
   """
-  @spec create_all(include: Keyword.t(), exclude: Keyword.t()) :: :ok
-  def create_all(opts \\ []) do
-    migrations = [
+  @spec run(include: Keyword.t(atom()), exclude: Keyword.t(atom())) :: :ok
+  def run(opts \\ []), do: PgTypeMigration.run_for(__MODULE__, opts)
+
+  @doc false
+  @impl PgTypeMigration
+  def ecto_type, do: PgFramestamp.Range
+
+  @doc false
+  @impl PgTypeMigration
+  def migrations_list do
+    [
       &create_function_schemas/0,
       &create_func_subtype_diff/0,
       &create_type_framestamp_range/0,
@@ -133,17 +138,15 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       &create_func_framestamp_fastrange_from_stamps/0,
       &create_func_framestamp_fastrange_from_range/0
     ]
-
-    Postgres.Utils.run_migrations(migrations, opts)
   end
 
   @doc section: :migrations_types
   @doc """
   Adds `framestamp_range` RANGE type.
   """
-  @spec create_type_framestamp_range() :: {raw_sql(), raw_sql()}
+  @spec create_type_framestamp_range() :: migration_info()
   def create_type_framestamp_range do
-    Postgres.Utils.create_type(:framestamp_range, :range,
+    PgTypeMigration.create_type(:framestamp_range, :range,
       subtype: :framestamp,
       subtype_diff: private_function(:subtype_diff, Migration.repo())
     )
@@ -169,11 +172,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   > In most databases, directly editing the pg_catalog will require elevated
   > permissions.
   """
-  @spec inject_canonical_function() :: {raw_sql(), raw_sql()}
+  @spec inject_canonical_function() :: migration_info()
   def inject_canonical_function do
     canonical = private_function(:canonical, Migration.repo())
 
     {
+      :other,
       """
       UPDATE pg_catalog.pg_range
       SET
@@ -200,9 +204,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Adds `framestamp_fastrange` RANGE type that uses double-precision floats under the
   hood.
   """
-  @spec create_type_framestamp_fastrange() :: {raw_sql(), raw_sql()}
+  @spec create_type_framestamp_fastrange() :: migration_info()
   def create_type_framestamp_fastrange do
-    Postgres.Utils.create_type(:framestamp_fastrange, :range,
+    PgTypeMigration.create_type(:framestamp_fastrange, :range,
       subtype: "double precision",
       subtype_diff: :float8mi
     )
@@ -213,9 +217,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp_fastrange(:framestamp, framestamp)` to construct fast ranges out
   of framestamps.
   """
-  @spec create_func_framestamp_fastrange_from_stamps() :: {raw_sql(), raw_sql()}
+  @spec create_func_framestamp_fastrange_from_stamps() :: migration_info()
   def create_func_framestamp_fastrange_from_stamps do
-    Postgres.Utils.create_plpgsql_function(
+    PgTypeMigration.create_plpgsql_function(
       "framestamp_fastrange",
       args: [lower_stamp: :framestamp, upper_stamp: :framestamp],
       returns: :framestamp_fastrange,
@@ -233,9 +237,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp_fastrange(:framestamp_range)` to construct fast ranges out
   of the slower `framestamp_range` type.
   """
-  @spec create_func_framestamp_fastrange_from_range() :: {raw_sql(), raw_sql()}
+  @spec create_func_framestamp_fastrange_from_range() :: migration_info()
   def create_func_framestamp_fastrange_from_range do
-    Postgres.Utils.create_plpgsql_function(
+    PgTypeMigration.create_plpgsql_function(
       "framestamp_fastrange",
       args: [input: :framestamp_range],
       declares: [
@@ -257,9 +261,9 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   Creates `framestamp.__private__subtype_diff(a, b)` used by the range type for more
   efficient GiST indexes.
   """
-  @spec create_func_subtype_diff() :: {raw_sql(), raw_sql()}
+  @spec create_func_subtype_diff() :: migration_info()
   def create_func_subtype_diff do
-    Postgres.Utils.create_plpgsql_function(
+    PgTypeMigration.create_plpgsql_function(
       private_function(:subtype_diff, Migration.repo()),
       args: [a: :framestamp, b: :framestamp],
       declares: [diff: {:framestamp, "a - b"}],
@@ -277,11 +281,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   Output ranges have an inclusive lower bound and an exclusive upper bound.
   """
-  @spec create_func_canonical() :: {raw_sql(), raw_sql()}
+  @spec create_func_canonical() :: migration_info()
   def create_func_canonical do
     framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds, Migration.repo())
 
-    Postgres.Utils.create_plpgsql_function(
+    PgTypeMigration.create_plpgsql_function(
       private_function(:canonical, Migration.repo()),
       args: [input: :framestamp_range],
       declares: [
@@ -348,12 +352,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#create_all/0-configuring-database-objects)
   section above.
   """
-  @spec create_function_schemas() :: {raw_sql(), raw_sql()}
-  def create_function_schemas, do: Postgres.Utils.create_type_schema(:framestamp_range)
-
-  @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
-  defp private_function(name, repo) do
-    function_prefix = Postgres.Utils.type_private_function_prefix(repo, :framestamp_range)
-    "#{function_prefix}#{name}"
-  end
+  @spec create_function_schemas() :: migration_info()
+  def create_function_schemas, do: PgTypeMigration.create_type_schema(:framestamp_range)
 end
