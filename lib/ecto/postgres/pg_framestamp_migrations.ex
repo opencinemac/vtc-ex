@@ -125,10 +125,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
 
   @doc false
   @impl PgTypeMigration
+  @spec ecto_type() :: module()
   def ecto_type, do: PgFramestamp
 
   @doc false
   @impl PgTypeMigration
+  @spec migrations_list() :: [PgTypeMigration.migration_func()]
   def migrations_list do
     [
       &create_type_framestamp/0,
@@ -216,15 +218,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
     )
   end
 
-  @doc section: :migrations_types
-  @doc """
-  Creates function schema as described by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Migrations.html#create_all/0-configuring-database-objects)
-  section above.
-  """
-  @spec create_function_schemas() :: migration_info()
-  def create_function_schemas, do: PgTypeMigration.create_type_schema(:framestamp)
-
   @doc section: :migrations_private_functions
   @doc """
   Creates `framestamp.__private__simplify(bigint. bigint)` function that simplifies a
@@ -234,7 +227,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_simplify() :: migration_info()
   def create_func_simplify do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:simplify, Migration.repo()),
+      private_function(:simplify),
       args: [numerator_in: :bigint, denominator_in: :bigint],
       returns: :rational,
       declares: [
@@ -260,7 +253,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_with_seconds() :: migration_info()
   def create_func_with_seconds do
     PgTypeMigration.create_plpgsql_function(
-      function(:with_seconds, Migration.repo()),
+      function(:with_seconds),
       args: [seconds: :rational, rate: :framerate],
       returns: :framestamp,
       body: """
@@ -288,7 +281,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_with_frames() :: migration_info()
   def create_func_with_frames do
     PgTypeMigration.create_plpgsql_function(
-      function(:with_frames, Migration.repo()),
+      function(:with_frames),
       args: [frames: :bigint, rate: :framerate],
       declares: [seconds: {:rational, "frames / (rate).playback"}],
       returns: :framestamp,
@@ -311,7 +304,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_seconds() :: migration_info()
   def create_func_seconds do
     PgTypeMigration.create_plpgsql_function(
-      function(:seconds, Migration.repo()),
+      function(:seconds),
       args: [value: :framestamp],
       returns: :rational,
       body: """
@@ -327,7 +320,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_rate() :: migration_info()
   def create_func_rate do
     PgTypeMigration.create_plpgsql_function(
-      function(:rate, Migration.repo()),
+      function(:rate),
       args: [value: :framestamp],
       returns: :framerate,
       body: """
@@ -347,7 +340,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_frames() :: migration_info()
   def create_func_frames do
     PgTypeMigration.create_plpgsql_function(
-      function(:frames, Migration.repo()),
+      function(:frames),
       args: [value: :framestamp],
       declares: [
         frames_rational: {
@@ -418,7 +411,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_eq() :: migration_info()
   def create_func_eq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:eq, Migration.repo()),
+      private_function(:eq),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -437,7 +430,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_strict_eq() :: migration_info()
   def create_func_strict_eq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:strict_eq, Migration.repo()),
+      private_function(:strict_eq),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -455,7 +448,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_neq() :: migration_info()
   def create_func_neq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:neq, Migration.repo()),
+      private_function(:neq),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -474,7 +467,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_strict_neq() :: migration_info()
   def create_func_strict_neq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:strict_neq, Migration.repo()),
+      private_function(:strict_neq),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -494,7 +487,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_lt() :: migration_info()
   def create_func_lt do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:lt, Migration.repo()),
+      private_function(:lt),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -511,7 +504,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_lte() :: migration_info()
   def create_func_lte do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:lte, Migration.repo()),
+      private_function(:lte),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -528,7 +521,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_gt() :: migration_info()
   def create_func_gt do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:gt, Migration.repo()),
+      private_function(:gt),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -545,7 +538,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_gte() :: migration_info()
   def create_func_gte do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:gte, Migration.repo()),
+      private_function(:gte),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :boolean,
@@ -562,7 +555,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_cmp() :: migration_info()
   def create_func_cmp do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:cmp, Migration.repo()),
+      private_function(:cmp),
       args: [a: :framestamp, b: :framestamp],
       declares: compare_declarations(),
       returns: :integer,
@@ -583,7 +576,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_minus() :: migration_info()
   def create_func_minus do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:minus, Migration.repo()),
+      private_function(:minus),
       args: [value: :framestamp],
       returns: :framestamp,
       body: """
@@ -609,7 +602,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_add() :: migration_info()
   def create_func_add do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:add, Migration.repo()),
+      private_function(:add),
       args: [a: :framestamp, b: :framestamp],
       declares: addition_declares(),
       returns: :framestamp,
@@ -640,10 +633,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_add_inherit_left() :: migration_info()
   def create_func_add_inherit_left do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:add_inherit_left, Migration.repo()),
+      private_function(:add_inherit_left),
       args: [a: :framestamp, b: :framestamp],
       declares: addition_declares(),
       returns: :framestamp,
@@ -676,10 +669,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_add_inherit_right() :: migration_info()
   def create_func_add_inherit_right do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:add_inherit_right, Migration.repo()),
+      private_function(:add_inherit_right),
       args: [a: :framestamp, b: :framestamp],
       declares: addition_declares(),
       returns: :framestamp,
@@ -714,7 +707,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   @spec create_func_sub() :: migration_info()
   def create_func_sub do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:sub, Migration.repo()),
+      private_function(:sub),
       args: [a: :framestamp, b: :framestamp],
       declares: subtraction_declares(),
       returns: :framestamp,
@@ -745,10 +738,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_sub_inherit_left() :: migration_info()
   def create_func_sub_inherit_left do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:sub_inherit_left, Migration.repo()),
+      private_function(:sub_inherit_left),
       args: [a: :framestamp, b: :framestamp],
       declares: subtraction_declares(),
       returns: :framestamp,
@@ -781,10 +774,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_sub_inherit_right() :: migration_info()
   def create_func_sub_inherit_right do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:sub_inherit_right, Migration.repo()),
+      private_function(:sub_inherit_right),
       args: [a: :framestamp, b: :framestamp],
       declares: subtraction_declares(),
       returns: :framestamp,
@@ -817,10 +810,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_mult_rational() :: migration_info()
   def create_func_mult_rational do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:mult, Migration.repo()),
+      private_function(:mult),
       args: [a: :framestamp, b: :rational],
       declares: [
         numerator: {:bigint, "(a).__seconds_n * (b).numerator"},
@@ -846,10 +839,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_div_rational() :: migration_info()
   def create_func_div_rational do
-    with_seconds = function(:with_seconds, Migration.repo())
+    with_seconds = function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:div, Migration.repo()),
+      private_function(:div),
       args: [a: :framestamp, b: :rational],
       declares: [
         numerator: {:bigint, "(a).__seconds_n * (b).denominator"},
@@ -874,8 +867,8 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_floor_div_rational() :: migration_info()
   def create_func_floor_div_rational do
-    framestamp_frames = function(:frames, Migration.repo())
-    simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
+    framestamp_frames = function(:frames)
+    simplify = PgRational.Migrations.private_function(:simplify)
 
     PgTypeMigration.create_plpgsql_function(
       "DIV",
@@ -912,11 +905,11 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
   """
   @spec create_func_modulo_rational() :: migration_info()
   def create_func_modulo_rational do
-    framestamp_frames = function(:frames, Migration.repo())
-    simplify = PgRational.Migrations.private_function(:simplify, Migration.repo())
+    framestamp_frames = function(:frames)
+    simplify = PgRational.Migrations.private_function(:simplify)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:modulo, Migration.repo()),
+      private_function(:modulo),
       args: [a: :framestamp, b: :rational],
       declares: [
         frames: {:bigint, "#{framestamp_frames}(a)"},
@@ -952,7 +945,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :=,
       :framestamp,
       :framestamp,
-      private_function(:eq, Migration.repo()),
+      private_function(:eq),
       commutator: :=,
       negator: :<>
     )
@@ -969,7 +962,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :===,
       :framestamp,
       :framestamp,
-      private_function(:strict_eq, Migration.repo()),
+      private_function(:strict_eq),
       commutator: :===,
       negator: :"!==="
     )
@@ -986,7 +979,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :<>,
       :framestamp,
       :framestamp,
-      private_function(:neq, Migration.repo()),
+      private_function(:neq),
       commutator: :<>,
       negator: :=
     )
@@ -1003,7 +996,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :"!===",
       :framestamp,
       :framestamp,
-      private_function(:strict_neq, Migration.repo()),
+      private_function(:strict_neq),
       commutator: :"!===",
       negator: :===
     )
@@ -1019,7 +1012,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :<,
       :framestamp,
       :framestamp,
-      private_function(:lt, Migration.repo()),
+      private_function(:lt),
       commutator: :>,
       negator: :>=
     )
@@ -1035,7 +1028,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :<=,
       :framestamp,
       :framestamp,
-      private_function(:lte, Migration.repo()),
+      private_function(:lte),
       commutator: :>=,
       negator: :>
     )
@@ -1051,7 +1044,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :>,
       :framestamp,
       :framestamp,
-      private_function(:gt, Migration.repo()),
+      private_function(:gt),
       commutator: :<,
       negator: :<=
     )
@@ -1067,7 +1060,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :>=,
       :framestamp,
       :framestamp,
-      private_function(:gte, Migration.repo()),
+      private_function(:gte),
       commutator: :<=,
       negator: :<
     )
@@ -1103,7 +1096,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :-,
       nil,
       :framestamp,
-      private_function(:minus, Migration.repo())
+      private_function(:minus)
     )
   end
 
@@ -1121,7 +1114,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :+,
       :framestamp,
       :framestamp,
-      private_function(:add, Migration.repo()),
+      private_function(:add),
       commutator: :+
     )
   end
@@ -1139,7 +1132,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :"@+",
       :framestamp,
       :framestamp,
-      private_function(:add_inherit_left, Migration.repo()),
+      private_function(:add_inherit_left),
       commutator: :"+@"
     )
   end
@@ -1157,7 +1150,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :"+@",
       :framestamp,
       :framestamp,
-      private_function(:add_inherit_right, Migration.repo()),
+      private_function(:add_inherit_right),
       commutator: :"@+"
     )
   end
@@ -1176,7 +1169,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :-,
       :framestamp,
       :framestamp,
-      private_function(:sub, Migration.repo())
+      private_function(:sub)
     )
   end
 
@@ -1193,7 +1186,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :"@-",
       :framestamp,
       :framestamp,
-      private_function(:sub_inherit_left, Migration.repo())
+      private_function(:sub_inherit_left)
     )
   end
 
@@ -1210,7 +1203,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :"-@",
       :framestamp,
       :framestamp,
-      private_function(:sub_inherit_right, Migration.repo())
+      private_function(:sub_inherit_right)
     )
   end
 
@@ -1227,7 +1220,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :*,
       :framestamp,
       :rational,
-      private_function(:mult, Migration.repo())
+      private_function(:mult)
     )
   end
 
@@ -1247,7 +1240,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :/,
       :framestamp,
       :rational,
-      private_function(:div, Migration.repo())
+      private_function(:div)
     )
   end
 
@@ -1265,7 +1258,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
       :%,
       :framestamp,
       :rational,
-      private_function(:modulo, Migration.repo())
+      private_function(:modulo)
     )
   end
 
@@ -1289,7 +1282,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Migrations do
         >: 5
       ],
       [
-        {private_function(:cmp, Migration.repo()), 1}
+        {private_function(:cmp), 1}
       ]
     )
   end
