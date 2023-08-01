@@ -96,7 +96,7 @@ defmodule Vtc.MixProject do
 
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},
-      {:stream_data, "~> 0.5.0", only: [:dev, :test]},
+      {:stream_data, "~> 0.6.0", only: [:dev, :test]},
       {:junit_formatter, "~> 3.1", only: [:test]},
 
       # Dev dependencies
