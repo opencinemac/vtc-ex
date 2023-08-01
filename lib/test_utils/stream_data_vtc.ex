@@ -1,10 +1,11 @@
-if Application.get_env(:vtc, :env) in [:test, :dev] do
+if Code.ensure_loaded?(StreamData) and Mix.env() in [:test, :dev] do
   defmodule Vtc.TestUtils.StreamDataVtc do
     @moduledoc """
     `StreamData` generators for use in tests that involve custom Ecto types. For use in
     property tests.
 
-    This module is only available in `:test` and `:dev` envs.
+    This module is only available in `:test` and `:dev` envs, and will not be compiled
+    if `StreamData` is not present.
     """
 
     alias Vtc.Framerate
