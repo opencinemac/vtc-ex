@@ -89,7 +89,7 @@ defmodule Vtc.MixProject do
     [
       # Library Dependencies
       {:decimal, "~> 2.0"},
-      {:ratio, git: "https://github.com/opencinemac/elixir-rational", branch: "v4"},
+      {:ratio, "~> 4.0"},
       {:ecto, "~> 3.10", optional: include_postgrex?},
       {:ecto_sql, "~> 3.10", optional: include_postgrex?},
       {:postgrex, ">= 0.0.0", optional: include_postgrex?},
