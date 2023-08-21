@@ -339,6 +339,46 @@ defmodule Vtc.Framestamp.Range do
     |> with_duration!(duration(range), out_type: range.out_type)
   end
 
+  @doc section: :manipulate
+  @doc """
+  Adds `scalar` to both `range.in` and `range.out`.
+
+  [auto-casts](Vtc.Framestamp.html#module-arithmetic-autocasting)
+  [Frames](`Vtc.Source.Frames`) values.
+
+  ## Options
+
+  - `inherit_rate`: Which side to inherit the framerate from in mixed-rate calculations.
+    If `false`, this function will raise if `range.in.rate` does not match `scalar.rate`.
+    Default: `false`.
+
+  - `round`: How to round the result with respect to whole-frames when mixing
+    framerates. Default: `:closest`.
+
+  ## Examples
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, "02:00:00:00")
+  iex>
+  iex> scalar = Framestamp.with_frames!("00:00:01:00", Rates.f23_98())
+  iex>
+  iex> Framestamp.Range.shift(range, scalar) |> inspect()
+  "<01:00:01:00 - 02:00:01:00 :exclusive <23.98 NTSC>>"
+  ```
+  """
+  @spec shift(
+          t(),
+          Framestamp.t() | Frames.t(),
+          opts :: [inherit_rate: Framestamp.inherit_opt(), round: Framestamp.round()]
+        ) :: t()
+  def shift(range, scalar, opts \\ []) do
+    stamp_in = Framestamp.add(range.in, scalar, opts)
+    stamp_out = Framestamp.add(range.out, scalar, opts)
+
+    new!(stamp_in, stamp_out)
+  end
+
   @doc section: :inspect
   @doc """
   Returns the duration in [Framestamp](`Vtc.Framestamp`) of `range`.

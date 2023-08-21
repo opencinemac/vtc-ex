@@ -2,7 +2,6 @@ defmodule Vtc.Framestamp.RangeTest do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
-  alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Range
   alias Vtc.Rates
@@ -412,34 +411,104 @@ defmodule Vtc.Framestamp.RangeTest do
     end
   end
 
-  describe "#smpte_timecode_wrap_tod/1" do
+  describe "#shift/3" do
+    setup context, do: TestCase.setup_framestamps(context)
     setup context, do: TestCase.setup_ranges(context)
 
-    @describetag ranges: [:value, :expected]
+    @describetag framestamps: [:scalar]
+    @describetag ranges: [:input, :expected]
 
-    smpte_timecode_wrap_tod_table = [
-      %{value: {"01:00:00:00", "02:00:00:00"}, expected: {"01:00:00:00", "02:00:00:00"}},
-      %{value: {"00:00:00:00", "01:00:00:00"}, expected: {"00:00:00:00", "01:00:00:00"}},
-      %{value: {"23:59:59:23", "25:00:00:00"}, expected: {"23:59:59:23", "25:00:00:00"}},
-      %{value: {"24:00:00:00", "25:00:00:00"}, expected: {"00:00:00:00", "01:00:00:00"}},
-      %{value: {"25:00:00:00", "26:00:00:00"}, expected: {"01:00:00:00", "02:00:00:00"}},
-      %{value: {"-02:00:00:00", "-01:00:00:00"}, expected: {"22:00:00:00", "23:00:00:00"}}
+    shift_table = [
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: "00:30:00:00",
+        opts: [],
+        expected: {"01:30:00:00", "02:30:00:00"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: "-00:30:00:00",
+        opts: [],
+        expected: {"00:30:00:00", "01:30:00:00"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: "00:00:00:00",
+        opts: [],
+        expected: {"01:00:00:00", "02:00:00:00"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: "00:00:00:01",
+        opts: [],
+        expected: {"01:00:00:01", "02:00:00:01"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: "-00:00:00:01",
+        opts: [],
+        expected: {"00:59:59:23", "01:59:59:23"}
+      },
+      %{
+        input: {"01:00:00:00", "03:00:00:00"},
+        scalar: "-02:00:00:00",
+        opts: [],
+        expected: {"-01:00:00:00", "01:00:00:00"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: {"00:00:00:24", Rates.f47_95()},
+        opts: [inherit_rate: :left],
+        expected: {"01:00:00:12", "02:00:00:12"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: {"00:00:00:24", Rates.f47_95()},
+        opts: [inherit_rate: :right],
+        expected: {"01:00:00:24", "02:00:00:24", Rates.f47_95()}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: {"00:00:00:1", Rates.f47_95()},
+        opts: [inherit_rate: :left, round: :floor],
+        expected: {"01:00:00:00", "02:00:00:00"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: {"00:00:00:1", Rates.f47_95()},
+        opts: [inherit_rate: :left, round: :ceil],
+        expected: {"01:00:00:01", "02:00:00:01"}
+      },
+      %{
+        input: {"01:00:00:00", "02:00:00:00"},
+        scalar: {"00:00:00:1", Rates.f47_95()},
+        opts: [inherit_rate: :left],
+        expected: {"01:00:00:01", "02:00:00:01"}
+      }
     ]
 
-    table_test "<%= value %> wraps to <%= expected %>", smpte_timecode_wrap_tod_table, test_case do
-      %{value: value, expected: expected} = test_case
-      assert Range.smpte_timecode_wrap_tod(value) == expected
+    table_test "<%= input %> shifted by <%= scalar %> = <%= expected %> | <%= opts %>", shift_table, test_case do
+      %{input: input, scalar: scalar, opts: opts, expected: expected} = test_case
+      assert Range.shift(input, scalar, opts) == expected
     end
 
-    test "raises on non-NTSC fractional rate" do
-      rate = Framerate.new!(Ratio.new(23.98))
-      stamp_in = Framestamp.with_frames!(0, rate)
-      range = Range.with_duration!(stamp_in, 24)
+    test "will auto-cast scalar" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      range = Range.new!(stamp_in, "02:00:00:00")
 
-      error = assert_raise ArgumentError, fn -> Range.smpte_timecode_wrap_tod(range) end
+      result = Range.shift(range, 24)
+      assert result.in == Framestamp.with_frames!("01:00:01:00", Rates.f23_98())
+      assert result.out == Framestamp.with_frames!("02:00:01:00", Rates.f23_98())
+    end
 
-      assert Exception.message(error) ==
-               "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+    test "will preserve exclusive out type" do
+      stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      range = Range.new!(stamp_in, "02:00:00:00", out_type: :exclusive)
+
+      result = Range.shift(range, 24)
+      assert result.in == Framestamp.with_frames!("01:00:01:00", Rates.f23_98())
+      assert result.out == Framestamp.with_frames!("02:00:01:00", Rates.f23_98())
+      assert result.out_type == :exclusive
     end
   end
 
@@ -505,7 +574,7 @@ defmodule Vtc.Framestamp.RangeTest do
     end
   end
 
-  describe "#contains?/2" do
+  describe "#contains/2?" do
     setup context, do: TestCase.setup_framestamps(context)
     setup context, do: TestCase.setup_ranges(context)
     setup context, do: TestCase.setup_negates(context)
