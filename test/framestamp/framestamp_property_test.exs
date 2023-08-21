@@ -246,7 +246,7 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
   alias Vtc.Rates
   alias Vtc.TestUtils.StreamDataVtc
 
-  property "add/sub symmetry" do
+  property "#add/sub symmetry" do
     check all(
             rate <- StreamDataVtc.framerate(),
             a <- StreamDataVtc.framestamp(non_negative?: true, rate: rate),
@@ -259,6 +259,18 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
 
       subtracted = Framestamp.sub(added, b)
       assert Framestamp.compare(subtracted, a) == :eq
+    end
+  end
+
+  property "#smpte_timecode_wrap_tod/1 always valid TOD" do
+    check all(input <- StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]])) do
+      zero = Framestamp.with_frames!(0, input.rate)
+      hours24 = Framestamp.with_frames!("24:00:00:00", input.rate)
+
+      result = Framestamp.smpte_timecode_wrap_tod(input)
+
+      assert Framestamp.gte?(result, zero)
+      assert Framestamp.lt?(result, hours24)
     end
   end
 

@@ -817,7 +817,7 @@ defmodule Vtc.Framestamp do
   @spec sub(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inherit_rate: inherit_opt(), round: round()]
+          opts :: [inherit_rate: inherit_opt(), round: round(), wrap_tod: boolean()]
         ) :: t()
   def sub(a, b, opts \\ []), do: do_arithmetic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
@@ -852,6 +852,88 @@ defmodule Vtc.Framestamp do
   defp cast_op_args(%__MODULE__{} = a, %__MODULE__{} = b), do: {a, b}
   defp cast_op_args(%__MODULE__{} = a, b), do: {a, with_frames!(b, a.rate)}
   defp cast_op_args(a, %__MODULE__{} = b), do: {with_frames!(a, b.rate), b}
+
+  @doc section: :arithmetic
+  @doc """
+  Wrap `value` to the nearest valid TOD (time-of-day) timecode.
+
+  Framestamps with a SMPTE timecode of less than `00:00:00:00` will have `24:00:00:00`
+  recursively added until they are positive.
+
+  Framestamps with a SMPTE timecode of greater than or equal to `24:00:00:00` will have
+  `24:00:00:00` subtracted until they are less than `24:00:00:00`.
+
+  ## Raises
+
+  - `ArgumentError` if `value.rate` is not NTSC or whole-frame.
+
+  ## Examples
+
+  ```elixir
+  iex> stamp = Framestamp.with_frames!("01:30:21:17", Rates.f23_98())
+  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  "01:30:21:17"
+  ```
+
+  ```elixir
+  iex> stamp = Framestamp.with_frames!("24:30:21:17", Rates.f23_98())
+  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  "00:30:21:17"
+  ```
+
+  ```elixir
+  iex> stamp = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  "23:00:00:00"
+  ```
+
+  ```elixir
+  iex> stamp = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
+  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  "00:00:00:00"
+  ```
+  """
+  @spec smpte_timecode_wrap_tod(t()) :: t()
+  def smpte_timecode_wrap_tod(value) do
+    if value.rate.ntsc == nil and value.rate.playback.denominator != 1 do
+      raise ArgumentError.exception(
+              "`value.rate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+            )
+    end
+
+    %{seconds: input_seconds} = value
+
+    one_frame_secs = Ratio.new(value.rate.playback.denominator, value.rate.playback.numerator)
+
+    full_day =
+      if value.rate.ntsc == :drop do
+        full_day_stamp = Framestamp.with_frames!("24:00:00:00", value.rate)
+        full_day_stamp.seconds
+      else
+        one_frame_secs
+        |> Ratio.mult(Framerate.smpte_timebase(value.rate))
+        |> Ratio.mult(Ratio.new(60))
+        |> Ratio.mult(Ratio.new(60))
+        |> Ratio.mult(Ratio.new(24))
+      end
+
+    new_seconds = do_wrap_time_of_day(value.seconds, full_day)
+
+    case new_seconds do
+      ^input_seconds -> value
+      _ -> with_seconds!(new_seconds, value.rate, round: :off)
+    end
+  end
+
+  # full day should be the equivalent of `24:00:00:00` at `value`'s rate.
+  @spec do_wrap_time_of_day(Ratio.t(), Ratio.t()) :: Ratio.t()
+  defp do_wrap_time_of_day(stamp_seconds, full_day) do
+    cond do
+      Ratio.lt?(stamp_seconds, Ratio.new(0)) -> do_wrap_time_of_day(Ratio.add(stamp_seconds, full_day), full_day)
+      Ratio.gte?(stamp_seconds, full_day) -> do_wrap_time_of_day(Ratio.sub(stamp_seconds, full_day), full_day)
+      true -> stamp_seconds
+    end
+  end
 
   @doc section: :arithmetic
   @doc """
