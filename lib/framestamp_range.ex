@@ -284,6 +284,61 @@ defmodule Vtc.Framestamp.Range do
   defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
   defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1)
 
+  @doc """
+  Wrap `range.in` to the nearest valid TOD (time-of-day) timecode.
+
+  Framestamps with a SMPTE timecode of less than `00:00:00:00` will have `24:00:00:00`
+  recursively added until they are positive.
+
+  Framestamps with a SMPTE timecode of greater than or equal to `24:00:00:00` will have
+  `24:00:00:00` subtracted until they are less than `24:00:00:00`.
+
+  Returned out point is always greater than in point, and may exceed `24:00:00:00` for
+  if required for duration.
+
+  ## Raises
+
+  - `ArgumentError` if `range.in.rate` is not NTSC or whole-frame.
+
+  ## Examples
+
+  Adjusts ranges entirely outside of valid time-of-day timecode:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  "<00:00:00:00 - 00:01:00:00 :exclusive <23.98 NTSC>>"
+  ```
+
+  Does not adjust ranges with an in-point that is valid for time-of-day timecode:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("23:59:59:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  "<23:59:59:00 - 24:01:00:00 :exclusive <23.98 NTSC>>"
+  ```
+
+  Adjust negative ranges to wrap back from `24:00:00:00`:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("-00:59:50:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  "<23:00:00:00 - 23:00:10:00 :exclusive <23.98 NTSC>>"
+  ```
+  """
+  @spec smpte_timecode_wrap_tod(t()) :: t()
+  def smpte_timecode_wrap_tod(range) do
+    range.in
+    |> Framestamp.smpte_timecode_wrap_tod()
+    |> with_duration!(duration(range), out_type: range.out_type)
+  end
+
   @doc section: :inspect
   @doc """
   Returns the duration in [Framestamp](`Vtc.Framestamp`) of `range`.

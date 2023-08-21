@@ -897,7 +897,7 @@ defmodule Vtc.Framestamp do
   def smpte_timecode_wrap_tod(value) do
     if value.rate.ntsc == nil and value.rate.playback.denominator != 1 do
       raise ArgumentError.exception(
-              "`value.rate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+              "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
             )
     end
 

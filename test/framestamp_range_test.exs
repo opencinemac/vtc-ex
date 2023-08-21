@@ -2,6 +2,7 @@ defmodule Vtc.Framestamp.RangeTest do
   @moduledoc false
   use Vtc.Test.Support.TestCase
 
+  alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Range
   alias Vtc.Rates
@@ -411,6 +412,37 @@ defmodule Vtc.Framestamp.RangeTest do
     end
   end
 
+  describe "#smpte_timecode_wrap_tod/1" do
+    setup context, do: TestCase.setup_ranges(context)
+
+    @describetag ranges: [:value, :expected]
+
+    smpte_timecode_wrap_tod_table = [
+      %{value: {"01:00:00:00", "02:00:00:00"}, expected: {"01:00:00:00", "02:00:00:00"}},
+      %{value: {"00:00:00:00", "01:00:00:00"}, expected: {"00:00:00:00", "01:00:00:00"}},
+      %{value: {"23:59:59:23", "25:00:00:00"}, expected: {"23:59:59:23", "25:00:00:00"}},
+      %{value: {"24:00:00:00", "25:00:00:00"}, expected: {"00:00:00:00", "01:00:00:00"}},
+      %{value: {"25:00:00:00", "26:00:00:00"}, expected: {"01:00:00:00", "02:00:00:00"}},
+      %{value: {"-02:00:00:00", "-01:00:00:00"}, expected: {"22:00:00:00", "23:00:00:00"}}
+    ]
+
+    table_test "<%= value %> wraps to <%= expected %>", smpte_timecode_wrap_tod_table, test_case do
+      %{value: value, expected: expected} = test_case
+      assert Range.smpte_timecode_wrap_tod(value) == expected
+    end
+
+    test "raises on non-NTSC fractional rate" do
+      rate = Framerate.new!(Ratio.new(23.98))
+      stamp_in = Framestamp.with_frames!(0, rate)
+      range = Range.with_duration!(stamp_in, 24)
+
+      error = assert_raise ArgumentError, fn -> Range.smpte_timecode_wrap_tod(range) end
+
+      assert Exception.message(error) ==
+               "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+    end
+  end
+
   describe "#duration/1" do
     test "correctly reports :exclusive duration" do
       in_stamp = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
@@ -473,7 +505,7 @@ defmodule Vtc.Framestamp.RangeTest do
     end
   end
 
-  describe "#contains/2?" do
+  describe "#contains?/2" do
     setup context, do: TestCase.setup_framestamps(context)
     setup context, do: TestCase.setup_ranges(context)
     setup context, do: TestCase.setup_negates(context)
