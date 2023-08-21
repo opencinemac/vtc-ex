@@ -215,6 +215,7 @@ capabilities.
     - [X] Negative
     - [X] Absolute
     - [X] Rebase (recalculate frame count at new framerate)
+    - [X] Wrap time-of-day timecode
     - [X] Native Operator Evaluation
 - Flexible Parsing:
     - [X] Partial timecodes      | '1:12'

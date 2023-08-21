@@ -667,6 +667,36 @@ defmodule Vtc.FramestampTest.Ops do
     end
   end
 
+  describe "#smpte_timecode_wrap_tod/1" do
+    setup context, do: TestCase.setup_framestamps(context)
+    @describetag framestamps: [:value, :expected]
+
+    smpte_timecode_wrap_tod_table = [
+      %{value: "01:00:00:00", expected: "01:00:00:00"},
+      %{value: "23:59:59:23", expected: "23:59:59:23"},
+      %{value: "00:00:00:00", expected: "00:00:00:00"},
+      %{value: "24:01:00:00", expected: "00:01:00:00"},
+      %{value: "25:01:00:00", expected: "01:01:00:00"},
+      %{value: "24:00:00:00", expected: "00:00:00:00"},
+      %{value: "32:14:56:21", expected: "08:14:56:21"},
+      %{value: "-01:00:00:00", expected: "23:00:00:00"},
+      %{value: "-23:00:00:00", expected: "01:00:00:00"},
+      %{value: "48:00:00:00", expected: "00:00:00:00"},
+      %{value: "-48:00:00:00", expected: "00:00:00:00"},
+      %{value: "48:17:12:01", expected: "00:17:12:01"},
+      %{value: {"01:00:00:00", Rates.f29_97_df()}, expected: {"01:00:00:00", Rates.f29_97_df()}},
+      %{value: {"23:59:59:29", Rates.f29_97_df()}, expected: {"23:59:59:29", Rates.f29_97_df()}},
+      %{value: {"00:00:00:00", Rates.f29_97_df()}, expected: {"00:00:00:00", Rates.f29_97_df()}},
+      %{value: {"-01:00:00:00", Rates.f29_97_df()}, expected: {"23:00:00:00", Rates.f29_97_df()}}
+    ]
+
+    table_test "<%= value %> wraps to <%= expected %>", smpte_timecode_wrap_tod_table, test_case do
+      %{value: value, expected: expected} = test_case
+
+      assert Framestamp.smpte_timecode_wrap_tod(value) == expected
+    end
+  end
+
   describe "#mult/2" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:a, :expected]
