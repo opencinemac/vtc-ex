@@ -695,6 +695,16 @@ defmodule Vtc.FramestampTest.Ops do
 
       assert Framestamp.smpte_timecode_wrap_tod(value) == expected
     end
+
+    test "raises on non-NTSC fractional rate" do
+      rate = Framerate.new!(Ratio.new(23.98))
+      stamp = Framestamp.with_frames!(0, rate)
+
+      error = assert_raise ArgumentError, fn -> Framestamp.smpte_timecode_wrap_tod(stamp) end
+
+      assert Exception.message(error) ==
+               "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+    end
   end
 
   describe "#mult/2" do
