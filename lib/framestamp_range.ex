@@ -284,6 +284,7 @@ defmodule Vtc.Framestamp.Range do
   defp adjust_out_exclusive(framestamp, :exclusive), do: framestamp
   defp adjust_out_exclusive(framestamp, :inclusive), do: Framestamp.add(framestamp, 1)
 
+  @doc section: :manipulate
   @doc """
   Wrap `range.in` to the nearest valid TOD (time-of-day) timecode.
 
