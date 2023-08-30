@@ -817,7 +817,7 @@ defmodule Vtc.Framestamp do
   @spec sub(
           a :: t() | Frames.t(),
           b :: t() | Frames.t(),
-          opts :: [inherit_rate: inherit_opt(), round: round(), wrap_tod: boolean()]
+          opts :: [inherit_rate: inherit_opt(), round: round()]
         ) :: t()
   def sub(a, b, opts \\ []), do: do_arithmetic(a, b, :sub, opts, &Ratio.sub(&1, &2))
 
@@ -835,10 +835,11 @@ defmodule Vtc.Framestamp do
     case MixedRateOps.get_rate(a, b, inherit_rate, func_name) do
       {:ok, new_rate} ->
         {a, b} = cast_op_args(a, b)
+        parse_opts = Keyword.take(opts, [:round])
 
         a.seconds
         |> seconds_operation.(b.seconds)
-        |> with_seconds!(new_rate, opts)
+        |> with_seconds!(new_rate, parse_opts)
 
       {:error, error} ->
         raise error
