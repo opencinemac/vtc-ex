@@ -11,7 +11,7 @@ defmodule Vtc.Framerate.InvalidSMPTEValueError do
   defexception []
 
   @typedoc """
-  Type of `InvalidSMPTERate`.
+  Type of [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`).
   """
   @type t() :: %__MODULE__{}
 
@@ -19,5 +19,5 @@ defmodule Vtc.Framerate.InvalidSMPTEValueError do
   Exception message.
   """
   @spec message(t()) :: String.t()
-  def message(_), do: "framerate not valid SMPTE value. Must be non-drop, drop, or whole-frame."
+  def message(_), do: "framerate not valid SMPTE value. must be non-drop, drop, or whole-frame"
 end

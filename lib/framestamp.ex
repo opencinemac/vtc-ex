@@ -916,7 +916,9 @@ defmodule Vtc.Framestamp do
 
   ## Raises
 
-  - `ArgumentError` if `value.rate` is not NTSC or whole-frame.
+  - [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`): if `value.rate` is
+    not NTSC or whole-frame. Time-of-day timecode is not defined for non-SMPTE
+    framerates.
 
   ## Examples
 
@@ -947,9 +949,7 @@ defmodule Vtc.Framestamp do
   @spec smpte_wrap_tod!(t()) :: t()
   def smpte_wrap_tod!(value) do
     if value.rate.ntsc == nil and value.rate.playback.denominator != 1 do
-      raise ArgumentError.exception(
-              "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
-            )
+      raise %Framerate.InvalidSMPTEValueError{}
     end
 
     %{seconds: input_seconds} = value

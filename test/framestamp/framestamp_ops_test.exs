@@ -700,10 +700,13 @@ defmodule Vtc.FramestampTest.Ops do
       rate = Framerate.new!(Ratio.new(23.98))
       stamp = Framestamp.with_frames!(0, rate)
 
-      error = assert_raise ArgumentError, fn -> Framestamp.smpte_wrap_tod!(stamp) end
+      error =
+        assert_raise Framerate.InvalidSMPTEValueError, fn ->
+          Framestamp.smpte_wrap_tod!(stamp)
+        end
 
-      assert Exception.message(error) ==
-               "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
+      expected_message = "framerate not valid SMPTE value. must be non-drop, drop, or whole-frame"
+      assert Exception.message(error) == expected_message
     end
   end
 

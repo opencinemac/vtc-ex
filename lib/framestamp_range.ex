@@ -299,7 +299,9 @@ defmodule Vtc.Framestamp.Range do
 
   ## Raises
 
-  - `ArgumentError` if `range.in.rate` is not NTSC or whole-frame.
+  - [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`): if `value.rate` is
+    not NTSC or whole-frame. Time-of-day timecode is not defined for non-SMPTE
+    framerates.
 
   ## Examples
 
