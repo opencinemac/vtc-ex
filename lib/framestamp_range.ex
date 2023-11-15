@@ -23,6 +23,7 @@ defmodule Vtc.Framestamp.Range do
   use Vtc.Ecto.Postgres.Utils
 
   alias Vtc.Ecto.Postgres.PgFramestamp
+  alias Vtc.Framerate
   alias Vtc.Framestamp
   alias Vtc.Framestamp.Range.MixedOutTypeArithmeticError
   alias Vtc.Source.Frames
@@ -286,6 +287,105 @@ defmodule Vtc.Framestamp.Range do
 
   @doc section: :manipulate
   @doc """
+  Wraps range with `smpte_wrap_tod/1`, then splits on SMPTE midnight, returning two
+  ranges:
+
+  - `pre_midnight`: Uses `range.in`. `range.out` is clipped to `24:00:00:00`, inclusive.
+
+  - `next_day`: `range.in` is set to `00:00:00:00`. `range.out` is wrapped to valid
+    TOD (time-of-day) timecode value. If `range` does not cross SMPTE midnight will
+    be `nil` instead.
+
+  Returns error if `range.in.rate` is not NTSC or whole-frame. Time-of-day timecode is
+  not defined for non-SMPTE framerates.
+
+  ## Examples
+
+  Splits range that crosses midnight line:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("23:59:59:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> {:ok, pre_midnight, next_day} = Framestamp.Range.smpte_split_tod(range)
+  iex> inspect(pre_midnight)
+  "<23:59:59:00 - 24:00:00:00 :exclusive <23.98 NTSC>>"
+  iex> inspect(next_day)
+  "<00:00:00:00 - 00:01:00:00 :exclusive <23.98 NTSC>>"
+  ```
+
+  With inclusive out:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("23:59:59:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out, out_type: :inclusive)
+  iex> {:ok, pre_midnight, next_day} = Framestamp.Range.smpte_split_tod(range)
+  iex> inspect(pre_midnight)
+  "<23:59:59:00 - 23:59:59:23 :inclusive <23.98 NTSC>>"
+  iex> inspect(next_day)
+  "<00:00:00:00 - 00:01:00:00 :inclusive <23.98 NTSC>>"
+  ```
+
+  Leaves alone ranges that do not cross midnight:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("22:59:59:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("23:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> {:ok, pre_midnight, nil} = Framestamp.Range.smpte_split_tod(range)
+  iex> inspect(pre_midnight)
+  "<22:59:59:00 - 23:01:00:00 :exclusive <23.98 NTSC>>"
+  ```
+
+  Wraps invalid TOD (time-of-day) timecode:
+
+  ```elixir
+  iex> stamp_in = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
+  iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
+  iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
+  iex> {:ok, pre_midnight, nil} = Framestamp.Range.smpte_split_tod(range)
+  iex> inspect(pre_midnight)
+  "<00:00:00:00 - 00:01:00:00 :exclusive <23.98 NTSC>>"
+  ```
+  """
+  @spec smpte_split_tod(t()) ::
+          {:ok, pre_midnight :: t(), next_day :: t() | nil} | {:error, Framerate.InvalidSMPTEValueError.t()}
+  def smpte_split_tod(range) do
+    with {:ok, wrapped} <- smpte_wrap_tod(range),
+         {:ok, smpte_midnight} <- Framestamp.smpte_midnight(range.in.rate) do
+      exclusive = with_exclusive_out(wrapped)
+
+      if Framestamp.lte?(exclusive.out, smpte_midnight) do
+        {:ok, wrapped, nil}
+      else
+        pre_midnight = wrapped.in |> new!(smpte_midnight) |> with_out_type(range.out_type)
+        post_midnight = smpte_midnight |> new!(wrapped.out, out_type: range.out_type) |> smpte_wrap_tod!()
+        {:ok, pre_midnight, post_midnight}
+      end
+    end
+  end
+
+  @doc section: :manipulate
+  @doc """
+  As `smpte_split_tod/1`, but raises on error.
+
+  ## Raises
+
+  - [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`) if `range.in.rate`
+    is not NTSC or whole-frame. Time-of-day timecode is not defined for non-SMPTE
+    framerates.
+  """
+  @spec smpte_split_tod!(t()) :: {pre_midnight :: t(), next_day :: t() | nil}
+  def smpte_split_tod!(range) do
+    case smpte_split_tod(range) do
+      {:ok, pre_midnight, next_day} -> {pre_midnight, next_day}
+      {:error, exception} -> raise exception
+    end
+  end
+
+  @doc section: :manipulate
+  @doc """
   Wrap `range.in` to the nearest valid TOD (time-of-day) timecode.
 
   Framestamps with a SMPTE timecode of less than `00:00:00:00` will have `24:00:00:00`
@@ -295,13 +395,11 @@ defmodule Vtc.Framestamp.Range do
   `24:00:00:00` subtracted until they are less than `24:00:00:00`.
 
   Returned out point is always greater than in point, and may exceed `24:00:00:00` if
-  required for duration.
+  required for duration. If this behavior is not desirable, see `smpte_split_tod/1`.
 
-  ## Raises
-
-  - [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`): if `value.rate` is
-    not NTSC or whole-frame. Time-of-day timecode is not defined for non-SMPTE
-    framerates.
+  Returns error if `range.in.rate` is not NTSC or whole-frame. Time-of-day timecode is
+  not defined for non-SMPTE
+  framerates.
 
   ## Examples
 
@@ -311,7 +409,8 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
+  iex> {:ok, wrapped} = Framestamp.Range.smpte_wrap_tod(range)
+  iex> inspect(wrapped)
   "<00:00:00:00 - 00:01:00:00 :exclusive <23.98 NTSC>>"
   ```
 
@@ -321,7 +420,8 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("23:59:59:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
+  iex> {:ok, wrapped} = Framestamp.Range.smpte_wrap_tod(range)
+  iex> inspect(wrapped)
   "<23:59:59:00 - 24:01:00:00 :exclusive <23.98 NTSC>>"
   ```
 
@@ -331,15 +431,35 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("-00:59:50:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
+  iex> {:ok, wrapped} = Framestamp.Range.smpte_wrap_tod(range)
+  iex> inspect(wrapped)
   "<23:00:00:00 - 23:00:10:00 :exclusive <23.98 NTSC>>"
   ```
   """
+  @spec smpte_wrap_tod(t()) :: {:ok, t()} | {:error, Framerate.InvalidSMPTEValueError.t()}
+  def smpte_wrap_tod(range) do
+    with {:ok, in_wrapped} <- Framestamp.smpte_wrap_tod(range.in) do
+      wrapped = with_duration!(in_wrapped, duration(range), out_type: range.out_type)
+      {:ok, wrapped}
+    end
+  end
+
+  @doc section: :manipulate
+  @doc """
+  As `smpte_wrap_tod/1`, but raises on error.
+
+  ## Raises
+
+  - [InvalidSMPTEValueError](`Vtc.Framerate.InvalidSMPTEValueError`) if `range.in.rate`
+    is not NTSC or whole-frame. Time-of-day timecode is not defined for non-SMPTE
+    framerates.
+  """
   @spec smpte_wrap_tod!(t()) :: t()
   def smpte_wrap_tod!(range) do
-    range.in
-    |> Framestamp.smpte_wrap_tod!()
-    |> with_duration!(duration(range), out_type: range.out_type)
+    case smpte_wrap_tod(range) do
+      {:ok, result} -> result
+      {:error, exception} -> raise exception
+    end
   end
 
   @doc section: :manipulate
