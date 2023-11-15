@@ -294,8 +294,8 @@ defmodule Vtc.Framestamp.Range do
   Framestamps with a SMPTE timecode of greater than or equal to `24:00:00:00` will have
   `24:00:00:00` subtracted until they are less than `24:00:00:00`.
 
-  Returned out point is always greater than in point, and may exceed `24:00:00:00` for
-  if required for duration.
+  Returned out point is always greater than in point, and may exceed `24:00:00:00` if
+  required for duration.
 
   ## Raises
 

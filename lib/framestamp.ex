@@ -521,6 +521,7 @@ defmodule Vtc.Framestamp do
 
   @non_drop_midnight_seconds Ratio.new(432_432, 5)
   @drop_midnight_seconds Ratio.new(53_999_946, 625)
+  @whole_frame_seconds Ratio.new(86_400, 1)
 
   @doc section: :parse
   @doc """
@@ -530,10 +531,10 @@ defmodule Vtc.Framestamp do
   timecodes similarly share the same midnight value, this function is significantly more
   performant than using the regular parsing functions.
 
-  Will return `{:error, :not_smpte_rate}` if `rate` is not a drop or non-drop SMPTE
-  timecode.
+  Will return `{:error, :not_smpte_rate}` if `rate` is not a drop, non-drop, or
+  whole-frame SMPTE timecode.
   """
-  @spec smpte_midnight(Framerate.t()) :: {:ok, t()} | {:error, :not_smpte_rate}
+  @spec smpte_midnight(Framerate.t()) :: {:ok, t()} | {:error, Framerate.InvalidSMPTEValueError.t()}
   def smpte_midnight(%{ntsc: :non_drop} = rate) do
     stamp = %Framestamp{seconds: @non_drop_midnight_seconds, rate: rate}
     {:ok, stamp}
@@ -544,7 +545,14 @@ defmodule Vtc.Framestamp do
     {:ok, stamp}
   end
 
-  def smpte_midnight(_), do: {:error, :not_smpte_rate}
+  def smpte_midnight(rate) do
+    if rate.playback.denominator == 1 do
+      stamp = %Framestamp{seconds: @whole_frame_seconds, rate: rate}
+      {:ok, stamp}
+    else
+      {:error, %Framerate.InvalidSMPTEValueError{}}
+    end
+  end
 
   @doc section: :parse
   @doc """
@@ -556,10 +564,9 @@ defmodule Vtc.Framestamp do
   """
   @spec smpte_midnight!(Framerate.t()) :: t()
   def smpte_midnight!(rate) do
-    case smpte_midnight(rate) do
-      {:ok, result} -> result
-      {:error, :not_smpte_rate} -> raise ArgumentError.exception("must be SMPTE drop or non-drop framerate")
-    end
+    rate
+    |> smpte_midnight()
+    |> handle_raise_function()
   end
 
   @doc section: :manipulate

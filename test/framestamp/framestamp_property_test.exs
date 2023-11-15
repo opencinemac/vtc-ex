@@ -167,7 +167,7 @@ defmodule Vtc.FramestampTest.Properties.SMPTEMidnight do
 
   describe "smpte_midnight/1" do
     property "equals parse" do
-      check all(framerate <- StreamDataVtc.framerate(type: [:drop, :non_drop])) do
+      check all(framerate <- StreamDataVtc.framerate(type: [:whole, :drop, :non_drop])) do
         assert {:ok, result} = Framestamp.smpte_midnight(framerate)
         assert result == Framestamp.with_frames!("24:00:00:00", framerate)
       end

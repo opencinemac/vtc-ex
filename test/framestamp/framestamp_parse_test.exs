@@ -873,16 +873,29 @@ defmodule Vtc.FramestampTest.Parse do
       assert result == Framestamp.with_frames!("24:00:00:00", rate)
     end
 
-    non_smpte_midnight_table = [
+    whole_frame_midnight_table = [
       %{rate: Rates.f24()},
       %{rate: Rates.f30()},
       %{rate: Rates.f48()},
       %{rate: Rates.f60()}
     ]
 
-    table_test "non-SMPTE rate @ <%= rate %>", non_smpte_midnight_table, test_case do
+    table_test "whole-frame rate @ <%= rate %>", whole_frame_midnight_table, test_case do
       %{rate: rate} = test_case
-      assert {:error, :not_smpte_rate} = Framestamp.smpte_midnight(rate)
+
+      assert {:ok, result} = Framestamp.smpte_midnight(rate)
+      assert result.seconds == Ratio.new(86_400, 1)
+      assert result == Framestamp.with_frames!("24:00:00:00", rate)
+    end
+
+    non_smpte_midnight_table = [
+      %{rate: Framerate.new!(Ratio.new(24_000, 1001))},
+      %{rate: Framerate.new!(Ratio.new(30_000, 1001))}
+    ]
+
+    table_test "whole-frame rate @ <%= rate %>", non_smpte_midnight_table, test_case do
+      %{rate: rate} = test_case
+      assert {:error, %Framerate.InvalidSMPTEValueError{}} = Framestamp.smpte_midnight(rate)
     end
   end
 
