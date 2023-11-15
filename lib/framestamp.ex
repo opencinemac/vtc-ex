@@ -519,6 +519,49 @@ defmodule Vtc.Framestamp do
 
   defp validate_drop_frame_number(_, _), do: :ok
 
+  @non_drop_midnight_seconds Ratio.new(432_432, 5)
+  @drop_midnight_seconds Ratio.new(53_999_946, 625)
+
+  @doc section: :parse
+  @doc """
+  Return a [Framestamp](`Vtc.Framestamp`) for SMPTE timecode `24:00:00:00` at `rate`.
+
+  Since all non-drop timecodes share the same midnight seconds value, and all drop
+  timecodes similarly share the same midnight value, this function is significantly more
+  performant than using the regular parsing functions.
+
+  Will return `{:error, :not_smpte_rate}` if `rate` is not a drop or non-drop SMPTE
+  timecode.
+  """
+  @spec smpte_midnight(Framerate.t()) :: {:ok, t()} | {:error, :not_smpte_rate}
+  def smpte_midnight(%{ntsc: :non_drop} = rate) do
+    stamp = %Framestamp{seconds: @non_drop_midnight_seconds, rate: rate}
+    {:ok, stamp}
+  end
+
+  def smpte_midnight(%{ntsc: :drop} = rate) do
+    stamp = %Framestamp{seconds: @drop_midnight_seconds, rate: rate}
+    {:ok, stamp}
+  end
+
+  def smpte_midnight(_), do: {:error, :not_smpte_rate}
+
+  @doc section: :parse
+  @doc """
+  As `smpte_midnight/1`, but raises on error.
+
+  ## Raises
+
+  - `ArgumentError` if `rate` is not NTSC drop or non-drop.
+  """
+  @spec smpte_midnight!(Framerate.t()) :: t()
+  def smpte_midnight!(rate) do
+    case smpte_midnight(rate) do
+      {:ok, result} -> result
+      {:error, :not_smpte_rate} -> raise ArgumentError.exception("must be SMPTE drop or non-drop framerate")
+    end
+  end
+
   @doc section: :manipulate
   @doc """
   Rebases `framestamp` to a new framerate.
@@ -872,30 +915,30 @@ defmodule Vtc.Framestamp do
 
   ```elixir
   iex> stamp = Framestamp.with_frames!("01:30:21:17", Rates.f23_98())
-  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  iex> Framestamp.smpte_wrap_tod!(stamp) |> Framestamp.smpte_timecode()
   "01:30:21:17"
   ```
 
   ```elixir
   iex> stamp = Framestamp.with_frames!("24:30:21:17", Rates.f23_98())
-  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  iex> Framestamp.smpte_wrap_tod!(stamp) |> Framestamp.smpte_timecode()
   "00:30:21:17"
   ```
 
   ```elixir
   iex> stamp = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
-  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  iex> Framestamp.smpte_wrap_tod!(stamp) |> Framestamp.smpte_timecode()
   "23:00:00:00"
   ```
 
   ```elixir
   iex> stamp = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
-  iex> Framestamp.smpte_timecode_wrap_tod(stamp) |> Framestamp.smpte_timecode()
+  iex> Framestamp.smpte_wrap_tod!(stamp) |> Framestamp.smpte_timecode()
   "00:00:00:00"
   ```
   """
-  @spec smpte_timecode_wrap_tod(t()) :: t()
-  def smpte_timecode_wrap_tod(value) do
+  @spec smpte_wrap_tod!(t()) :: t()
+  def smpte_wrap_tod!(value) do
     if value.rate.ntsc == nil and value.rate.playback.denominator != 1 do
       raise ArgumentError.exception(
               "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
@@ -908,7 +951,7 @@ defmodule Vtc.Framestamp do
 
     full_day =
       if value.rate.ntsc == :drop do
-        full_day_stamp = Framestamp.with_frames!("24:00:00:00", value.rate)
+        full_day_stamp = smpte_midnight!(value.rate)
         full_day_stamp.seconds
       else
         one_frame_secs
@@ -918,7 +961,7 @@ defmodule Vtc.Framestamp do
         |> Ratio.mult(Ratio.new(24))
       end
 
-    new_seconds = do_wrap_time_of_day(value.seconds, full_day)
+    new_seconds = do_wrap_tod(value.seconds, full_day)
 
     case new_seconds do
       ^input_seconds -> value
@@ -927,11 +970,11 @@ defmodule Vtc.Framestamp do
   end
 
   # full day should be the equivalent of `24:00:00:00` at `value`'s rate.
-  @spec do_wrap_time_of_day(Ratio.t(), Ratio.t()) :: Ratio.t()
-  defp do_wrap_time_of_day(stamp_seconds, full_day) do
+  @spec do_wrap_tod(Ratio.t(), Ratio.t()) :: Ratio.t()
+  defp do_wrap_tod(stamp_seconds, full_day) do
     cond do
-      Ratio.lt?(stamp_seconds, Ratio.new(0)) -> do_wrap_time_of_day(Ratio.add(stamp_seconds, full_day), full_day)
-      Ratio.gte?(stamp_seconds, full_day) -> do_wrap_time_of_day(Ratio.sub(stamp_seconds, full_day), full_day)
+      Ratio.lt?(stamp_seconds, Ratio.new(0)) -> do_wrap_tod(Ratio.add(stamp_seconds, full_day), full_day)
+      Ratio.gte?(stamp_seconds, full_day) -> do_wrap_tod(Ratio.sub(stamp_seconds, full_day), full_day)
       true -> stamp_seconds
     end
   end

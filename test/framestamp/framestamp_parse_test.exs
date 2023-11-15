@@ -844,6 +844,48 @@ defmodule Vtc.FramestampTest.Parse do
     assert parsed.rate == test_case.rate
   end
 
+  describe "smpte_midnight/1" do
+    smpte_midnight_non_drop_table = [
+      %{rate: Rates.f23_98()},
+      %{rate: Rates.f29_97_ndf()},
+      %{rate: Rates.f47_95()},
+      %{rate: Rates.f59_94_ndf()}
+    ]
+
+    table_test "non-drop rate @ <%= rate %>", smpte_midnight_non_drop_table, test_case do
+      %{rate: rate} = test_case
+
+      assert {:ok, result} = Framestamp.smpte_midnight(rate)
+      assert result.seconds == Ratio.new(432_432, 5)
+      assert result == Framestamp.with_frames!("24:00:00:00", rate)
+    end
+
+    smpte_midnight_drop_table = [
+      %{rate: Rates.f29_97_df()},
+      %{rate: Rates.f59_94_df()}
+    ]
+
+    table_test "dop rate @ <%= rate %>", smpte_midnight_drop_table, test_case do
+      %{rate: rate} = test_case
+
+      assert {:ok, result} = Framestamp.smpte_midnight(rate)
+      assert result.seconds == Ratio.new(53_999_946, 625)
+      assert result == Framestamp.with_frames!("24:00:00:00", rate)
+    end
+
+    non_smpte_midnight_table = [
+      %{rate: Rates.f24()},
+      %{rate: Rates.f30()},
+      %{rate: Rates.f48()},
+      %{rate: Rates.f60()}
+    ]
+
+    table_test "non-SMPTE rate @ <%= rate %>", non_smpte_midnight_table, test_case do
+      %{rate: rate} = test_case
+      assert {:error, :not_smpte_rate} = Framestamp.smpte_midnight(rate)
+    end
+  end
+
   describe "#frames/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, frames: frames, rate: rate} = test_case

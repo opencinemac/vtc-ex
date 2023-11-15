@@ -309,7 +309,7 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("24:00:00:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
   "<00:00:00:00 - 00:01:00:00 :exclusive <23.98 NTSC>>"
   ```
 
@@ -319,7 +319,7 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("23:59:59:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("24:01:00:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
   "<23:59:59:00 - 24:01:00:00 :exclusive <23.98 NTSC>>"
   ```
 
@@ -329,14 +329,14 @@ defmodule Vtc.Framestamp.Range do
   iex> stamp_in = Framestamp.with_frames!("-01:00:00:00", Rates.f23_98())
   iex> stamp_out = Framestamp.with_frames!("-00:59:50:00", Rates.f23_98())
   iex> range = Framestamp.Range.new!(stamp_in, stamp_out)
-  iex> Framestamp.Range.smpte_timecode_wrap_tod(range) |> inspect()
+  iex> Framestamp.Range.smpte_wrap_tod!(range) |> inspect()
   "<23:00:00:00 - 23:00:10:00 :exclusive <23.98 NTSC>>"
   ```
   """
-  @spec smpte_timecode_wrap_tod(t()) :: t()
-  def smpte_timecode_wrap_tod(range) do
+  @spec smpte_wrap_tod!(t()) :: t()
+  def smpte_wrap_tod!(range) do
     range.in
-    |> Framestamp.smpte_timecode_wrap_tod()
+    |> Framestamp.smpte_wrap_tod!()
     |> with_duration!(duration(range), out_type: range.out_type)
   end
 

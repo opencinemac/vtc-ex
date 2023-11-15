@@ -667,11 +667,11 @@ defmodule Vtc.FramestampTest.Ops do
     end
   end
 
-  describe "#smpte_timecode_wrap_tod/1" do
+  describe "#smpte_wrap_tod!/1" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:value, :expected]
 
-    smpte_timecode_wrap_tod_table = [
+    smpte_wrap_tod_table = [
       %{value: "01:00:00:00", expected: "01:00:00:00"},
       %{value: "23:59:59:23", expected: "23:59:59:23"},
       %{value: "00:00:00:00", expected: "00:00:00:00"},
@@ -690,17 +690,17 @@ defmodule Vtc.FramestampTest.Ops do
       %{value: {"-01:00:00:00", Rates.f29_97_df()}, expected: {"23:00:00:00", Rates.f29_97_df()}}
     ]
 
-    table_test "<%= value %> wraps to <%= expected %>", smpte_timecode_wrap_tod_table, test_case do
+    table_test "<%= value %> wraps to <%= expected %>", smpte_wrap_tod_table, test_case do
       %{value: value, expected: expected} = test_case
 
-      assert Framestamp.smpte_timecode_wrap_tod(value) == expected
+      assert Framestamp.smpte_wrap_tod!(value) == expected
     end
 
     test "raises on non-NTSC fractional rate" do
       rate = Framerate.new!(Ratio.new(23.98))
       stamp = Framestamp.with_frames!(0, rate)
 
-      error = assert_raise ArgumentError, fn -> Framestamp.smpte_timecode_wrap_tod(stamp) end
+      error = assert_raise ArgumentError, fn -> Framestamp.smpte_wrap_tod!(stamp) end
 
       assert Exception.message(error) ==
                "`framerate` must be NTSC or whole-frame. time-of-day timecode is not defined for other rated"
