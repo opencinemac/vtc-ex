@@ -156,6 +156,25 @@ defmodule Vtc.FramestampTest.Properties.ParseRoundTripDrop do
   end
 end
 
+defmodule Vtc.FramestampTest.Properties.SMPTEMidnight do
+  @moduledoc false
+
+  use ExUnit.Case, async: true
+  use ExUnitProperties
+
+  alias Vtc.Framestamp
+  alias Vtc.TestUtils.StreamDataVtc
+
+  describe "smpte_midnight/1" do
+    property "equals parse" do
+      check all(framerate <- StreamDataVtc.framerate(type: [:whole, :drop, :non_drop])) do
+        assert {:ok, result} = Framestamp.smpte_midnight(framerate)
+        assert result == Framestamp.with_frames!("24:00:00:00", framerate)
+      end
+    end
+  end
+end
+
 defmodule Vtc.FramestampTest.Properties.ParseRoundTripNonDrop do
   @moduledoc false
 
@@ -262,12 +281,12 @@ defmodule Vtc.FramestampTest.Properties.Arithmetic do
     end
   end
 
-  property "#smpte_timecode_wrap_tod/1 always valid TOD" do
+  property "#smpte_wrap_tod!/1 always valid TOD" do
     check all(input <- StreamDataVtc.framestamp(rate_opts: [type: [:whole, :drop, :non_drop]])) do
       zero = Framestamp.with_frames!(0, input.rate)
       hours24 = Framestamp.with_frames!("24:00:00:00", input.rate)
 
-      result = Framestamp.smpte_timecode_wrap_tod(input)
+      result = Framestamp.smpte_wrap_tod!(input)
 
       assert Framestamp.gte?(result, zero)
       assert Framestamp.lt?(result, hours24)
