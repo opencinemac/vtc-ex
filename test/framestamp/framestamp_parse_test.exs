@@ -899,6 +899,15 @@ defmodule Vtc.FramestampTest.Parse do
     end
   end
 
+  describe "smpte_midnight!/1" do
+    test "raises on bad rate" do
+      assert_raise Framerate.InvalidSMPTEValueError, fn ->
+        rate = Framerate.new!(Ratio.new(24_000, 1001))
+        Framestamp.smpte_midnight!(rate)
+      end
+    end
+  end
+
   describe "#frames/2" do
     table_test "<%= name %>", parse_table, test_case do
       %{seconds: seconds, frames: frames, rate: rate} = test_case
