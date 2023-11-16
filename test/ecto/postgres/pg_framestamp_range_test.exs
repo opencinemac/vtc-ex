@@ -3,6 +3,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
   use ExUnitProperties
 
   alias Ecto.Query
+  alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Framestamp
   alias Vtc.Rates
   alias Vtc.Test.Support.CommonTables
@@ -539,6 +540,65 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
       assert result.lower_inclusive == true
       assert result.upper == Ratio.to_float(expected.out.seconds)
       assert result.upper_inclusive == false
+    end
+
+    test "can construct fastrange from exclusive Framestamp.Range using FastRange" do
+      stamp_01 = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_02 = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      range = Framestamp.Range.new!(stamp_01, stamp_02, out_type: :exclusive)
+
+      query =
+        Query.from(
+          f in fragment(
+            "SELECT ? as r",
+            type(^range, PgFramestamp.FastRange)
+          ),
+          select: f.r
+        )
+
+      assert %Postgrex.Range{} = result = Repo.one!(query)
+      assert result.lower == Ratio.to_float(range.in.seconds)
+      assert result.lower_inclusive == true
+      assert result.upper == Ratio.to_float(range.out.seconds)
+      assert result.upper_inclusive == false
+    end
+
+    test "can construct fastrange from inclusive Framestamp.Range using FastRange" do
+      stamp_01 = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
+      stamp_02 = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
+      range = Framestamp.Range.new!(stamp_01, stamp_02, out_type: :inclusive)
+      expected = Framestamp.Range.with_exclusive_out(range)
+
+      query =
+        Query.from(
+          f in fragment(
+            "SELECT ? as r",
+            type(^range, PgFramestamp.FastRange)
+          ),
+          select: f.r
+        )
+
+      assert %Postgrex.Range{} = result = Repo.one!(query)
+      assert result.lower == Ratio.to_float(expected.in.seconds)
+      assert result.lower_inclusive == true
+      assert result.upper == Ratio.to_float(expected.out.seconds)
+      assert result.upper_inclusive == false
+    end
+
+    property "`PgFramestamp.FastRange` matches framestamp_fastrange(`Framestamp.Range`)" do
+      check all(range <- StreamDataVtc.framestamp_range(filter_empty?: true)) do
+        query =
+          Query.from(
+            f in fragment(
+              "SELECT framestamp_fastrange(?) = ? as r",
+              type(^range, Framestamp.Range),
+              type(^range, PgFramestamp.FastRange)
+            ),
+            select: f.r
+          )
+
+        assert Repo.one!(query) == true
+      end
     end
   end
 end
