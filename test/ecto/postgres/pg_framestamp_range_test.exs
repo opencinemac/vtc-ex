@@ -585,7 +585,7 @@ defmodule Vtc.Ecto.Postgres.PgFramestampRangeTest do
       assert result.upper_inclusive == false
     end
 
-    property "`PgFramestamp.FastRange` matches framestamp_fastrange(`Framestamp.Range`)" do
+    property "`PgFramestamp.FastRange` matches `framestamp_fastrange(Framestamp.Range)`" do
       check all(range <- StreamDataVtc.framestamp_range(filter_empty?: true)) do
         query =
           Query.from(
