@@ -667,7 +667,7 @@ defmodule Vtc.FramestampTest.Ops do
     end
   end
 
-  describe "#smpte_wrap_tod!/1" do
+  describe "#smpte_wrap_tod/1" do
     setup context, do: TestCase.setup_framestamps(context)
     @describetag framestamps: [:value, :expected]
 
@@ -693,9 +693,19 @@ defmodule Vtc.FramestampTest.Ops do
     table_test "<%= value %> wraps to <%= expected %>", smpte_wrap_tod_table, test_case do
       %{value: value, expected: expected} = test_case
 
-      assert Framestamp.smpte_wrap_tod!(value) == expected
+      assert {:ok, result} = Framestamp.smpte_wrap_tod(value)
+      assert result == expected
     end
 
+    test "errors on non-NTSC fractional rate" do
+      rate = Framerate.new!(Ratio.new(23.98))
+      stamp = Framestamp.with_frames!(0, rate)
+
+      assert {:error, %Framerate.InvalidSMPTEValueError{}} = Framestamp.smpte_wrap_tod(stamp)
+    end
+  end
+
+  describe "#smpte_wrap_tod!/1" do
     test "raises on non-NTSC fractional rate" do
       rate = Framerate.new!(Ratio.new(23.98))
       stamp = Framestamp.with_frames!(0, rate)
