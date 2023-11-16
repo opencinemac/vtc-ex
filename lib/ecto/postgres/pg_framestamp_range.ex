@@ -63,8 +63,23 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range do
 
   > #### `Frame-accurate` {: .warning}
   >
-  > Unlike `framestamp_range`, `framestamp_fastrange` is NOT frame-accurate and should
-  > not be used where frame-accuracy is desired or required.
+  >  Vtc's position is that rational values are necessary for frame-accurate timecode
+  > manipulation, so why does it put forth a float-based range type?
+  >
+  > The main risk of using floats is unpredictable floating-point errors stacking up
+  > during arithmetic operations so that when you go to compare two values that SHOULD
+  > be equal, they aren't.
+  >
+  > However, if you do all calculations with rational values -- up to the point where you
+  > need to compare them -- it is safe to cast to floats for the comparison operation, as
+  > equal rational values will always cast to the same float value.
+  >
+  > FastRanges should ONLY be used for comparisons, and should NEVER be adjusted once
+  > built.
+
+  For more on FastRanges, see
+  [PgFramestamp.FastRange](`Vtc.Ecto.Postgres.PgFramestamp.FastRange`), which can be
+  used to help serialize and deserialize the type.
 
   ## Field migrations
 
@@ -122,13 +137,13 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range do
 
   ## Fragments
 
-  Framerate values must be explicitly cast using
+  [Framestamp.Range](`Vtc.Framestamp.Range`) values must be explicitly cast using
   [type/2](https://hexdocs.pm/ecto/Ecto.Query.html#module-interpolation-and-casting):
 
   ```elixir
   stamp_in = Framestamp.with_frames!("01:00:00:00", Rates.f23_98())
   stamp_out = Framestamp.with_frames!("02:00:00:00", Rates.f23_98())
-  stamp_range = Framestamp.new!(stamp_in, stamp_out)
+  stamp_range = Framestamp.Range.new!(stamp_in, stamp_out)
 
   query = Query.from(
     f in fragment("SELECT ? as r", type(^stamp_range, Framerate.Range)), select: f.r
