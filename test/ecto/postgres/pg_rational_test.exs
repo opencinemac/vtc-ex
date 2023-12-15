@@ -460,6 +460,14 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
   end
 
   describe "Postgres * (multiply)" do
+    test "expected result" do
+      expected = Ratio.new(23, 10)
+
+      run_schema_test(Ratio.new(23, 8), Ratio.new(4, 5), expected, fn query ->
+        Query.select(query, [r], fragment("? * ?", r.a, r.b))
+      end)
+    end
+
     property "matches Ratio" do
       check all(
               a <- StreamDataVtc.rational(),
@@ -557,25 +565,16 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
         expected = Rational.rem(a, b)
-
-        query =
-          Query.from(f in fragment("SELECT ? % ? as r", type(^a, PgRational), type(^b, PgRational)),
-            select: f.r
-          )
-
-        assert {:ok, result} = query |> Repo.one!() |> PgRational.load()
-        assert result == expected
+        run_select_test("? % ?", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
     test "can be used on table fields" do
-      result =
-        run_schema_arithmetic_test(Ratio.new(23, 8), Ratio.new(4, 5), fn query ->
-          Query.select(query, [r], fragment("? % ?", r.a, r.b))
-        end)
-
       expected = Rational.rem(Ratio.new(23, 8), Ratio.new(4, 5))
-      assert result == expected
+
+      run_schema_test(Ratio.new(23, 8), Ratio.new(4, 5), expected, fn query ->
+        Query.select(query, [r], fragment("? % ?", r.a, r.b))
+      end)
     end
 
     property "table fields" do
@@ -583,12 +582,11 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        result =
-          run_schema_arithmetic_test(a, b, fn query ->
-            Query.select(query, [r], fragment("? % ?", r.a, r.b))
-          end)
+        expected = Rational.rem(a, b)
 
-        assert result == Rational.rem(a, b)
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], fragment("? % ?", r.a, r.b))
+        end)
       end
     end
   end
@@ -599,19 +597,6 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
               a <- StreamDataVtc.rational(),
               b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
             ) do
-        query =
-          Query.from(
-            f in fragment(
-              "SELECT rational.__private__cmp(?, ?) as r",
-              type(^a, PgRational),
-              type(^b, PgRational)
-            ),
-            select: f.r
-          )
-
-        result = Repo.one!(query)
-        assert is_integer(result)
-
         expected =
           case Ratio.compare(a, b) do
             :lt -> -1
@@ -619,23 +604,26 @@ defmodule Vtc.Ecto.Postgres.PgRationalTest do
             :gt -> 1
           end
 
-        assert result == expected
+        run_select_test("rational.__private__cmp(?, ?)", [type(^a, PgRational), type(^b, PgRational)], expected)
       end
     end
 
-    test "can be used on table fields" do
-      assert {:ok, %{id: record_id}} =
-               %RationalsSchema02{}
-               |> RationalsSchema02.changeset(%{a: Ratio.new(1, 2), b: Ratio.new(1, 4)})
-               |> Repo.insert()
+    property "table fields" do
+      check all(
+              a <- StreamDataVtc.rational(),
+              b <- StreamData.filter(StreamDataVtc.rational(), &(not Ratio.eq?(&1, Ratio.new(0))))
+            ) do
+        expected =
+          case Ratio.compare(a, b) do
+            :lt -> -1
+            :eq -> 0
+            :gt -> 1
+          end
 
-      assert result =
-               RationalsSchema02
-               |> Query.select([r], fragment("rational.__private__cmp(?, ?)", r.a, r.b))
-               |> Query.where([r], r.id == ^record_id)
-               |> Repo.one!()
-
-      assert result == 1
+        run_schema_test(a, b, expected, fn query ->
+          Query.select(query, [r], fragment("rational.__private__cmp(?, ?)", r.a, r.b))
+        end)
+      end
     end
   end
 
