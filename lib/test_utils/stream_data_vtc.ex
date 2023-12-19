@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(StreamData) and Application.get_env(:vtc, :include_test_utils?) do
+if Application.get_env(:vtc, :include_test_utils?) do
   defmodule Vtc.TestUtils.StreamDataVtc do
     @moduledoc """
     `StreamData` generators for use in tests that involve custom Ecto types. For use in
@@ -10,9 +10,6 @@ if Code.ensure_loaded?(StreamData) and Application.get_env(:vtc, :include_test_u
     config :vtc,
       include_test_utils?: true
     ```
-
-    Further, this module will not be compiled if `StreamData` is not present as a
-    loaded dependency.
     """
 
     alias Vtc.Framerate
