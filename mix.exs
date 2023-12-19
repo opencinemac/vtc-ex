@@ -85,6 +85,7 @@ defmodule Vtc.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     include_postgrex? = not (:vtc |> Application.get_env(Postgrex, []) |> Keyword.get(:include?, false))
+    include_test_utils? = not Application.get_env(:vtc, :include_test_utils?, false)
 
     [
       # Library Dependencies
@@ -93,10 +94,10 @@ defmodule Vtc.MixProject do
       {:ecto, "~> 3.10", optional: include_postgrex?},
       {:ecto_sql, "~> 3.10", optional: include_postgrex?},
       {:postgrex, ">= 0.0.0", optional: include_postgrex?},
+      {:stream_data, "~> 0.6.0", optional: include_test_utils?},
 
       # Test dependencies
       {:covertool, "~> 2.0", only: [:test]},
-      {:stream_data, "~> 0.6.0", only: [:dev, :test], optional: true},
       {:junit_formatter, "~> 3.1", only: [:test]},
 
       # Dev dependencies
