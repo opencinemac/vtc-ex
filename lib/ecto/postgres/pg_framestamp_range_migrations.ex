@@ -7,7 +7,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   """
   use Vtc.Ecto.Postgres.PgTypeMigration
 
-  alias Ecto.Migration
   alias Vtc.Ecto.Postgres.PgFramestamp
   alias Vtc.Ecto.Postgres.PgTypeMigration
 
@@ -123,10 +122,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
 
   @doc false
   @impl PgTypeMigration
+  @spec ecto_type() :: module()
   def ecto_type, do: PgFramestamp.Range
 
   @doc false
   @impl PgTypeMigration
+  @spec migrations_list() :: [PgTypeMigration.migration_func()]
   def migrations_list do
     [
       &create_function_schemas/0,
@@ -148,7 +149,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   def create_type_framestamp_range do
     PgTypeMigration.create_type(:framestamp_range, :range,
       subtype: :framestamp,
-      subtype_diff: private_function(:subtype_diff, Migration.repo())
+      subtype_diff: private_function(:subtype_diff)
     )
   end
 
@@ -174,7 +175,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   """
   @spec inject_canonical_function() :: migration_info()
   def inject_canonical_function do
-    canonical = private_function(:canonical, Migration.repo())
+    canonical = private_function(:canonical)
 
     {
       :other,
@@ -264,7 +265,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   @spec create_func_subtype_diff() :: migration_info()
   def create_func_subtype_diff do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:subtype_diff, Migration.repo()),
+      private_function(:subtype_diff),
       args: [a: :framestamp, b: :framestamp],
       declares: [diff: {:framestamp, "a - b"}],
       returns: :"double precision",
@@ -283,10 +284,10 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
   """
   @spec create_func_canonical() :: migration_info()
   def create_func_canonical do
-    framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds, Migration.repo())
+    framestamp_with_seconds = PgFramestamp.Migrations.function(:with_seconds)
 
     PgTypeMigration.create_plpgsql_function(
-      private_function(:canonical, Migration.repo()),
+      private_function(:canonical),
       args: [input: :framestamp_range],
       declares: [
         lower_stamp: {:framestamp, "LOWER(input)"},
@@ -345,13 +346,4 @@ defpgmodule Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations do
       """
     )
   end
-
-  @doc section: :migrations_types
-  @doc """
-  Creates function schema as described by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramestamp.Range.Migrations.html#create_all/0-configuring-database-objects)
-  section above.
-  """
-  @spec create_function_schemas() :: migration_info()
-  def create_function_schemas, do: PgTypeMigration.create_type_schema(:framestamp_range)
 end

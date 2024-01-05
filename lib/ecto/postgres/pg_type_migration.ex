@@ -28,6 +28,15 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
       """
       @type migration_info() :: {migration_type(), raw_sql(), raw_sql()} | :skip
 
+      @doc section: :migrations_types
+      @doc """
+      Creates function schema as described by the
+      [Configuring Database Objects](Vtc.Ecto.Postgres.PgRational.Migrations.html#create_all/0-configuring-database-objects)
+      section above.
+      """
+      @spec create_function_schemas() :: migration_info()
+      def create_function_schemas, do: unquote(__MODULE__).create_type_schema(__MODULE__)
+
       @doc """
       Returns the config-qualified name of the function for this type.
       """
@@ -37,10 +46,18 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
         "#{unquote(__MODULE__).type_function_prefix(repo, postgres_type)}#{name}"
       end
 
+      # Uses the migration repo if present, otherwise uses default settings.
+      @doc false
+      @spec function(atom()) :: String.t()
+      def function(name) do
+        postgres_type = unquote(__MODULE__).postgres_type(__MODULE__)
+        "#{unquote(__MODULE__).type_function_prefix(nil, postgres_type)}#{name}"
+      end
+
       # Returns the config-qualified name of the function for this type.
       @doc false
-      @spec private_function(atom(), Ecto.Repo.t()) :: String.t()
-      def private_function(name, repo) do
+      @spec private_function(atom(), Ecto.Repo.t() | nil) :: String.t()
+      def private_function(name, repo \\ nil) do
         postgres_type = unquote(__MODULE__).postgres_type(__MODULE__)
         "#{unquote(__MODULE__).type_private_function_prefix(repo, postgres_type)}#{name}"
       end
@@ -107,8 +124,8 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
   """
   @spec run_for(t(), include: Keyword.t(atom()), exclude: Keyword.t(atom())) :: :ok
   def run_for(type_migration, opts) do
-    type_migration.migrations_list()
-    |> filter(opts)
+    type_migration
+    |> list_info_for(opts)
     |> Enum.each(fn {_, up_command, down_command} ->
       Migration.execute(up_command, down_command)
     end)
@@ -116,16 +133,31 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
     :ok
   end
 
+  @doc """
+  Returns all migration info for the given modules and options.
+  """
+  @spec list_info_all([t()], Keyword.t(include: Keyword.t(atom()), exclude: Keyword.t(atom()))) :: [migration_info()]
+  def list_info_all(modules, opts) do
+    Enum.flat_map(modules, fn module ->
+      postgres_type = postgres_type(module)
+      opts = Keyword.get(opts, postgres_type, [])
+      list_info_for(module, opts)
+    end)
+  end
+
   # Filters a types migrations based on options and whether the function reports it
   # should be skipped.
-  @spec filter([migration_func()], include: Keyword.t(atom()), exclude: Keyword.t(atom())) :: [migration_info()]
-  defp filter(functions, opts) do
+  @spec list_info_for(t(), include: Keyword.t(atom()), exclude: Keyword.t(atom())) :: [migration_info()]
+  defp list_info_for(type_migration, opts) do
+    functions = type_migration.migrations_list()
     includes = Keyword.get(opts, :include, [])
     excludes = Keyword.get(opts, :exclude, [])
 
     functions
     |> Enum.map(fn function ->
       name = function |> Function.info() |> Keyword.fetch!(:name)
+
+      dbg(name)
 
       with {_, _, _} = func_info <- function.(),
            true <- name in includes or includes == [],
@@ -639,9 +671,10 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
   @doc """
   Creates a public and private schema for a type based on the repo's configuration.
   """
-  @spec create_type_schema(atom()) :: migration_info()
-  def create_type_schema(type_name) do
-    schema_name = get_type_config(Migration.repo(), type_name, :functions_schema, :public)
+  @spec create_type_schema(t()) :: migration_info()
+  def create_type_schema(type_migration) do
+    postgres_type = postgres_type(type_migration)
+    schema_name = get_type_config(nil, postgres_type, :functions_schema, :public)
 
     if schema_name != :public do
       {
@@ -681,17 +714,29 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
   @doc """
   Returns a configuration option for a specific vtc Postgres type and Repo.
   """
-  @spec get_type_config(Ecto.Repo.t(), atom(), atom(), Keyword.value()) :: Keyword.value()
-  def get_type_config(repo, type_name, opt, default),
-    do: repo.config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name, []) |> Keyword.get(opt, default)
+  @spec get_type_config(Ecto.Repo.t() | nil, atom(), atom(), Keyword.value()) :: Keyword.value()
+  def get_type_config(repo, type_name, opt, default) do
+    repo |> get_repo_config() |> Keyword.get(:vtc, []) |> Keyword.get(type_name, []) |> Keyword.get(opt, default)
+  end
+
+  # Fetches the repo config. If `nil` is passed, will use the migration's Repo if
+  # present.
+  @spec get_repo_config(Ecto.Repo.t() | nil) :: Keyword.t()
+  defp get_repo_config(nil) do
+    Migration.repo().config()
+  rescue
+    _ -> []
+  end
+
+  defp get_repo_config(repo), do: repo.config()
 
   @doc """
   Returns a the public function prefix for a specific vtc Postgres type and Repo.
   """
-  @spec type_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  @spec type_function_prefix(Ecto.Repo.t() | nil, atom()) :: String.t()
   def type_function_prefix(repo, type_name), do: calculate_prefix(repo, type_name, :functions_schema)
 
-  @spec type_private_function_prefix(Ecto.Repo.t(), atom()) :: String.t()
+  @spec type_private_function_prefix(Ecto.Repo.t() | nil, atom()) :: String.t()
   def type_private_function_prefix(repo, type_name) do
     prefix = type_function_prefix(repo, type_name)
     prefix = String.trim_trailing(prefix, "_")
@@ -700,7 +745,7 @@ defpgmodule Vtc.Ecto.Postgres.PgTypeMigration do
 
   # Calculate a function prefix for a specific schema and vtc postgres type based on the
   # Repo configuration.
-  @spec calculate_prefix(Ecto.Repo.t(), atom(), atom()) :: String.t()
+  @spec calculate_prefix(Ecto.Repo.t() | nil, atom(), atom()) :: String.t()
   defp calculate_prefix(repo, type_name, schema_config_opt) do
     functions_schema = get_type_config(repo, type_name, schema_config_opt, :public)
     custom_prefix = get_type_config(repo, type_name, :functions_prefix, "")

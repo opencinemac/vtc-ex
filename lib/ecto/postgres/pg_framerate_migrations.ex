@@ -112,10 +112,12 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   @doc false
   @impl PgTypeMigration
+  @spec ecto_type() :: module()
   def ecto_type, do: PgFramerate
 
   @doc false
   @impl PgTypeMigration
+  @spec migrations_list() :: [PgTypeMigration.migration_func()]
   def migrations_list do
     [
       &create_type_framerate_tags/0,
@@ -150,15 +152,6 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
 
   ## FUNCTIONS
 
-  @doc section: :migrations_types
-  @doc """
-  Creates function schema as described by the
-  [Configuring Database Objects](Vtc.Ecto.Postgres.PgFramerate.Migrations.html#create_all/0-configuring-database-objects)
-  section above.
-  """
-  @spec create_function_schemas() :: migration_info()
-  def create_function_schemas, do: PgTypeMigration.create_type_schema(:framerate)
-
   @doc section: :migrations_functions
   @doc """
   Creates `framerate.is_ntsc(rat)` function that returns true if the framerate
@@ -167,7 +160,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @spec create_func_is_ntsc() :: migration_info()
   def create_func_is_ntsc do
     PgTypeMigration.create_plpgsql_function(
-      function(:is_ntsc, Migration.repo()),
+      function(:is_ntsc),
       args: [input: :framerate],
       returns: :boolean,
       body: """
@@ -186,7 +179,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @spec create_func_strict_eq() :: migration_info()
   def create_func_strict_eq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:strict_eq, Migration.repo()),
+      private_function(:strict_eq),
       args: [a: :framerate, b: :framerate],
       returns: :boolean,
       body: """
@@ -204,7 +197,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
   @spec create_func_strict_neq() :: migration_info()
   def create_func_strict_neq do
     PgTypeMigration.create_plpgsql_function(
-      private_function(:strict_neq, Migration.repo()),
+      private_function(:strict_neq),
       args: [a: :framerate, b: :framerate],
       returns: :boolean,
       body: """
@@ -228,7 +221,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
       :===,
       :framerate,
       :framerate,
-      private_function(:strict_eq, Migration.repo()),
+      private_function(:strict_eq),
       commutator: :===,
       negator: :"!==="
     )
@@ -245,7 +238,7 @@ defpgmodule Vtc.Ecto.Postgres.PgFramerate.Migrations do
       :"!===",
       :framerate,
       :framerate,
-      private_function(:strict_neq, Migration.repo()),
+      private_function(:strict_neq),
       commutator: :"!===",
       negator: :===
     )

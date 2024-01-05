@@ -57,16 +57,17 @@ defpgmodule Vtc.Ecto.Postgres.Migrations do
           framestamp: [include: Keyword.t(atom()), exclude: Keyword.t(atom())],
           framestamp_range: [include: Keyword.t(atom()), exclude: Keyword.t(atom())]
         ) :: :ok
-  def run(opts \\ []) do
-    migrations = [
+  def run(opts \\ []), do: PgTypeMigration.run_all(modules(), opts)
+
+  # Returns list of all modules that offer migrations.
+  @doc false
+  @spec modules() :: [module()]
+  def modules do
+    [
       PgRational.Migrations,
       PgFramerate.Migrations,
       PgFramestamp.Migrations,
       PgFramestamp.Range.Migrations
     ]
-
-    PgTypeMigration.run_all(migrations, opts)
-
-    :ok
   end
 end
