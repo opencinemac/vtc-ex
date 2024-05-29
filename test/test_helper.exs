@@ -13,7 +13,7 @@ postgres? =
     true -> true
   end
 
-Application.put_env(:vtc, Vtc.Test.Support.Repo, [
+Application.put_env(:vtc, Vtc.Test.Support.Repo,
   adapter: Ecto.Adapters.Postgres,
   pool: Ecto.Adapters.SQL.Sandbox,
   username: "postgres",
@@ -39,7 +39,7 @@ Application.put_env(:vtc, Vtc.Test.Support.Repo, [
       functions_prefix: ""
     ]
   ]
-])
+)
 
 Application.put_env(:vtc, :ecto_repos, [Vtc.Test.Support.Repo])
 
