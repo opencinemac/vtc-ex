@@ -1,15 +1,8 @@
-if Application.get_env(:vtc, :include_test_utils?) do
+if Code.ensure_loaded?(StreamData) do
   defmodule Vtc.TestUtils.StreamDataVtc do
     @moduledoc """
     `StreamData` generators for use in tests that involve custom Ecto types. For use in
     property tests.
-
-    For this module to be compiled, the following must be set in your config.exs:
-
-    ```elixir
-    config :vtc,
-      include_test_utils?: true
-    ```
     """
 
     alias Vtc.Framerate
