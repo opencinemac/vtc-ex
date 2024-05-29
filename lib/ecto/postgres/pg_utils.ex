@@ -46,33 +46,10 @@ defmodule Vtc.Ecto.Postgres.Utils do
   end
 
   defp if_pg_enabled(action, otherwise \\ fn -> nil end) do
-    if get_config(:include?, false) do
-      :ok = enforce_dep(Ecto, :ecto)
-      :ok = enforce_dep(Postgrex, :postgrex)
-
+    if Code.ensure_loaded?(Ecto) and Code.ensure_loaded?(Postgrex) do
       action.()
     else
       otherwise.()
     end
-  end
-
-  @doc """
-  Fetches a config for `:vtc, Postgrex`
-  """
-  @spec get_config(atom(), result) :: result when result: any()
-  def get_config(opt, default), do: :vtc |> Application.get_env(Postgrex, []) |> Keyword.get(opt, default)
-
-  @doc """
-  Affirms that module from dep is present, throwing otherwise.
-  """
-  @spec enforce_dep(module(), atom()) :: :ok
-  def enforce_dep(module, name) do
-    if not Code.ensure_loaded?(module) do
-      throw(
-        ":vtc, Postgrex, `:include?` config is true, but `#{module}` module not found. Add `#{name}` to your dependencies"
-      )
-    end
-
-    :ok
   end
 end

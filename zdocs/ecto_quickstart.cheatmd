@@ -26,15 +26,7 @@ The custom Ecto & Postgres types provided by Vtc are:
 
 ## Configuration
 
-To enable ecto types in your application, set the following in your 
-`config/config.exs` file:
-
-```elixir
-config :vtc, Postgrex, include?: true
-```
-
-Without this setting, Vtc's Ecto modules will not compile when you compile your app.
-Once you have Postgrex types enabled, additional configuration is done at the 
+Additional configuration is done at the
 [Repo](https://hexdocs.pm/ecto/Ecto.Repo.html) level:
 
 ```elixir
